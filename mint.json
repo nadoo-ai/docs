@@ -1,0 +1,241 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "Nadoo AI",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/logo/light.svg",
+  "colors": {
+    "primary": "#0E0E0E",
+    "light": "#FAFAFA",
+    "dark": "#0E0E0E",
+    "background": {
+      "dark": "#000000",
+      "light": "#FFFFFF"
+    }
+  },
+  "theme": "venus",
+  "layout": "sidenav",
+  "font": {
+    "headings": {
+      "family": "Inter",
+      "weight": 600
+    },
+    "body": {
+      "family": "Inter",
+      "weight": 400
+    }
+  },
+  "metadata": {
+    "charset": "utf-8",
+    "description": "Open-source AI Agent Builder Platform - Build, deploy, and manage intelligent AI agents with workflow automation",
+    "og:site_name": "Nadoo AI Documentation",
+    "og:type": "website",
+    "og:title": "Nadoo AI - Open Source AI Agent Builder Platform",
+    "og:description": "Build production-ready AI agents and automation workflows with our comprehensive platform",
+    "og:image": "https://docs.nadoo.ai/images/og-image.png",
+    "og:url": "https://docs.nadoo.ai",
+    "twitter:card": "summary_large_image",
+    "twitter:site": "@nadoo_ai",
+    "twitter:title": "Nadoo AI Documentation",
+    "twitter:description": "Open-source AI Agent Builder Platform for enterprises and developers",
+    "twitter:image": "https://docs.nadoo.ai/images/og-image.png",
+    "apple-mobile-web-app-title": "Nadoo AI"
+  },
+  "seo": {
+    "indexHiddenPages": false
+  },
+  "versions": [
+    "Flow Core v0.1.0 (beta)",
+    "Builder (coming soon)"
+  ],
+  "topbarLinks": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/nadoo-ai"
+    },
+    {
+      "name": "Product",
+      "url": "https://www.nadoo.ai"
+    }
+  ],
+  "primaryTab": {
+    "name": "Products"
+  },
+  "tabs": [
+    {
+      "name": "Flow Core",
+      "url": "flow-core"
+    },
+    {
+      "name": "Builder",
+      "url": "builder"
+    },
+    {
+      "name": "API Reference",
+      "url": "api"
+    },
+    {
+      "name": "Examples",
+      "url": "examples"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/nadoo-ai"
+    },
+    {
+      "name": "Community",
+      "icon": "discord",
+      "url": "https://discord.gg/9gCsxSn6"
+    },
+    {
+      "name": "Blog",
+      "icon": "newspaper",
+      "url": "https://blog.nadoo.ai"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Platform Overview",
+      "pages": [
+        "introduction"
+      ]
+    },
+    {
+      "group": "Flow Core",
+      "pages": [
+        {
+          "group": "Getting Started",
+          "pages": [
+            "flow-core/overview",
+            "flow-core/installation",
+            "flow-core/quickstart",
+            "flow-core/philosophy"
+          ]
+        },
+        {
+          "group": "Core Components",
+          "pages": [
+            "flow-core/core/nodes",
+            "flow-core/core/chaining",
+            "flow-core/core/context",
+            "flow-core/core/execution"
+          ]
+        },
+        {
+          "group": "Advanced Features",
+          "pages": [
+            "flow-core/advanced/parallel",
+            "flow-core/advanced/resilience",
+            "flow-core/advanced/streaming",
+            "flow-core/advanced/memory",
+            "flow-core/advanced/callbacks",
+            "flow-core/advanced/caching",
+            "flow-core/advanced/rate-limiting"
+          ]
+        },
+        {
+          "group": "Backends",
+          "pages": [
+            "flow-core/backends/overview",
+            "flow-core/backends/native",
+            "flow-core/backends/custom",
+            "flow-core/backends/registry"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Builder Platform",
+      "pages": [
+        "builder/overview",
+        "builder/getting-started",
+        "builder/visual-editor",
+        "builder/roadmap"
+      ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "api/overview",
+        {
+          "group": "Flow Core APIs",
+          "pages": [
+            "api/flow-core/base",
+            "api/flow-core/chain",
+            "api/flow-core/parallel",
+            "api/flow-core/batch",
+            "api/flow-core/memory",
+            "api/flow-core/streaming",
+            "api/flow-core/callbacks",
+            "api/flow-core/tools",
+            "api/flow-core/parsers",
+            "api/flow-core/prompts"
+          ]
+        },
+        {
+          "group": "Builder APIs",
+          "pages": [
+            "api/builder/rest-api",
+            "api/builder/webhooks",
+            "api/builder/sdk"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Examples",
+      "pages": [
+        "examples/overview",
+        {
+          "group": "Flow Core Examples",
+          "pages": [
+            "examples/flow-core/basic-workflow",
+            "examples/flow-core/chaining-nodes",
+            "examples/flow-core/parallel-search",
+            "examples/flow-core/streaming-chat",
+            "examples/flow-core/rag-pipeline",
+            "examples/flow-core/human-in-loop"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Resources",
+      "pages": [
+        "resources/comparison",
+        "resources/migration",
+        "resources/troubleshooting",
+        "resources/faq",
+        "resources/glossary"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/nadoo-ai",
+    "discord": "https://discord.gg/9gCsxSn6",
+    "twitter": "https://twitter.com/nadoo_ai",
+    "linkedin": "https://www.linkedin.com/company/89557466"
+  },
+  "feedback": {
+    "suggestEdit": true,
+    "raiseIssue": true,
+    "thumbsRating": true
+  },
+  "analytics": {
+    "ga4": {
+      "measurementId": "G-XXXXXXXXXX"
+    }
+  },
+  "search": {
+    "prompt": "Search documentation..."
+  },
+  "modeToggle": {
+    "default": "dark",
+    "isHidden": false
+  }
+}

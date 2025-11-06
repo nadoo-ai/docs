@@ -1,0 +1,371 @@
+---
+title: 'Installation'
+description: 'Install Nadoo Flow Core and set up your development environment'
+sidebarTitle: 'Install'
+'og:title': 'Installation - Nadoo Flow Core'
+'og:description': 'Get started with Nadoo Flow Core in minutes'
+icon: 'download'
+---
+
+## Requirements
+
+<CardGroup cols={2}>
+  <Card title="Python Version" icon="python">
+    **Python 3.11+** required
+
+    We use modern Python features including:
+    - Native async/await
+    - Type hints and generics
+    - Pattern matching
+    - Exception groups
+  </Card>
+  <Card title="Operating System" icon="desktop">
+    **Cross-platform support**
+
+    Tested on:
+    - Linux (Ubuntu 20.04+, Debian 10+)
+    - macOS (11.0+)
+    - Windows (10+, WSL recommended)
+  </Card>
+</CardGroup>
+
+## Installation Methods
+
+### Basic Installation
+
+Install the core package with minimal dependencies:
+
+<CodeGroup>
+
+```bash pip
+pip install nadoo-flow-core
+```
+
+```bash poetry
+poetry add nadoo-flow-core
+```
+
+```bash pipenv
+pipenv install nadoo-flow-core
+```
+
+```bash conda
+conda install -c conda-forge nadoo-flow-core
+```
+
+</CodeGroup>
+
+### With Optional Features
+
+<Tabs>
+  <Tab title="CEL Expressions">
+    Install with CEL (Common Expression Language) support for advanced conditional logic:
+
+    ```bash
+    pip install "nadoo-flow-core[cel]"
+    ```
+
+    This enables:
+    - Complex conditional routing
+    - Dynamic variable evaluation
+    - Rule-based workflows
+  </Tab>
+  <Tab title="Redis Backend">
+    Install with Redis support for distributed memory:
+
+    ```bash
+    pip install "nadoo-flow-core[redis]"
+    ```
+
+    This enables:
+    - Distributed chat history
+    - Cross-process caching
+    - Scalable session management
+  </Tab>
+  <Tab title="All Extras">
+    Install with all optional dependencies:
+
+    ```bash
+    pip install "nadoo-flow-core[all]"
+    ```
+
+    Includes:
+    - CEL expressions
+    - Redis support
+    - Development tools
+  </Tab>
+</Tabs>
+
+### Development Installation
+
+For contributing or local development:
+
+```bash
+# Clone the repository
+git clone https://github.com/nadoo-ai/nadoo-ai-kb.git
+cd nadoo-ai-kb/packages/nadoo-flow-core
+
+# Install in editable mode with dev dependencies
+pip install -e ".[dev]"
+
+# Or using poetry
+poetry install --with dev
+```
+
+## Dependency Overview
+
+Nadoo Flow Core has **minimal dependencies** by design:
+
+### Core Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `pydantic` | >=2.7.4 | Type validation and serialization |
+| `typing-extensions` | >=4.7.0 | Python 3.11 compatibility |
+
+### Optional Dependencies
+
+| Feature | Package | Version | Purpose |
+|---------|---------|---------|---------|
+| CEL | `celpy` | >=1.0.0 | Expression evaluation |
+| Redis | `redis` | >=4.5.0 | Distributed storage |
+| Dev | `pytest` | >=8.0.0 | Testing framework |
+| Dev | `pytest-asyncio` | >=0.23.0 | Async test support |
+| Dev | `black` | >=23.0.0 | Code formatting |
+| Dev | `ruff` | >=0.1.0 | Fast linting |
+| Dev | `mypy` | >=1.7.0 | Type checking |
+
+## Environment Setup
+
+### Virtual Environment (Recommended)
+
+<AccordionGroup>
+  <Accordion title="Using venv" icon="python">
+    ```bash
+    # Create virtual environment
+    python -m venv nadoo-env
+
+    # Activate on Linux/macOS
+    source nadoo-env/bin/activate
+
+    # Activate on Windows
+    nadoo-env\Scripts\activate
+
+    # Install nadoo-flow-core
+    pip install nadoo-flow-core
+    ```
+  </Accordion>
+  <Accordion title="Using conda" icon="cube">
+    ```bash
+    # Create conda environment
+    conda create -n nadoo python=3.11
+
+    # Activate environment
+    conda activate nadoo
+
+    # Install nadoo-flow-core
+    pip install nadoo-flow-core
+    ```
+  </Accordion>
+  <Accordion title="Using poetry" icon="feather">
+    ```bash
+    # Initialize new project
+    poetry new my-workflow-project
+    cd my-workflow-project
+
+    # Add nadoo-flow-core
+    poetry add nadoo-flow-core
+
+    # Activate shell
+    poetry shell
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Verification
+
+After installation, verify everything is working:
+
+```python
+# test_installation.py
+import asyncio
+from nadoo_flow import ChainableNode, NodeResult, __version__
+
+class TestNode(ChainableNode):
+    async def execute(self, node_context, workflow_context):
+        return NodeResult(
+            success=True,
+            output={"message": "Installation successful!"}
+        )
+
+async def main():
+    print(f"Nadoo Flow Core version: {__version__}")
+
+    node = TestNode(
+        node_id="test",
+        node_type="test",
+        name="Test Node"
+    )
+
+    result = await node.run({})
+    print(f"Test result: {result}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+Run the test:
+
+```bash
+python test_installation.py
+```
+
+Expected output:
+```
+Nadoo Flow Core version: 0.1.0
+Test result: {'message': 'Installation successful!'}
+```
+
+## IDE Setup
+
+### VS Code
+
+Install recommended extensions for the best development experience:
+
+```json
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.black-formatter",
+    "charliermarsh.ruff",
+    "tamasfe.even-better-toml"
+  ]
+}
+```
+
+### PyCharm
+
+1. Open project settings: `File > Settings > Project > Python Interpreter`
+2. Select your virtual environment
+3. Enable type checking: `Editor > Inspections > Python > Type checker`
+
+## Docker Installation
+
+For containerized deployments:
+
+```dockerfile
+# Dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY . .
+
+# Run application
+CMD ["python", "-m", "your_app"]
+```
+
+```txt requirements.txt
+nadoo-flow-core>=0.1.0
+```
+
+Build and run:
+
+```bash
+docker build -t nadoo-workflow .
+docker run nadoo-workflow
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="ImportError: No module named 'nadoo_flow'" icon="exclamation-triangle">
+    **Solution:** Ensure you've activated your virtual environment and installed the package:
+    ```bash
+    pip list | grep nadoo-flow-core
+    ```
+    If not listed, reinstall:
+    ```bash
+    pip install --upgrade nadoo-flow-core
+    ```
+  </Accordion>
+  <Accordion title="Python version error" icon="python">
+    **Solution:** Nadoo Flow Core requires Python 3.11+:
+    ```bash
+    python --version
+    ```
+    If older, upgrade Python or use pyenv/conda to manage versions.
+  </Accordion>
+  <Accordion title="Dependency conflicts" icon="code-branch">
+    **Solution:** Use a clean virtual environment:
+    ```bash
+    python -m venv fresh-env
+    source fresh-env/bin/activate  # Linux/macOS
+    pip install nadoo-flow-core
+    ```
+  </Accordion>
+  <Accordion title="Permission denied during installation" icon="lock">
+    **Solution:** Never use sudo with pip. Instead, use:
+    ```bash
+    pip install --user nadoo-flow-core
+    # Or better, use a virtual environment
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Platform-Specific Notes
+
+### macOS
+
+<Note>
+  On macOS with Apple Silicon (M1/M2), some dependencies may require Rosetta:
+  ```bash
+  softwareupdate --install-rosetta
+  ```
+</Note>
+
+### Windows
+
+<Note>
+  On Windows, we recommend using WSL2 for the best compatibility:
+  ```powershell
+  wsl --install
+  ```
+  Then follow the Linux installation instructions inside WSL.
+</Note>
+
+### Linux
+
+<Note>
+  On some Linux distributions, you may need to install Python development headers:
+  ```bash
+  # Ubuntu/Debian
+  sudo apt-get install python3.11-dev
+
+  # RHEL/CentOS/Fedora
+  sudo yum install python3.11-devel
+  ```
+</Note>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Build your first workflow in 5 minutes
+  </Card>
+  <Card title="Core Concepts" icon="cube" href="/core/nodes">
+    Understand the fundamental building blocks
+  </Card>
+  <Card title="Examples" icon="flask" href="/examples/basic-workflow">
+    Learn from practical examples
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Explore the complete API
+  </Card>
+</CardGroup>

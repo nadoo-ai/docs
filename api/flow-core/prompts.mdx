@@ -1,0 +1,958 @@
+---
+title: 'Prompts API'
+description: 'Template and manage prompts for LLM interactions'
+sidebarTitle: 'Prompts'
+'og:title': 'Prompts API - Nadoo Flow Core'
+icon: 'message'
+---
+
+## Overview
+
+Flow Core's Prompts API provides a comprehensive system for creating, managing, and composing prompts for LLM interactions. With support for variable substitution, few-shot learning, chat templates, and dynamic message injection, you can build sophisticated prompt strategies.
+
+## PromptTemplate
+
+Basic template with variable substitution:
+
+```python
+from nadoo_flow import PromptTemplate
+
+# Create template
+template = PromptTemplate(
+    "Translate the following {source_language} text to {target_language}:\n\n{text}"
+)
+
+# Format with variables
+prompt = template.format(
+    source_language="English",
+    target_language="Korean",
+    text="Hello, how are you?"
+)
+
+print(prompt)
+# Output:
+# Translate the following English text to Korean:
+#
+# Hello, how are you?
+```
+
+### Advanced Features
+
+#### Partial Formatting
+
+Create specialized templates from general ones:
+
+```python
+# General template
+base_template = PromptTemplate(
+    "You are a {role} assistant. {instructions}\n\nUser: {query}\nAssistant:"
+)
+
+# Create specialized version
+translator_template = base_template.format_partial(
+    role="translation",
+    instructions="Translate text accurately while preserving tone and context."
+)
+
+# Now only need to provide query
+prompt = translator_template.format(query="Translate 'Hello' to Spanish")
+```
+
+#### Template Validation
+
+Ensure all variables are provided:
+
+```python
+template = PromptTemplate(
+    "Process {input} using {method} algorithm",
+    required_variables=["input", "method"]
+)
+
+# Raises error if missing required variables
+try:
+    template.format(input="data")  # Missing 'method'
+except ValueError as e:
+    print(f"Error: {e}")  # Missing required variables: ['method']
+```
+
+## ChatPromptTemplate
+
+Multi-message templates for conversations:
+
+```python
+from nadoo_flow import ChatPromptTemplate, Message
+
+# Create from message tuples
+template = ChatPromptTemplate.from_messages([
+    ("system", "You are a {role} expert. {guidelines}"),
+    ("user", "{question}"),
+    ("assistant", "I'll help you with that. Let me {action}."),
+    ("user", "{followup}")
+])
+
+# Format into messages
+messages = template.format(
+    role="Python",
+    guidelines="Provide clear, efficient code examples.",
+    question="How do I read a CSV file?",
+    action="show you a complete example",
+    followup="Can you explain each part?"
+)
+
+# Returns list of Message objects
+for msg in messages:
+    print(f"{msg.role}: {msg.content[:50]}...")
+```
+
+### Message Roles
+
+Support for all OpenAI message roles:
+
+```python
+template = ChatPromptTemplate([
+    Message.system("You are a helpful assistant"),
+    Message.user("What is {topic}?"),
+    Message.assistant("I'll explain {topic} for you."),
+    Message.function(
+        name="search",
+        content='{"results": "..."}'
+    ),
+    Message.tool(
+        name="calculator",
+        content='{"result": 42}'
+    )
+])
+```
+
+## FewShotPromptTemplate
+
+Create prompts with examples:
+
+```python
+from nadoo_flow import FewShotPromptTemplate
+
+# Define examples
+examples = [
+    {"input": "The sky is", "output": "blue"},
+    {"input": "Grass is", "output": "green"},
+    {"input": "The sun is", "output": "yellow"}
+]
+
+# Create template
+few_shot_template = FewShotPromptTemplate(
+    examples=examples,
+    example_template="Input: {input}\nOutput: {output}",
+    prefix="Complete the following phrases:",
+    suffix="Input: {input}\nOutput:",
+    example_separator="\n\n"
+)
+
+# Format with new input
+prompt = few_shot_template.format(input="Snow is")
+
+print(prompt)
+# Output:
+# Complete the following phrases:
+#
+# Input: The sky is
+# Output: blue
+#
+# Input: Grass is
+# Output: green
+#
+# Input: The sun is
+# Output: yellow
+#
+# Input: Snow is
+# Output:
+```
+
+### Dynamic Example Selection
+
+Choose examples based on input:
+
+```python
+class SimilarityExampleSelector:
+    def __init__(self, examples: list[dict], embedder):
+        self.examples = examples
+        self.embedder = embedder
+        self.embeddings = [
+            embedder.embed(ex["input"])
+            for ex in examples
+        ]
+
+    def select_examples(self, input_text: str, k: int = 3) -> list[dict]:
+        """Select k most similar examples"""
+        input_embedding = self.embedder.embed(input_text)
+
+        # Calculate similarities
+        similarities = [
+            self.cosine_similarity(input_embedding, emb)
+            for emb in self.embeddings
+        ]
+
+        # Get top k
+        top_indices = sorted(
+            range(len(similarities)),
+            key=lambda i: similarities[i],
+            reverse=True
+        )[:k]
+
+        return [self.examples[i] for i in top_indices]
+
+# Use with FewShotPromptTemplate
+selector = SimilarityExampleSelector(examples, embedder)
+relevant_examples = selector.select_examples("The ocean is", k=2)
+
+template = FewShotPromptTemplate(
+    examples=relevant_examples,
+    # ... rest of configuration
+)
+```
+
+## MessagesPlaceholder
+
+Dynamic message injection in chat templates:
+
+```python
+from nadoo_flow import MessagesPlaceholder
+
+# Template with placeholder for history
+template = ChatPromptTemplate([
+    Message.system("You are a helpful AI assistant"),
+    MessagesPlaceholder("chat_history"),  # Inject messages here
+    Message.user("{question}")
+])
+
+# Format with message history
+messages = template.format(
+    chat_history=[
+        Message.user("What's the capital of France?"),
+        Message.assistant("The capital of France is Paris."),
+        Message.user("What's its population?"),
+        Message.assistant("Paris has about 2.1 million people in the city proper.")
+    ],
+    question="What are some famous landmarks there?"
+)
+
+# The placeholder is replaced with the full history
+```
+
+## Message Class
+
+Core message structure for chat interactions:
+
+```python
+from nadoo_flow import Message
+from typing import Any
+
+@dataclass
+class Message:
+    role: Literal["system", "user", "assistant", "function", "tool"]
+    content: str | list[dict[str, Any]]
+    name: str | None = None
+    metadata: dict[str, Any] | None = None
+
+    # Factory methods
+    @classmethod
+    def system(cls, content: str, **kwargs):
+        return cls(role="system", content=content, **kwargs)
+
+    @classmethod
+    def user(cls, content: str, **kwargs):
+        return cls(role="user", content=content, **kwargs)
+
+    @classmethod
+    def assistant(cls, content: str, **kwargs):
+        return cls(role="assistant", content=content, **kwargs)
+
+    # Convert to provider formats
+    def to_openai(self) -> dict:
+        """Convert to OpenAI format"""
+        return {
+            "role": self.role,
+            "content": self.content,
+            **({"name": self.name} if self.name else {})
+        }
+
+    def to_anthropic(self) -> dict:
+        """Convert to Anthropic format"""
+        # Anthropic uses different format
+        pass
+```
+
+### Multi-modal Messages
+
+Support for images and complex content:
+
+```python
+# Text-only message
+text_message = Message.user("What's in this image?")
+
+# Multi-modal message with image
+image_message = Message.user([
+    {"type": "text", "text": "What's in this image?"},
+    {"type": "image_url", "image_url": {
+        "url": "https://example.com/image.png",
+        "detail": "high"  # low, high, or auto
+    }}
+])
+
+# Multiple images
+multi_image = Message.user([
+    {"type": "text", "text": "Compare these images:"},
+    {"type": "image_url", "image_url": {"url": "image1.png"}},
+    {"type": "image_url", "image_url": {"url": "image2.png"}}
+])
+```
+
+## PromptLibrary
+
+Manage reusable prompt templates:
+
+```python
+from nadoo_flow import PromptLibrary
+
+# Create library
+library = PromptLibrary()
+
+# Add templates
+library.add("translate", PromptTemplate(
+    "Translate to {language}:\n\n{text}"
+))
+
+library.add("summarize", PromptTemplate(
+    "Summarize the following {content_type} in {length} sentences:\n\n{content}"
+))
+
+library.add("explain", ChatPromptTemplate.from_messages([
+    ("system", "You are an expert teacher."),
+    ("user", "Explain {concept} like I'm {age} years old.")
+]))
+
+# Retrieve and use
+translate_template = library.get("translate")
+prompt = translate_template.format(
+    language="Spanish",
+    text="Hello, world!"
+)
+
+# List all templates
+available = library.list_templates()
+print(f"Available templates: {available}")
+# Output: ["translate", "summarize", "explain"]
+
+# Export/Import library
+library.save("prompts.json")
+loaded_library = PromptLibrary.load("prompts.json")
+```
+
+## Prompt Patterns
+
+### Pattern 1: Chain of Thought
+
+Guide LLM reasoning step-by-step:
+
+```python
+class ChainOfThoughtPrompt:
+    def __init__(self):
+        self.template = PromptTemplate("""
+        Question: {question}
+
+        Let's think about this step by step:
+
+        1. First, identify what we're being asked to find
+        2. List the relevant information we have
+        3. Determine what approach or formula to use
+        4. Work through the calculation/reasoning
+        5. Check our answer makes sense
+
+        Step 1: What are we finding?
+        [Your analysis here]
+
+        Step 2: Relevant information:
+        [List key facts]
+
+        Step 3: Approach:
+        [Explain method]
+
+        Step 4: Solution:
+        [Show work]
+
+        Step 5: Verification:
+        [Check answer]
+
+        Therefore, the answer is: [Final answer]
+        """)
+
+    def format(self, question: str) -> str:
+        return self.template.format(question=question)
+
+# Usage
+cot = ChainOfThoughtPrompt()
+prompt = cot.format("If a train travels 120 miles in 2 hours, what is its average speed?")
+```
+
+### Pattern 2: Role-Based Prompting
+
+Create specialized personas:
+
+```python
+class RoleBasedPrompt:
+    ROLES = {
+        "teacher": {
+            "description": "experienced educator",
+            "traits": ["patient", "clear", "encouraging"],
+            "guidelines": "Break down complex topics, use examples, check understanding"
+        },
+        "critic": {
+            "description": "thoughtful analyst",
+            "traits": ["objective", "thorough", "constructive"],
+            "guidelines": "Identify strengths and weaknesses, suggest improvements"
+        },
+        "engineer": {
+            "description": "practical problem-solver",
+            "traits": ["systematic", "efficient", "detail-oriented"],
+            "guidelines": "Focus on implementation, consider edge cases, optimize"
+        }
+    }
+
+    def create_prompt(self, role: str, task: str) -> str:
+        role_info = self.ROLES[role]
+
+        template = PromptTemplate("""
+        You are a {description} with these traits: {traits}.
+
+        Guidelines: {guidelines}
+
+        Task: {task}
+
+        Approach this task in character, drawing on your expertise and traits.
+        """)
+
+        return template.format(
+            description=role_info["description"],
+            traits=", ".join(role_info["traits"]),
+            guidelines=role_info["guidelines"],
+            task=task
+        )
+
+# Usage
+role_prompt = RoleBasedPrompt()
+prompt = role_prompt.create_prompt(
+    "engineer",
+    "Design a caching system for a web application"
+)
+```
+
+### Pattern 3: Dynamic Context Injection
+
+Build prompts with variable context:
+
+```python
+class ContextualPrompt:
+    def __init__(self):
+        self.base_template = ChatPromptTemplate([
+            Message.system("You are a helpful assistant with access to context."),
+            MessagesPlaceholder("context", optional=True),
+            Message.user("{query}")
+        ])
+
+    def build_prompt(
+        self,
+        query: str,
+        documents: list[str] = None,
+        examples: list[dict] = None,
+        history: list[Message] = None
+    ) -> list[Message]:
+        """Build prompt with optional context"""
+        context_messages = []
+
+        # Add document context
+        if documents:
+            doc_context = "\n\n".join([
+                f"Document {i+1}: {doc}"
+                for i, doc in enumerate(documents)
+            ])
+            context_messages.append(
+                Message.system(f"Relevant documents:\n{doc_context}")
+            )
+
+        # Add examples
+        if examples:
+            example_text = "\n".join([
+                f"Example: {ex['input']} -> {ex['output']}"
+                for ex in examples
+            ])
+            context_messages.append(
+                Message.system(f"Examples:\n{example_text}")
+            )
+
+        # Add history
+        if history:
+            context_messages.extend(history)
+
+        return self.base_template.format(
+            context=context_messages if context_messages else None,
+            query=query
+        )
+```
+
+### Pattern 4: Prompt Optimization
+
+Iteratively improve prompts:
+
+```python
+class PromptOptimizer:
+    def __init__(self, evaluator):
+        self.evaluator = evaluator
+        self.prompt_history = []
+
+    async def optimize(
+        self,
+        initial_prompt: PromptTemplate,
+        test_cases: list[dict],
+        iterations: int = 5
+    ) -> PromptTemplate:
+        """Optimize prompt through testing"""
+        current_prompt = initial_prompt
+        best_score = 0
+
+        for i in range(iterations):
+            # Test current prompt
+            score = await self.evaluate_prompt(current_prompt, test_cases)
+
+            self.prompt_history.append({
+                "iteration": i,
+                "prompt": current_prompt,
+                "score": score
+            })
+
+            if score > best_score:
+                best_prompt = current_prompt
+                best_score = score
+
+            # Generate improved version
+            feedback = self.analyze_failures(current_prompt, test_cases)
+            current_prompt = self.improve_prompt(current_prompt, feedback)
+
+        return best_prompt
+
+    async def evaluate_prompt(
+        self,
+        prompt: PromptTemplate,
+        test_cases: list[dict]
+    ) -> float:
+        """Score prompt on test cases"""
+        scores = []
+        for case in test_cases:
+            formatted = prompt.format(**case["input"])
+            result = await self.evaluator.evaluate(formatted, case["expected"])
+            scores.append(result)
+        return sum(scores) / len(scores)
+```
+
+## Real-World Examples
+
+### RAG System Prompt
+
+```python
+class RAGPrompt:
+    def __init__(self):
+        self.template = ChatPromptTemplate([
+            Message.system("""
+            You are a helpful AI assistant with access to a knowledge base.
+
+            Guidelines:
+            - Answer questions based ONLY on the provided context
+            - If the context doesn't contain the answer, say so
+            - Cite specific documents when making claims
+            - Be concise but complete
+            """),
+            Message.system("Context documents:\n{documents}"),
+            Message.user("{question}"),
+            Message.system("""
+            Remember to:
+            1. Only use information from the context
+            2. Cite document numbers [1], [2], etc.
+            3. Say "I don't have enough information" if uncertain
+            """)
+        ])
+
+    def format(self, question: str, documents: list[str]) -> list[Message]:
+        # Format documents with numbers
+        formatted_docs = "\n\n".join([
+            f"[{i+1}] {doc}"
+            for i, doc in enumerate(documents)
+        ])
+
+        return self.template.format(
+            documents=formatted_docs,
+            question=question
+        )
+
+# Usage
+rag_prompt = RAGPrompt()
+messages = rag_prompt.format(
+    question="What is the capital of France?",
+    documents=[
+        "Paris is the capital and largest city of France.",
+        "France is a country in Western Europe.",
+        "The Eiffel Tower is located in Paris."
+    ]
+)
+```
+
+### Code Generation Prompt
+
+```python
+class CodeGenerationPrompt:
+    def __init__(self):
+        self.template = PromptTemplate("""
+        Task: {task}
+
+        Requirements:
+        {requirements}
+
+        Programming Language: {language}
+
+        Additional Context:
+        {context}
+
+        Please provide:
+        1. Complete, working code
+        2. Comments explaining complex parts
+        3. Example usage
+        4. Any necessary imports/dependencies
+        5. Error handling
+
+        Code:
+        ```{language}
+        # Your code here
+        ```
+
+        Explanation:
+        [Explain your approach]
+
+        Example Usage:
+        ```{language}
+        # Show how to use the code
+        ```
+        """)
+
+    def format(
+        self,
+        task: str,
+        language: str = "python",
+        requirements: list[str] = None,
+        context: str = ""
+    ) -> str:
+        req_text = "\n".join([f"- {req}" for req in (requirements or [])])
+
+        return self.template.format(
+            task=task,
+            language=language,
+            requirements=req_text or "- No specific requirements",
+            context=context or "No additional context"
+        )
+
+# Usage
+code_prompt = CodeGenerationPrompt()
+prompt = code_prompt.format(
+    task="Create a rate limiter class",
+    language="python",
+    requirements=[
+        "Support different time windows (second, minute, hour)",
+        "Thread-safe implementation",
+        "Configurable limits per window",
+        "Provide decorator for functions"
+    ],
+    context="This will be used in a FastAPI application"
+)
+```
+
+### Analysis Prompt
+
+```python
+class AnalysisPrompt:
+    def __init__(self):
+        self.template = ChatPromptTemplate.from_messages([
+            ("system", """
+            You are a data analyst expert. Analyze the provided data and:
+            1. Identify key patterns and trends
+            2. Calculate relevant statistics
+            3. Note any anomalies or outliers
+            4. Provide actionable insights
+            5. Suggest next steps
+            """),
+            ("user", "Data:\n{data}"),
+            ("user", "Specific questions:\n{questions}"),
+            ("assistant", "I'll analyze this data systematically."),
+            ("user", "Focus on: {focus_areas}")
+        ])
+
+    def format(
+        self,
+        data: Any,
+        questions: list[str] = None,
+        focus_areas: list[str] = None
+    ) -> list[Message]:
+        # Format data (could be JSON, CSV, etc.)
+        if isinstance(data, dict):
+            data_str = json.dumps(data, indent=2)
+        else:
+            data_str = str(data)
+
+        questions_str = "\n".join([f"- {q}" for q in (questions or [])])
+        focus_str = ", ".join(focus_areas or ["general analysis"])
+
+        return self.template.format(
+            data=data_str,
+            questions=questions_str or "No specific questions",
+            focus_areas=focus_str
+        )
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Structured Templates">
+    Maintain consistency with templates:
+    ```python
+    # Good - reusable and maintainable
+    template = PromptTemplate("Translate {text} to {language}")
+
+    # Bad - hardcoded strings
+    prompt = f"Translate {text} to {language}"
+    ```
+  </Accordion>
+
+  <Accordion title="Validate Variables">
+    Ensure all required variables are provided:
+    ```python
+    template = PromptTemplate(
+        template_str="...",
+        required_variables=["var1", "var2"],
+        validate_on_format=True
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="Version Your Prompts">
+    Track prompt changes over time:
+    ```python
+    class VersionedPrompt:
+        def __init__(self):
+            self.versions = {
+                "1.0": "Original prompt",
+                "1.1": "Improved clarity",
+                "2.0": "Major restructure"
+            }
+            self.current_version = "2.0"
+    ```
+  </Accordion>
+
+  <Accordion title="Test Prompt Effectiveness">
+    Evaluate prompts systematically:
+    ```python
+    def test_prompt(prompt, test_cases):
+        results = []
+        for case in test_cases:
+            output = llm.generate(prompt.format(**case.input))
+            score = evaluate(output, case.expected)
+            results.append(score)
+        return sum(results) / len(results)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Complete Example
+
+```python
+from nadoo_flow import (
+    PromptTemplate, ChatPromptTemplate, FewShotPromptTemplate,
+    MessagesPlaceholder, Message, PromptLibrary
+)
+from typing import List, Dict, Any
+import json
+
+class ConversationManager:
+    """Manage multi-turn conversations with context"""
+
+    def __init__(self):
+        # Initialize prompt library
+        self.library = PromptLibrary()
+        self._setup_prompts()
+
+        # Conversation history
+        self.history: List[Message] = []
+
+    def _setup_prompts(self):
+        """Setup reusable prompts"""
+
+        # System prompt with personality
+        self.library.add("system", PromptTemplate("""
+        You are {name}, a {personality} AI assistant.
+
+        Your traits:
+        - {trait1}
+        - {trait2}
+        - {trait3}
+
+        Guidelines: {guidelines}
+        """))
+
+        # QA with context
+        self.library.add("qa_with_context", ChatPromptTemplate([
+            Message.system("{system_prompt}"),
+            Message.system("Context:\n{context}"),
+            MessagesPlaceholder("history"),
+            Message.user("{question}")
+        ]))
+
+        # Few-shot for specific tasks
+        examples = [
+            {
+                "task": "Convert temperature",
+                "input": "32F",
+                "output": "0°C"
+            },
+            {
+                "task": "Convert distance",
+                "input": "1 mile",
+                "output": "1.60934 km"
+            }
+        ]
+
+        self.library.add("converter", FewShotPromptTemplate(
+            examples=examples,
+            example_template="Task: {task}\nInput: {input}\nOutput: {output}",
+            prefix="You are a unit converter. Here are examples:",
+            suffix="Task: {task}\nInput: {input}\nOutput:"
+        ))
+
+    def create_system_prompt(
+        self,
+        name: str = "Claude",
+        personality: str = "helpful and friendly"
+    ) -> str:
+        """Create personalized system prompt"""
+
+        template = self.library.get("system")
+        return template.format(
+            name=name,
+            personality=personality,
+            trait1="Provides accurate information",
+            trait2="Explains complex topics simply",
+            trait3="Admits when uncertain",
+            guidelines="Be concise but thorough. Use examples when helpful."
+        )
+
+    def ask_with_context(
+        self,
+        question: str,
+        context: str = None,
+        include_history: bool = True
+    ) -> List[Message]:
+        """Ask question with optional context and history"""
+
+        system_prompt = self.create_system_prompt()
+
+        qa_template = self.library.get("qa_with_context")
+        messages = qa_template.format(
+            system_prompt=system_prompt,
+            context=context or "No additional context provided",
+            history=self.history[-10:] if include_history else [],
+            question=question
+        )
+
+        return messages
+
+    def convert_units(self, task: str, input_value: str) -> str:
+        """Use few-shot prompt for unit conversion"""
+
+        converter = self.library.get("converter")
+        prompt = converter.format(
+            task=task,
+            input=input_value
+        )
+
+        return prompt
+
+    def add_to_history(self, user_msg: str, assistant_msg: str):
+        """Update conversation history"""
+        self.history.append(Message.user(user_msg))
+        self.history.append(Message.assistant(assistant_msg))
+
+    def export_conversation(self, filepath: str):
+        """Export conversation as JSON"""
+
+        data = {
+            "conversation": [
+                {
+                    "role": msg.role,
+                    "content": msg.content,
+                    "timestamp": msg.metadata.get("timestamp") if msg.metadata else None
+                }
+                for msg in self.history
+            ],
+            "metadata": {
+                "total_messages": len(self.history),
+                "prompts_used": self.library.list_templates()
+            }
+        }
+
+        with open(filepath, 'w') as f:
+            json.dump(data, f, indent=2)
+
+# Example usage
+async def demo():
+    manager = ConversationManager()
+
+    # Ask with context
+    messages = manager.ask_with_context(
+        question="What are the main benefits?",
+        context="We're discussing Python programming language"
+    )
+
+    print("Generated prompt:")
+    for msg in messages:
+        print(f"{msg.role}: {msg.content[:100]}...")
+
+    # Use converter
+    conversion_prompt = manager.convert_units(
+        task="Convert temperature",
+        input_value="100F"
+    )
+    print(f"\nConversion prompt:\n{conversion_prompt}")
+
+    # Simulate conversation
+    manager.add_to_history(
+        "What is Python?",
+        "Python is a high-level programming language..."
+    )
+
+    # Ask follow-up with history
+    follow_up = manager.ask_with_context(
+        question="What are its main use cases?",
+        include_history=True
+    )
+
+    # Export conversation
+    manager.export_conversation("conversation.json")
+
+# Run demo
+import asyncio
+asyncio.run(demo())
+```
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="Memory API" icon="brain" href="/api/flow-core/memory">
+    Manage conversation history with prompts
+  </Card>
+  <Card title="Parsers API" icon="code" href="/api/flow-core/parsers">
+    Parse LLM responses from prompts
+  </Card>
+</CardGroup>

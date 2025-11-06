@@ -1,0 +1,411 @@
+---
+title: 'Getting Started'
+description: 'Choose your path to start building with Nadoo AI'
+sidebarTitle: 'Getting Started'
+'og:title': 'Getting Started with Nadoo AI'
+icon: 'play'
+---
+
+## Choose Your Path
+
+Nadoo AI offers multiple entry points depending on your needs and technical expertise. Choose the path that best fits your requirements.
+
+<CardGroup cols={2}>
+  <Card
+    title="I'm a Developer"
+    icon="code"
+    color="#4fc3f7"
+    href="#developer-path"
+  >
+    Build custom AI workflows with code using Flow Core framework
+  </Card>
+  <Card
+    title="I'm a Business User"
+    icon="briefcase"
+    color="#66bb6a"
+    href="#business-path"
+  >
+    Create AI agents visually using the no-code Builder platform
+  </Card>
+  <Card
+    title="I'm Evaluating"
+    icon="magnifying-glass"
+    color="#ffa726"
+    href="#evaluation-path"
+  >
+    Explore capabilities and see what's possible with demos
+  </Card>
+  <Card
+    title="I'm an Enterprise"
+    icon="building"
+    color="#ab47bc"
+    href="#enterprise-path"
+  >
+    Deploy at scale with enterprise features and support
+  </Card>
+</CardGroup>
+
+## Developer Path
+
+<Steps>
+  <Step title="Set Up Development Environment">
+    Install Python 3.11+ and set up your preferred IDE:
+
+    ```bash
+    # Create virtual environment
+    python -m venv nadoo-env
+    source nadoo-env/bin/activate  # On Windows: nadoo-env\Scripts\activate
+
+    # Install Flow Core
+    pip install nadoo-flow-core
+    ```
+  </Step>
+  <Step title="Hello World Workflow">
+    Create your first workflow in under 5 minutes:
+
+    ```python
+    from nadoo_flow import ChainableNode, NodeResult
+    import asyncio
+
+    class HelloNode(ChainableNode):
+        async def execute(self, node_context, workflow_context):
+            name = node_context.input_data.get("name", "World")
+            return NodeResult(
+                success=True,
+                output={"message": f"Hello, {name}!"}
+            )
+
+    async def main():
+        node = HelloNode(node_id="hello", node_type="greeting", name="Hello")
+        result = await node.run({"name": "Developer"})
+        print(result)  # {'message': 'Hello, Developer!'}
+
+    asyncio.run(main())
+    ```
+  </Step>
+  <Step title="Learn Core Concepts">
+    Understand the fundamentals:
+    - [Nodes and Workflows](/flow-core/core/nodes)
+    - [Chaining and Composition](/flow-core/core/chaining)
+    - [Context Management](/flow-core/core/context)
+  </Step>
+  <Step title="Build Real Applications">
+    Explore practical examples:
+    - [Chat Bot with Memory](/examples/flow-core/streaming-chat)
+    - [RAG Pipeline](/examples/flow-core/rag-pipeline)
+    - [Parallel Processing](/examples/flow-core/parallel-search)
+  </Step>
+</Steps>
+
+### Developer Resources
+
+<CardGroup cols={3}>
+  <Card title="API Reference" icon="book" href="/api/flow-core/base">
+    Complete API documentation
+  </Card>
+  <Card title="Examples" icon="flask" href="/examples/flow-core/basic-workflow">
+    Learn from working code
+  </Card>
+  <Card title="Best Practices" icon="star" href="/resources/best-practices">
+    Production guidelines
+  </Card>
+</CardGroup>
+
+## Business Path
+
+<Steps>
+  <Step title="Access the Builder Platform">
+    Sign up for free at [platform.nadoo.ai](https://platform.nadoo.ai)
+
+    - No credit card required
+    - Instant access to visual builder
+    - Pre-built templates included
+  </Step>
+  <Step title="Choose a Template">
+    Start with a pre-built workflow:
+
+    - **Customer Support Bot**: Automated customer service
+    - **Document Processor**: Extract data from PDFs
+    - **Data Analyzer**: Generate insights from data
+    - **Task Automator**: Automate repetitive tasks
+  </Step>
+  <Step title="Customize Your Workflow">
+    Use the visual editor to:
+
+    - Drag and drop components
+    - Configure node settings
+    - Test with sample data
+    - Preview results in real-time
+  </Step>
+  <Step title="Deploy and Monitor">
+    Go live with one click:
+
+    - Deploy to cloud infrastructure
+    - Monitor performance metrics
+    - View logs and analytics
+    - Scale as needed
+  </Step>
+</Steps>
+
+### Business Resources
+
+<CardGroup cols={3}>
+  <Card title="Templates" icon="copy" href="/builder/templates">
+    Pre-built workflows
+  </Card>
+  <Card title="Video Tutorials" icon="video" href="/builder/tutorials">
+    Step-by-step guides
+  </Card>
+  <Card title="Support" icon="headset" href="mailto:support@nadoo.ai">
+    Get help from our team
+  </Card>
+</CardGroup>
+
+## Evaluation Path
+
+### Interactive Demos
+
+Try our live demos to see Nadoo AI in action:
+
+<CardGroup cols={2}>
+  <Card
+    title="Chat Assistant Demo"
+    icon="comments"
+    href="https://demo.nadoo.ai/chat"
+  >
+    Interact with an AI assistant built with Nadoo
+  </Card>
+  <Card
+    title="Document Processing Demo"
+    icon="file-pdf"
+    href="https://demo.nadoo.ai/documents"
+  >
+    See how we extract and process document data
+  </Card>
+  <Card
+    title="Workflow Builder Demo"
+    icon="diagram-project"
+    href="https://demo.nadoo.ai/builder"
+  >
+    Try the visual workflow builder interface
+  </Card>
+  <Card
+    title="API Playground"
+    icon="code"
+    href="https://demo.nadoo.ai/api"
+  >
+    Test API endpoints with sample data
+  </Card>
+</CardGroup>
+
+### Comparison Guide
+
+See how Nadoo AI compares to alternatives:
+
+| Feature | Nadoo AI | LangChain | AutoGen | CrewAI |
+|---------|----------|-----------|---------|---------|
+| **Visual Builder** | ✅ Yes | ❌ No | ❌ No | ❌ No |
+| **Code Framework** | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |
+| **Dependencies** | 2 (minimal) | 50+ | 15+ | 20+ |
+| **Multi-Backend** | ✅ Yes | ❌ No | ❌ No | ❌ No |
+| **Enterprise Ready** | ✅ Yes | ⚠️ Limited | ⚠️ Limited | ❌ No |
+| **Open Source** | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |
+
+[Read full comparison →](/resources/comparison)
+
+## Enterprise Path
+
+### Enterprise Features
+
+<AccordionGroup>
+  <Accordion title="🔒 Security & Compliance" icon="shield">
+    - SOC 2 Type II certified
+    - GDPR and CCPA compliant
+    - End-to-end encryption
+    - Role-based access control
+    - Audit logs and monitoring
+  </Accordion>
+  <Accordion title="📈 Scalability" icon="chart-line">
+    - Horizontal scaling
+    - Multi-region deployment
+    - Load balancing
+    - Auto-scaling policies
+    - 99.9% uptime SLA
+  </Accordion>
+  <Accordion title="🔧 Customization" icon="wrench">
+    - Custom node development
+    - Private model hosting
+    - On-premise deployment
+    - White-label options
+    - API customization
+  </Accordion>
+  <Accordion title="🤝 Support" icon="handshake">
+    - Dedicated account manager
+    - 24/7 technical support
+    - Professional services
+    - Training and onboarding
+    - Priority bug fixes
+  </Accordion>
+</AccordionGroup>
+
+### Enterprise Onboarding
+
+<Steps>
+  <Step title="Schedule Discovery Call">
+    [Contact our enterprise team](mailto:enterprise@nadoo.ai) to discuss your requirements
+  </Step>
+  <Step title="Technical Assessment">
+    Our architects review your use cases and recommend solutions
+  </Step>
+  <Step title="Proof of Concept">
+    Build a pilot project with our guidance and support
+  </Step>
+  <Step title="Production Deployment">
+    Roll out with professional services and ongoing support
+  </Step>
+</Steps>
+
+## Quick Links by Use Case
+
+### By Industry
+
+<Tabs>
+  <Tab title="Finance">
+    - Risk assessment automation
+    - Fraud detection workflows
+    - Compliance reporting
+    - Customer onboarding
+  </Tab>
+  <Tab title="Healthcare">
+    - Patient data processing
+    - Appointment scheduling
+    - Medical record analysis
+    - Insurance claim automation
+  </Tab>
+  <Tab title="E-commerce">
+    - Customer support bots
+    - Product recommendation
+    - Order processing
+    - Inventory management
+  </Tab>
+  <Tab title="Technology">
+    - DevOps automation
+    - Code review assistance
+    - Bug triage workflows
+    - Documentation generation
+  </Tab>
+</Tabs>
+
+### By Department
+
+<Tabs>
+  <Tab title="Engineering">
+    Use Flow Core to build custom integrations and automate development workflows
+
+    [Start with Flow Core →](/flow-core/overview)
+  </Tab>
+  <Tab title="Operations">
+    Automate repetitive tasks and streamline business processes
+
+    [Explore Templates →](/builder/templates)
+  </Tab>
+  <Tab title="Customer Success">
+    Build intelligent support systems and improve response times
+
+    [See Support Examples →](/examples/builder/chatbot)
+  </Tab>
+  <Tab title="Data Team">
+    Create data pipelines and automated analytics workflows
+
+    [Learn About Data Processing →](/use-cases#data-processing)
+  </Tab>
+</Tabs>
+
+## Installation Options
+
+<CodeGroup>
+
+```bash Local Development
+# Install Flow Core for Python development
+pip install nadoo-flow-core
+
+# With optional features
+pip install "nadoo-flow-core[redis,cel]"
+```
+
+```yaml Docker
+# docker-compose.yml
+version: '3.8'
+services:
+  nadoo:
+    image: nadooai/platform:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - API_KEY=${NADOO_API_KEY}
+```
+
+```bash Cloud Deployment
+# Deploy to cloud platforms
+nadoo deploy --platform aws
+nadoo deploy --platform gcp
+nadoo deploy --platform azure
+```
+
+</CodeGroup>
+
+## Community
+
+Join thousands of developers and businesses building with Nadoo AI:
+
+<CardGroup cols={4}>
+  <Card title="5,000+" icon="users">
+    Active developers
+  </Card>
+  <Card title="10,000+" icon="robot">
+    Agents deployed
+  </Card>
+  <Card title="100M+" icon="bolt">
+    Workflows executed
+  </Card>
+  <Card title="99.9%" icon="chart-line">
+    Uptime SLA
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Explore Flow Core"
+    icon="code"
+    href="/flow-core/overview"
+  >
+    Deep dive into the developer framework
+  </Card>
+  <Card
+    title="Try the Builder"
+    icon="palette"
+    href="/builder/overview"
+  >
+    Start creating workflows visually
+  </Card>
+  <Card
+    title="View Examples"
+    icon="flask"
+    href="/examples/overview"
+  >
+    Learn from real-world use cases
+  </Card>
+  <Card
+    title="Read the FAQ"
+    icon="question"
+    href="/resources/faq"
+  >
+    Get answers to common questions
+  </Card>
+</CardGroup>
+
+<Note>
+  **Need help deciding?** Our team is here to help. [Schedule a consultation](https://calendly.com/nadoo-ai/consultation) to discuss your specific needs.
+</Note>

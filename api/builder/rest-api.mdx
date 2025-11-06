@@ -1,0 +1,141 @@
+---
+title: 'Builder REST API'
+description: 'OpenAI-compatible REST APIs from your visual workflows'
+sidebarTitle: 'REST API'
+'og:title': 'Builder REST API - Nadoo AI'
+icon: 'code'
+---
+
+<Note>
+**Enterprise Preview**: Builder is currently being deployed for enterprise customers. The API specifications are being finalized.
+</Note>
+
+## OpenAI-Compatible Chat API
+
+Every chat workflow in Nadoo Builder generates an **OpenAI-compatible endpoint**. Use your custom AI workflows as drop-in replacements for OpenAI without changing your code.
+
+### Chat Completions Endpoint
+
+**POST** `/api/v1/chat/completions`
+
+Your existing OpenAI code works with Nadoo by simply changing the base URL:
+
+```bash
+# OpenAI
+curl https://api.openai.com/v1/chat/completions \
+  -H "Authorization: Bearer sk-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+
+# Nadoo - Just change the URL!
+curl https://nadoo.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "your-workflow-id",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+```
+
+### Using OpenAI SDK
+
+```javascript
+import OpenAI from 'openai';
+
+// Simply change the base URL
+const client = new OpenAI({
+  apiKey: 'your-nadoo-api-key',
+  baseURL: 'https://nadoo.ai/api/v1'
+});
+
+// Everything else stays the same
+const response = await client.chat.completions.create({
+  model: 'your-workflow-id',
+  messages: [{ role: 'user', content: 'Hello' }],
+  stream: true  // Streaming supported!
+});
+```
+
+### Request Format
+
+```json
+{
+  "model": "your-workflow-id",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant."
+    },
+    {
+      "role": "user",
+      "content": "What is RAG?"
+    }
+  ],
+  "temperature": 0.7,
+  "max_tokens": 1000,
+  "stream": true
+}
+```
+
+### Response Format
+
+```json
+{
+  "id": "chatcmpl-abc123",
+  "object": "chat.completion",
+  "created": 1699000000,
+  "model": "your-workflow-id",
+  "choices": [{
+    "index": 0,
+    "message": {
+      "role": "assistant",
+      "content": "RAG stands for Retrieval-Augmented Generation..."
+    },
+    "finish_reason": "stop"
+  }],
+  "usage": {
+    "prompt_tokens": 50,
+    "completion_tokens": 100,
+    "total_tokens": 150
+  }
+}
+```
+
+## Key Benefits
+
+<CardGroup cols={2}>
+  <Card title="Drop-in Replacement" icon="plug">
+    Replace OpenAI with your custom workflows without changing code
+  </Card>
+  <Card title="Full Control" icon="sliders">
+    Add business logic, data validation, and custom processing
+  </Card>
+  <Card title="Cost Savings" icon="piggy-bank">
+    Use your own models and infrastructure
+  </Card>
+  <Card title="Data Privacy" icon="shield">
+    Keep sensitive data in your control
+  </Card>
+</CardGroup>
+
+## Contact for Access
+
+For enterprise access and API details, please contact:
+
+<Card title="Request Enterprise Access" icon="envelope" href="mailto:contact@nadoo.ai">
+  contact@nadoo.ai
+</Card>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Builder Overview" icon="wand-magic-sparkles" href="/builder/overview">
+    Learn about the Builder platform
+  </Card>
+  <Card title="Flow Core" icon="cube" href="/flow-core/overview">
+    Explore the open-source foundation
+  </Card>
+</CardGroup>

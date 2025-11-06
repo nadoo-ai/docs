@@ -1,0 +1,245 @@
+---
+title: 'Development'
+description: 'Set up your local development environment for Nadoo AI'
+---
+
+## Local Development Setup
+
+This guide will help you set up a local development environment for working with Nadoo AI documentation.
+
+### System Requirements
+
+<Info>
+  Make sure your development machine meets these minimum requirements.
+</Info>
+
+<CardGroup cols={2}>
+  <Card title="Operating System" icon="desktop">
+    macOS, Linux, or Windows with WSL2
+  </Card>
+  <Card title="Memory" icon="memory">
+    At least 8GB RAM recommended
+  </Card>
+  <Card title="Node.js" icon="node">
+    Version 18.0 or higher
+  </Card>
+  <Card title="Git" icon="git-alt">
+    Latest stable version
+  </Card>
+</CardGroup>
+
+## Setting Up the Documentation
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/nadoo-ai/docs.git
+cd docs
+```
+
+### Install Dependencies
+
+```bash
+npm install
+```
+
+### Run the Development Server
+
+Start the Mintlify development server:
+
+```bash
+npm run dev
+```
+
+<Note>
+  The documentation will be available at `http://localhost:3000`
+</Note>
+
+## Project Structure
+
+Understanding the project structure will help you navigate and contribute effectively:
+
+```
+docs/
+├── .vscode/              # VSCode configuration
+│   ├── settings.json     # Editor settings
+│   └── extensions.json   # Recommended extensions
+├── api-reference/        # API documentation
+│   └── endpoint/         # API endpoints
+├── essentials/           # Core documentation
+├── images/               # Image assets
+├── logo/                 # Logo files
+├── mint.json             # Mintlify configuration
+├── package.json          # Node dependencies
+└── *.mdx                 # Documentation pages
+```
+
+## VSCode Configuration
+
+### Recommended Extensions
+
+We recommend installing these VSCode extensions for the best development experience:
+
+<AccordionGroup>
+  <Accordion title="Mintlify Document">
+    Official Mintlify extension for previewing and editing documentation
+  </Accordion>
+  <Accordion title="EditorConfig">
+    Maintains consistent coding styles across different editors
+  </Accordion>
+  <Accordion title="Markdown All in One">
+    Enhanced markdown editing capabilities
+  </Accordion>
+  <Accordion title="MDX">
+    Syntax highlighting for MDX files
+  </Accordion>
+  <Accordion title="Prettier">
+    Code formatting (disabled for markdown by default)
+  </Accordion>
+</AccordionGroup>
+
+### Workspace Settings
+
+The repository includes predefined VSCode settings for optimal development:
+
+- **Tab Size**: 2 spaces for all files
+- **Word Wrap**: Enabled for better readability
+- **Auto-formatting**: Disabled for markdown/MDX files
+- **Trailing Whitespace**: Automatically trimmed
+- **Final Newline**: Automatically inserted
+
+## Writing Documentation
+
+### File Format
+
+All documentation files use MDX format, which combines Markdown with JSX components.
+
+```mdx
+---
+title: 'Page Title'
+description: 'Brief description of the page'
+---
+
+# Content goes here
+
+<Card title="Example Card" icon="star">
+  This is a Mintlify component
+</Card>
+```
+
+### Available Components
+
+Mintlify provides several built-in components:
+
+<Tabs>
+  <Tab title="Cards">
+    ```mdx
+    <Card title="Title" icon="icon-name" href="/link">
+      Card content
+    </Card>
+    ```
+  </Tab>
+  <Tab title="Code Groups">
+    Use CodeGroup for multiple code examples:
+    ```javascript
+    console.log('JavaScript example');
+    ```
+    ```python
+    print('Python example')
+    ```
+  </Tab>
+  <Tab title="Callouts">
+    ```mdx
+    <Note>This is a note</Note>
+    <Warning>This is a warning</Warning>
+    <Info>This is info</Info>
+    <Tip>This is a tip</Tip>
+    ```
+  </Tab>
+</Tabs>
+
+## Testing Your Changes
+
+### Local Preview
+
+Always preview your changes locally before committing:
+
+```bash
+npm run dev
+```
+
+### Build for Production
+
+Test the production build:
+
+```bash
+npm run build
+```
+
+### Linting
+
+Check for common issues:
+
+```bash
+npm run lint
+```
+
+## Deployment
+
+The documentation is automatically deployed when changes are pushed to the main branch.
+
+<Steps>
+  <Step title="Create a feature branch">
+    ```bash
+    git checkout -b feature/your-feature-name
+    ```
+  </Step>
+  <Step title="Make your changes">
+    Edit the relevant MDX files and test locally
+  </Step>
+  <Step title="Commit your changes">
+    ```bash
+    git add .
+    git commit -m "Add: your feature description"
+    ```
+  </Step>
+  <Step title="Push to GitHub">
+    ```bash
+    git push origin feature/your-feature-name
+    ```
+  </Step>
+  <Step title="Create a Pull Request">
+    Open a PR on GitHub for review
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Port 3000 is already in use">
+    Kill the process using port 3000 or specify a different port:
+    ```bash
+    npm run dev -- --port 3001
+    ```
+  </Accordion>
+  <Accordion title="Module not found errors">
+    Clear the npm cache and reinstall:
+    ```bash
+    npm cache clean --force
+    rm -rf node_modules package-lock.json
+    npm install
+    ```
+  </Accordion>
+  <Accordion title="MDX syntax errors">
+    Ensure all JSX components are properly closed and markdown syntax is valid
+  </Accordion>
+</AccordionGroup>
+
+## Getting Help
+
+If you encounter issues or have questions:
+
+- Check the [Mintlify documentation](https://mintlify.com/docs)
+- Join our [Discord community](https://discord.gg/nadoo-ai)
+- Open an issue on [GitHub](https://github.com/nadoo-ai/docs/issues)
+- Email us at [support@nadoo.ai](mailto:support@nadoo.ai)

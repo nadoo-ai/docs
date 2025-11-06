@@ -1,0 +1,387 @@
+---
+title: 'Design Philosophy'
+description: 'The principles and design decisions behind Nadoo Flow Core'
+sidebarTitle: 'Philosophy'
+'og:title': 'Design Philosophy - Nadoo Flow Core'
+'og:description': 'Understanding the architectural decisions and guiding principles'
+icon: 'lightbulb'
+---
+
+## Core Philosophy
+
+Nadoo Flow Core is built on a foundation of carefully considered design principles that prioritize developer experience, performance, and maintainability.
+
+<Note>
+  **Our Mission:** Provide a workflow orchestration framework that is powerful enough for complex enterprise applications, yet simple enough for rapid prototyping.
+</Note>
+
+## Guiding Principles
+
+### 1. Minimal Dependencies
+
+<Card>
+  **"Less is exponentially more"** - Rob Pike
+
+  We believe in keeping the dependency tree as small as possible. With only **2 core dependencies** (Pydantic and typing-extensions), we:
+
+  - Reduce security vulnerabilities
+  - Minimize version conflicts
+  - Speed up installation
+  - Simplify deployment
+  - Improve long-term maintainability
+</Card>
+
+Unlike frameworks that bring in 50+ dependencies, we let you choose what you need:
+
+```python
+# Core installation - just 2 dependencies
+pip install nadoo-flow-core
+
+# Add what YOU need, when you need it
+pip install openai  # For OpenAI integration
+pip install redis   # For distributed caching
+pip install celpy   # For CEL expressions
+```
+
+### 2. Async-First Architecture
+
+<Card>
+  **"Concurrency is not parallelism"** - Rob Pike
+
+  Built on Python's native `asyncio`, every component is designed for non-blocking execution:
+
+  ```python
+  # Everything is async by default
+  async def execute(self, node_context, workflow_context):
+      # Non-blocking I/O operations
+      data = await fetch_data()
+      result = await process_data(data)
+      return NodeResult(success=True, output=result)
+  ```
+
+  Benefits:
+  - Handle thousands of concurrent workflows
+  - Efficient resource utilization
+  - Natural fit for I/O-bound operations
+  - Compatible with modern Python ecosystem
+</Card>
+
+### 3. Type Safety Through Pydantic
+
+<Card>
+  **"Explicit is better than implicit"** - Zen of Python
+
+  We use Pydantic v2 throughout for:
+
+  - Runtime type validation
+  - Automatic serialization/deserialization
+  - Clear API contracts
+  - Better IDE support
+  - Self-documenting code
+
+  ```python
+  from pydantic import BaseModel
+
+  class NodeConfig(BaseModel):
+      timeout: float = 30.0
+      retries: int = 3
+      cache_ttl: Optional[int] = None
+
+  # Automatic validation and conversion
+  config = NodeConfig(timeout="30", retries="3")  # Works!
+  ```
+</Card>
+
+### 4. Protocol-Based Design
+
+<Card>
+  **"Program to interfaces, not implementations"** - Gang of Four
+
+  Our multi-backend architecture uses Python protocols:
+
+  ```python
+  from typing import Protocol
+
+  class IWorkflowBackend(Protocol):
+      """Any class implementing these methods can be a backend"""
+
+      async def execute(self, context, input=None):
+          ...
+
+      async def validate(self):
+          ...
+  ```
+
+  This enables:
+  - Backend swapping without code changes
+  - Gradual migration paths
+  - Framework independence
+  - Testing flexibility
+</Card>
+
+### 5. Composability Over Inheritance
+
+<Card>
+  **"Favor composition over inheritance"** - Design Patterns
+
+  We prefer small, composable units:
+
+  ```python
+  # Compose behaviors through chaining
+  workflow = (
+      ValidateNode()
+      | TransformNode()
+      | CachedNode(ProcessNode(), ttl=3600)
+      | RetryableNode(ApiNode(), max_attempts=3)
+  )
+
+  # Not deep inheritance hierarchies
+  ```
+
+  This approach:
+  - Reduces complexity
+  - Increases flexibility
+  - Improves testability
+  - Enables runtime composition
+</Card>
+
+## Architectural Decisions
+
+### Why Not Just Use LangChain?
+
+LangChain is excellent for rapid prototyping, but we built Nadoo Flow Core for different use cases:
+
+| Aspect | LangChain | Nadoo Flow Core |
+|--------|-----------|-----------------|
+| **Target Audience** | AI researchers, prototypers | Platform builders, enterprises |
+| **Dependency Philosophy** | Batteries included (50+ deps) | Bring your own batteries (2 deps) |
+| **Customization** | Use pre-built components | Build your own components |
+| **Learning Curve** | Steep (LCEL complexity) | Gentle (simple abstractions) |
+| **Use Case** | Quick AI experiments | Production workflows |
+
+### Why Multi-Backend?
+
+<AccordionGroup>
+  <Accordion title="Future-Proofing" icon="clock">
+    The AI landscape changes rapidly. Today's best framework might be tomorrow's legacy code. Multi-backend design ensures your workflows remain portable.
+  </Accordion>
+  <Accordion title="Best Tool for the Job" icon="tools">
+    Different backends excel at different tasks:
+    - **Native**: Maximum control and performance
+    - **LangGraph**: Complex state machines
+    - **CrewAI**: Multi-agent collaboration
+    - **A2A**: Google Cloud integration
+  </Accordion>
+  <Accordion title="Gradual Migration" icon="route">
+    Start simple with the native backend, then migrate to specialized backends as your needs evolve—without rewriting your workflows.
+  </Accordion>
+</AccordionGroup>
+
+### Why Nodes?
+
+Nodes provide the perfect abstraction level:
+
+```mermaid
+graph LR
+    A[Too High Level] --> B[Functions]
+    B --> C[Nodes - Just Right]
+    C --> D[Classes]
+    D --> E[Too Low Level]
+
+    style C fill:#4fc3f7,stroke:#039be5,stroke-width:2px
+```
+
+- **Functions**: Too simple, lack state and lifecycle
+- **Nodes**: Perfect balance of simplicity and power
+- **Classes**: Too complex for workflow building
+
+## Design Patterns
+
+### 1. Builder Pattern for Workflows
+
+```python
+# Fluent interface for workflow construction
+workflow = (
+    WorkflowBuilder()
+    .add_node(input_node)
+    .add_node(process_node)
+    .add_edge("input", "process")
+    .build()
+)
+```
+
+### 2. Strategy Pattern for Execution
+
+```python
+# Different strategies for parallel execution
+parallel = ParallelNode(
+    nodes=[...],
+    strategy=ParallelStrategy.RACE  # First to complete wins
+)
+```
+
+### 3. Decorator Pattern for Node Enhancement
+
+```python
+# Wrap nodes with additional behavior
+cached = CachedNode(expensive_node)
+resilient = RetryableNode(cached)
+limited = RateLimitedNode(resilient)
+```
+
+### 4. Observer Pattern for Monitoring
+
+```python
+# Multiple handlers observe workflow events
+workflow.add_callback(LoggingHandler())
+workflow.add_callback(MetricsHandler())
+workflow.add_callback(AlertingHandler())
+```
+
+## Performance Philosophy
+
+### Optimize for the Common Case
+
+<Card>
+  Most workflows are I/O-bound, not CPU-bound. We optimize for:
+
+  - Network calls (APIs, databases)
+  - File operations
+  - User interactions
+  - LLM completions
+
+  ```python
+  # Async I/O is perfect for these use cases
+  async with aiohttp.ClientSession() as session:
+      responses = await asyncio.gather(*[
+          fetch_data(session, url) for url in urls
+      ])
+  ```
+</Card>
+
+### Memory Over Speed
+
+<Card>
+  We prioritize memory efficiency over raw speed:
+
+  - Streaming instead of buffering
+  - Lazy evaluation where possible
+  - Cleanup after node execution
+  - Bounded queues for streaming
+
+  ```python
+  # Stream large datasets instead of loading into memory
+  async for chunk in stream_data():
+      processed = await process_chunk(chunk)
+      yield processed  # Don't accumulate
+  ```
+</Card>
+
+## User Experience Philosophy
+
+### Progressive Disclosure
+
+Start simple, add complexity as needed:
+
+```python
+# Level 1: Simple function
+node = FunctionNode(lambda x: x.upper())
+
+# Level 2: Custom node
+class MyNode(ChainableNode):
+    async def execute(self, ctx, wf_ctx):
+        return NodeResult(success=True, output=...)
+
+# Level 3: Advanced features
+class AdvancedNode(StreamingNode, ChatHistoryNode):
+    async def execute_with_history_and_streaming(...):
+        ...
+```
+
+### Fail Fast, Fail Clearly
+
+```python
+# Clear error messages
+if not isinstance(input_data, dict):
+    raise ValueError(
+        f"Expected dict for input_data, got {type(input_data).__name__}. "
+        f"Ensure your node returns a dictionary in the 'output' field."
+    )
+
+# Validation at construction time, not runtime
+node = MyNode(config=invalid)  # Fails immediately with clear error
+```
+
+### Documentation as First-Class Citizen
+
+Every public API includes:
+- Type hints for IDE support
+- Docstrings with examples
+- Parameter descriptions
+- Return value documentation
+
+## Future Vision
+
+### Where We're Going
+
+<Steps>
+  <Step title="Visual Builder">
+    No-code interface for workflow creation while maintaining code-first approach
+  </Step>
+  <Step title="Distributed Execution">
+    Native support for distributed workflow execution across multiple machines
+  </Step>
+  <Step title="More Backends">
+    Integration with AutoGen, Semantic Kernel, and other emerging frameworks
+  </Step>
+  <Step title="Workflow Marketplace">
+    Share and reuse workflow templates and custom nodes
+  </Step>
+</Steps>
+
+### What We Won't Do
+
+<Warning>
+  We're committed to our core philosophy and will resist:
+
+  - Adding unnecessary dependencies
+  - Sacrificing simplicity for features
+  - Breaking backward compatibility
+  - Vendor lock-in
+  - Opaque abstractions
+</Warning>
+
+## Community Philosophy
+
+### Open Source, Open Development
+
+- **Transparent roadmap**: Community input shapes our direction
+- **Clear contribution guidelines**: Everyone can contribute
+- **Responsive maintenance**: Issues and PRs addressed quickly
+- **Backward compatibility**: Your code keeps working
+
+### Learning Resources
+
+We believe in comprehensive documentation:
+- **Tutorials**: Start from zero
+- **How-to guides**: Solve specific problems
+- **Reference**: Complete API documentation
+- **Explanations**: Understand the why
+
+## Summary
+
+<Card>
+  Nadoo Flow Core is more than code—it's a philosophy of building workflow systems that are:
+
+  - **Simple** to understand and use
+  - **Flexible** enough for any use case
+  - **Reliable** in production
+  - **Performant** at scale
+  - **Maintainable** over time
+
+  We achieve this through minimal dependencies, async-first design, type safety, and a commitment to developer experience.
+</Card>
+
+<Note>
+  **Join us**: If these principles resonate with you, we'd love your contributions, feedback, and ideas. Together, we're building the foundation for the next generation of AI applications.
+</Note>

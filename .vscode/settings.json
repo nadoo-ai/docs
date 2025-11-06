@@ -1,0 +1,46 @@
+{
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.wordWrap": "on",
+  "editor.formatOnSave": false,
+  "editor.trimAutoWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "files.associations": {
+    "*.mdx": "mdx"
+  },
+  "[markdown]": {
+    "editor.formatOnSave": false,
+    "editor.wordWrap": "on",
+    "editor.rulers": [],
+    "files.trimTrailingWhitespace": false
+  },
+  "[mdx]": {
+    "editor.formatOnSave": false,
+    "editor.wordWrap": "on"
+  },
+  "[json]": {
+    "editor.tabSize": 2
+  },
+  "[yaml]": {
+    "editor.tabSize": 2
+  },
+  "[typescript]": {
+    "editor.tabSize": 2
+  },
+  "[javascript]": {
+    "editor.tabSize": 2
+  },
+  "mintlify.files.includeOpenAPI": true,
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/dist": true,
+    "**/.next": true
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true
+  }
+}

@@ -1,0 +1,500 @@
+---
+title: 'base'
+description: 'Core types and execution engine API reference'
+sidebarTitle: 'base'
+'og:title': 'Base Module - Nadoo Flow Core API'
+icon: 'code'
+---
+
+## Overview
+
+The `base` module contains the fundamental classes and types for building workflows in Flow Core.
+
+## Classes
+
+### WorkflowExecutor
+
+Main execution engine for workflows.
+
+```python
+from nadoo_flow import WorkflowExecutor
+
+executor = WorkflowExecutor(config=None)
+```
+
+#### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `config` | `ExecutionConfig` | No | Execution configuration |
+
+#### Methods
+
+##### execute
+
+Execute a workflow asynchronously.
+
+```python
+async def execute(
+    workflow: Workflow,
+    input_data: Dict[str, Any],
+    context: Optional[WorkflowContext] = None
+) -> ExecutionResult
+```
+
+**Parameters:**
+- `workflow`: Workflow to execute
+- `input_data`: Initial input data
+- `context`: Optional workflow context
+
+**Returns:**
+- `ExecutionResult`: Execution result with output and metadata
+
+**Example:**
+```python
+result = await executor.execute(
+    workflow=my_workflow,
+    input_data={"user_id": 123}
+)
+```
+
+---
+
+### NodeContext
+
+Execution context for individual nodes.
+
+```python
+from nadoo_flow import NodeContext
+
+context = NodeContext(node_id="node_1")
+```
+
+#### Attributes
+
+| Name | Type | Description |
+|------|------|-------------|
+| `node_id` | `str` | Unique node identifier |
+| `status` | `NodeStatus` | Current execution status |
+| `input_data` | `Dict[str, Any]` | Node input data |
+| `output_data` | `Dict[str, Any]` | Node output data |
+| `error` | `Optional[str]` | Error message if failed |
+| `start_time` | `Optional[datetime]` | Execution start time |
+| `end_time` | `Optional[datetime]` | Execution end time |
+| `metadata` | `Dict[str, Any]` | Additional metadata |
+| `variables` | `Dict[str, Any]` | Node-specific variables |
+
+#### Methods
+
+##### get_input
+
+Get input data with optional key.
+
+```python
+def get_input(key: Optional[str] = None) -> Any
+```
+
+##### set_output
+
+Set output data.
+
+```python
+def set_output(data: Dict[str, Any]) -> None
+```
+
+##### set_variable
+
+Store a variable in node context.
+
+```python
+def set_variable(key: str, value: Any) -> None
+```
+
+---
+
+### WorkflowContext
+
+Shared context for entire workflow execution.
+
+```python
+from nadoo_flow import WorkflowContext
+
+context = WorkflowContext(workflow_id="workflow_1")
+```
+
+#### Attributes
+
+| Name | Type | Description |
+|------|------|-------------|
+| `workflow_id` | `str` | Unique workflow identifier |
+| `global_variables` | `Dict[str, Any]` | Global workflow variables |
+| `shared_state` | `Dict[str, Any]` | Shared mutable state |
+| `execution_metadata` | `Dict[str, Any]` | Execution metadata |
+| `node_results` | `Dict[str, NodeResult]` | Results from executed nodes |
+| `start_time` | `datetime` | Workflow start time |
+| `config` | `Dict[str, Any]` | Workflow configuration |
+
+---
+
+### BaseNode
+
+Abstract base class for all nodes.
+
+```python
+from nadoo_flow import BaseNode
+
+class MyNode(BaseNode):
+    async def execute(self, node_context, workflow_context):
+        # Implementation
+        pass
+```
+
+#### Abstract Methods
+
+##### execute
+
+Execute node logic.
+
+```python
+@abstractmethod
+async def execute(
+    node_context: NodeContext,
+    workflow_context: WorkflowContext
+) -> NodeResult
+```
+
+##### validate
+
+Validate node configuration.
+
+```python
+@abstractmethod
+async def validate() -> bool
+```
+
+#### Hook Methods
+
+##### pre_execute
+
+Called before execution.
+
+```python
+async def pre_execute(
+    node_context: NodeContext,
+    workflow_context: WorkflowContext
+) -> None
+```
+
+##### post_execute
+
+Called after execution.
+
+```python
+async def post_execute(
+    node_context: NodeContext,
+    workflow_context: WorkflowContext
+) -> None
+```
+
+---
+
+### NodeResult
+
+Result returned by node execution.
+
+```python
+from nadoo_flow import NodeResult
+
+result = NodeResult(
+    success=True,
+    output={"data": "value"},
+    error=None
+)
+```
+
+#### Attributes
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `success` | `bool` | Yes | Execution success status |
+| `output` | `Dict[str, Any]` | No | Output data |
+| `error` | `Optional[str]` | No | Error message if failed |
+| `next_node_id` | `Optional[str]` | No | Next node to execute |
+| `conditional_next` | `Optional[Dict[str, str]]` | No | Conditional routing |
+| `metadata` | `Dict[str, Any]` | No | Additional metadata |
+
+---
+
+### IStepNode
+
+Protocol interface for all workflow nodes.
+
+```python
+from nadoo_flow import IStepNode
+
+class CustomNode(IStepNode):
+    async def execute(self, node_context, workflow_context):
+        pass
+
+    async def validate(self):
+        pass
+```
+
+---
+
+## Enums
+
+### NodeStatus
+
+Node execution status.
+
+```python
+from nadoo_flow import NodeStatus
+
+class NodeStatus(Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCESS = "success"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+    CANCELLED = "cancelled"
+```
+
+### CommonNodeTypes
+
+Predefined node type constants.
+
+```python
+from nadoo_flow import CommonNodeTypes
+
+class CommonNodeTypes:
+    START = "start"
+    END = "end"
+    CONDITION = "condition"
+    PARALLEL = "parallel"
+    LOOP = "loop"
+    AI_AGENT = "ai_agent"
+    LLM = "llm"
+    TOOL = "tool"
+    DATABASE = "database"
+    PYTHON = "python"
+    CUSTOM = "custom"
+```
+
+---
+
+## Configuration Classes
+
+### ExecutionConfig
+
+Configuration for workflow execution.
+
+```python
+from nadoo_flow import ExecutionConfig
+
+config = ExecutionConfig(
+    max_parallel_nodes=10,
+    timeout_seconds=300,
+    retry_failed_nodes=True,
+    max_retries=3,
+    enable_checkpoints=True,
+    checkpoint_interval=5,
+    trace_execution=True
+)
+```
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `max_parallel_nodes` | `int` | 10 | Max concurrent nodes |
+| `timeout_seconds` | `int` | 300 | Global timeout |
+| `retry_failed_nodes` | `bool` | False | Auto-retry failures |
+| `max_retries` | `int` | 3 | Max retry attempts |
+| `enable_checkpoints` | `bool` | False | Enable checkpointing |
+| `checkpoint_interval` | `int` | 5 | Checkpoint frequency |
+| `trace_execution` | `bool` | False | Enable tracing |
+
+---
+
+### ExecutionResult
+
+Result of workflow execution.
+
+```python
+from nadoo_flow import ExecutionResult
+
+result = ExecutionResult(
+    success=True,
+    output={"result": "data"},
+    error=None,
+    context=workflow_context,
+    execution_time=1.23
+)
+```
+
+#### Attributes
+
+| Name | Type | Description |
+|------|------|-------------|
+| `success` | `bool` | Execution success |
+| `output` | `Optional[Dict[str, Any]]` | Final output |
+| `error` | `Optional[str]` | Error message |
+| `context` | `Optional[WorkflowContext]` | Final context |
+| `execution_time` | `Optional[float]` | Total time in seconds |
+| `node_execution_order` | `List[str]` | Node execution sequence |
+| `metrics` | `Dict[str, Any]` | Execution metrics |
+| `trace_id` | `Optional[str]` | Trace identifier |
+
+---
+
+## Exceptions
+
+### WorkflowExecutionError
+
+Raised when workflow execution fails.
+
+```python
+from nadoo_flow import WorkflowExecutionError
+
+raise WorkflowExecutionError("Workflow failed", node_id="node_1")
+```
+
+### NodeExecutionError
+
+Raised when node execution fails.
+
+```python
+from nadoo_flow import NodeExecutionError
+
+raise NodeExecutionError("Node failed", node_id="node_1", error_details={})
+```
+
+### ValidationError
+
+Raised when validation fails.
+
+```python
+from nadoo_flow import ValidationError
+
+raise ValidationError("Invalid configuration", field="config.timeout")
+```
+
+---
+
+## Utility Functions
+
+### create_workflow
+
+Create a workflow from configuration.
+
+```python
+from nadoo_flow import create_workflow
+
+workflow = create_workflow({
+    "id": "workflow_1",
+    "nodes": [...],
+    "edges": [...]
+})
+```
+
+### validate_workflow
+
+Validate workflow structure.
+
+```python
+from nadoo_flow import validate_workflow
+
+is_valid = validate_workflow(workflow)
+```
+
+---
+
+## Usage Examples
+
+### Basic Node Implementation
+
+```python
+from nadoo_flow import BaseNode, NodeResult
+
+class ProcessingNode(BaseNode):
+    def __init__(self):
+        super().__init__(
+            node_id="processor",
+            node_type=CommonNodeTypes.CUSTOM,
+            name="Data Processor"
+        )
+
+    async def execute(self, node_context, workflow_context):
+        # Access input
+        data = node_context.input_data
+
+        # Process data
+        result = await self.process(data)
+
+        # Return result
+        return NodeResult(
+            success=True,
+            output={"processed": result}
+        )
+
+    async def validate(self):
+        return True
+
+    async def process(self, data):
+        # Custom processing logic
+        return data
+```
+
+### Workflow Execution
+
+```python
+from nadoo_flow import WorkflowExecutor, ExecutionConfig
+
+# Configure executor
+config = ExecutionConfig(
+    timeout_seconds=60,
+    retry_failed_nodes=True
+)
+
+executor = WorkflowExecutor(config)
+
+# Execute workflow
+result = await executor.execute(
+    workflow=my_workflow,
+    input_data={"user_id": 123}
+)
+
+if result.success:
+    print(f"Output: {result.output}")
+else:
+    print(f"Error: {result.error}")
+```
+
+### Context Management
+
+```python
+from nadoo_flow import NodeContext, WorkflowContext
+
+# Create contexts
+workflow_context = WorkflowContext("workflow_1")
+workflow_context.global_variables["api_key"] = "sk-..."
+
+node_context = NodeContext("node_1")
+node_context.input_data = {"message": "Hello"}
+
+# Execute node with contexts
+result = await node.execute(node_context, workflow_context)
+
+# Access results
+print(f"Node output: {node_context.output_data}")
+print(f"Workflow state: {workflow_context.shared_state}")
+```
+
+---
+
+## See Also
+
+- [Nodes](/flow-core/core/nodes) - Understanding node concepts
+- [Context](/flow-core/core/context) - Working with contexts
+- [Execution](/flow-core/core/execution) - Workflow execution details

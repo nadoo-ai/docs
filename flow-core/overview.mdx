@@ -1,0 +1,258 @@
+---
+title: 'Flow Core Overview'
+description: 'Flexible workflow orchestration framework with multi-backend support'
+sidebarTitle: 'Overview'
+'og:title': 'Nadoo Flow Core - Workflow Orchestration Framework'
+icon: 'cube'
+---
+
+## What is Flow Core?
+
+**Nadoo Flow Core** is a flexible workflow orchestration framework with multi-backend support designed for production use. It's the open-source foundation of the Nadoo AI platform.
+
+<Info>
+  **Current Version:** v0.1.0 (Beta)
+
+  Flow Core is actively maintained and available as open source.
+</Info>
+
+## Key Features
+
+Based on the actual implementation in the [source code](https://github.com/nadoo-ai/nadoo-ai-kb/tree/main/packages/nadoo-flow-core):
+
+<CardGroup cols={2}>
+  <Card title="Type-Safe" icon="shield-check">
+    Full **Pydantic v2** support with runtime type validation and automatic serialization
+  </Card>
+  <Card title="Async-First" icon="bolt">
+    Built on **asyncio** for high-performance concurrent execution
+  </Card>
+  <Card title="Minimal Dependencies" icon="box">
+    Only **2 core dependencies**: Pydantic and typing-extensions
+  </Card>
+  <Card title="Composable" icon="puzzle-piece">
+    Modular nodes with clear interfaces using the pipe operator (`|`)
+  </Card>
+  <Card title="Observable" icon="eye">
+    Built-in execution tracking, callbacks, and streaming support
+  </Card>
+  <Card title="Flexible" icon="route">
+    Conditional branching, parallel execution, and dynamic routing
+  </Card>
+</CardGroup>
+
+## Core Components
+
+The framework consists of **14 main modules** with over **6,495 lines** of production code:
+
+### Essential Modules
+
+| Module | Purpose | Key Classes |
+|--------|---------|-------------|
+| **base.py** | Core types and execution engine | `WorkflowExecutor`, `NodeContext`, `IStepNode` |
+| **chain.py** | Fluent composition API | `ChainableNode`, `NodeChain`, `FunctionNode` |
+| **parallel.py** | Concurrent execution | `ParallelNode`, `FanOutFanInNode` |
+| **callbacks.py** | Observability system | `CallbackManager`, `BaseCallbackHandler` |
+
+### Advanced Features
+
+| Module | Purpose | Use Case |
+|--------|---------|----------|
+| **resilience.py** | Retry and fallback patterns | Handle transient failures |
+| **streaming.py** | Real-time event streaming | UI updates, progress tracking |
+| **memory.py** | Chat history management | Conversational AI |
+| **caching.py** | Response caching | Performance optimization |
+| **rate_limiting.py** | Token bucket algorithm | API quota management |
+| **batch.py** | Batch processing | Bulk operations |
+| **tools.py** | Tool management | LLM function calling |
+| **parsers.py** | Output parsing | Structured extraction |
+
+## Quick Example
+
+Here's a simple workflow demonstrating the core concepts:
+
+```python
+from nadoo_flow import ChainableNode, FunctionNode, NodeResult
+
+# Define a custom node
+class UppercaseNode(ChainableNode):
+    async def execute(self, node_context, workflow_context):
+        text = node_context.input_data.get("text", "")
+        return NodeResult(
+            success=True,
+            output={"text": text.upper()}
+        )
+
+# Chain nodes using pipe operator
+workflow = (
+    UppercaseNode()
+    | FunctionNode(lambda x: {"text": x["text"][::-1]})
+)
+
+# Execute
+result = await workflow.run({"text": "hello"})
+print(result)  # Output: {'text': 'OLLEH'}
+```
+
+## Multi-Backend Architecture
+
+<Warning>
+  **Note:** Currently only the native backend is implemented. LangGraph, CrewAI, and A2A backends are planned for future releases.
+</Warning>
+
+Flow Core uses a protocol-based design that allows swapping execution backends:
+
+```python
+from nadoo_flow.backends import BackendRegistry
+
+# Use the native backend (currently the only available option)
+backend = BackendRegistry.create("native")
+
+# Future: Other backends will be available
+# backend = BackendRegistry.create("langgraph")  # Coming soon
+# backend = BackendRegistry.create("crewai")     # Coming soon
+```
+
+## Comparison with LangChain
+
+| Aspect | Nadoo Flow Core | LangChain/LangGraph |
+|--------|-----------------|---------------------|
+| **Dependencies** | 2 (minimal) | 50+ (heavy) |
+| **API Style** | `run()` / `stream()` | `ainvoke()` / `astream()` |
+| **Chaining** | Pipe operator + Graph | LCEL (complex) |
+| **Target Audience** | Platform builders | AI researchers |
+| **Learning Curve** | Gentle | Steep |
+| **Customization** | Build your own | Use pre-built |
+
+## When to Use Flow Core?
+
+### ✅ Flow Core is Perfect For:
+
+- **Building no-code/low-code platforms** - Full control over workflow execution
+- **Custom AI agent development** - Create exactly what you need
+- **Production systems** - Minimal dependencies reduce security risks
+- **Microservices** - Lightweight footprint perfect for containers
+- **Educational projects** - Clear abstractions easy to understand
+
+### ❌ Consider Alternatives If:
+
+- You need **pre-built integrations** (200+ in LangChain)
+- You want to **prototype quickly** with standard patterns
+- You prefer **batteries-included** frameworks
+- You're building **research experiments** vs production systems
+
+## Installation
+
+```bash
+# Basic installation
+pip install nadoo-flow-core
+
+# With optional features
+pip install "nadoo-flow-core[cel]"  # CEL expression support
+```
+
+## Project Structure
+
+The complete source code is organized as:
+
+```
+packages/nadoo-flow-core/
+├── src/nadoo_flow/          # Main source code
+│   ├── __init__.py          # Public API exports
+│   ├── base.py              # Core classes (20KB)
+│   ├── chain.py             # Chaining API (6KB)
+│   ├── parallel.py          # Parallel execution (19KB)
+│   ├── callbacks.py         # Observability (18KB)
+│   ├── memory.py            # Chat history (11KB)
+│   ├── streaming.py         # Event streaming (11KB)
+│   ├── resilience.py        # Retry/fallback (12KB)
+│   ├── backends/            # Multi-backend support
+│   └── ...                  # Other modules
+├── examples/                # 7 working examples
+├── tests/                   # Comprehensive test suite
+└── pyproject.toml          # Project configuration
+```
+
+## Available Examples
+
+Learn from working code in the [examples directory](https://github.com/nadoo-ai/nadoo-ai-kb/tree/main/packages/nadoo-flow-core/examples):
+
+1. **Basic Chat Bot** - Chat with memory management
+2. **Streaming Chat** - Real-time token streaming
+3. **Parallel Search** - Concurrent data fetching
+4. **RAG Pipeline** - Retrieval-augmented generation
+5. **Advanced Features** - Retry, fallback, caching
+6. **Human-in-the-Loop** - Workflow interruption and approval
+
+## Development Status
+
+<Steps>
+  <Step title="✅ Implemented">
+    - Core workflow engine
+    - Chaining API
+    - Parallel execution
+    - Streaming support
+    - Memory management
+    - Resilience patterns
+    - Native backend
+  </Step>
+  <Step title="🚧 In Progress">
+    - Additional backends (LangGraph, CrewAI)
+    - CEL expression evaluation
+    - Visual debugger
+    - Performance optimizations
+  </Step>
+  <Step title="📋 Planned">
+    - Distributed execution
+    - Workflow versioning
+    - Advanced monitoring
+    - Cloud deployment tools
+  </Step>
+</Steps>
+
+## Getting Help
+
+<CardGroup cols={3}>
+  <Card title="Documentation" icon="book" href="/flow-core/quickstart">
+    Start with the quickstart guide
+  </Card>
+  <Card title="GitHub" icon="github" href="https://github.com/nadoo-ai/nadoo-ai-kb">
+    Report issues and contribute
+  </Card>
+  <Card title="Discord" icon="discord" href="https://discord.gg/9gCsxSn6">
+    Join the community
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Installation"
+    icon="download"
+    href="/flow-core/installation"
+  >
+    Set up your development environment
+  </Card>
+  <Card
+    title="Quick Start"
+    icon="rocket"
+    href="/flow-core/quickstart"
+  >
+    Build your first workflow in 5 minutes
+  </Card>
+  <Card
+    title="Core Concepts"
+    icon="lightbulb"
+    href="/flow-core/core/nodes"
+  >
+    Understand nodes, contexts, and execution
+  </Card>
+  <Card
+    title="Examples"
+    icon="flask"
+    href="/examples/flow-core/basic-workflow"
+  >
+    Learn from practical examples
+  </Card>
+</CardGroup>

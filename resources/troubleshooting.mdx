@@ -1,0 +1,473 @@
+---
+title: 'Troubleshooting Guide'
+description: 'Common issues and solutions for Nadoo AI'
+sidebarTitle: 'Troubleshooting'
+'og:title': 'Troubleshooting - Nadoo AI'
+icon: 'wrench'
+---
+
+## Common Issues
+
+### Installation Issues
+
+#### Package Not Found
+
+**Symptom**: `ModuleNotFoundError: No module named 'nadoo_flow'`
+
+**Solution**:
+```bash
+# Install Flow Core
+pip install nadoo-flow-core
+
+# Or install from GitHub
+pip install git+https://github.com/nadoo-ai/nadoo-flow-core.git
+```
+
+#### Dependency Conflicts
+
+**Symptom**: Pip resolver errors during installation
+
+**Solution**:
+```bash
+# Create fresh virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install with specific versions
+pip install nadoo-flow-core==0.1.0
+```
+
+### Runtime Errors
+
+#### Async/Await Issues
+
+**Symptom**: `RuntimeWarning: coroutine was never awaited`
+
+**Problem**:
+```python
+# Wrong - Missing await
+result = workflow.execute(data)
+```
+
+**Solution**:
+```python
+# Correct - Use await
+result = await workflow.execute(data)
+
+# Or use asyncio.run for top-level
+import asyncio
+result = asyncio.run(workflow.execute(data))
+```
+
+#### Event Loop Already Running
+
+**Symptom**: `RuntimeError: This event loop is already running`
+
+**Problem**: Trying to run async code in Jupyter or existing event loop
+
+**Solution**:
+```python
+# In Jupyter notebooks
+import nest_asyncio
+nest_asyncio.apply()
+
+# Then you can use await directly
+result = await workflow.execute(data)
+
+# Or use await in async cells
+# %% (async cell in Jupyter)
+result = await workflow.execute(data)
+```
+
+### API and LLM Issues
+
+#### API Key Errors
+
+**Symptom**: `AuthenticationError: Invalid API key`
+
+**Solution**:
+```python
+import os
+
+# Set environment variable
+os.environ["OPENAI_API_KEY"] = "your-api-key"
+
+# Or use .env file
+from dotenv import load_dotenv
+load_dotenv()
+
+# Verify it's set
+assert os.getenv("OPENAI_API_KEY"), "API key not found"
+```
+
+#### Rate Limiting
+
+**Symptom**: `RateLimitError: Rate limit exceeded`
+
+**Solution**:
+```python
+from nadoo_flow import RetryNode, LLMNode
+
+# Add retry with exponential backoff
+workflow = RetryNode(
+    node=LLMNode(model="gpt-4"),
+    max_retries=5,
+    backoff_factor=2.0,
+    retry_on_errors=[RateLimitError]
+)
+```
+
+#### Timeout Errors
+
+**Symptom**: `TimeoutError: Request timed out`
+
+**Solution**:
+```python
+# Increase timeout
+llm = LLMNode(
+    model="gpt-4",
+    timeout=60.0  # 60 seconds
+)
+
+# Or implement timeout handling
+import asyncio
+
+try:
+    result = await asyncio.wait_for(
+        workflow.execute(data),
+        timeout=30.0
+    )
+except asyncio.TimeoutError:
+    print("Workflow timed out")
+```
+
+### Performance Issues
+
+#### Slow Execution
+
+**Symptom**: Workflows taking longer than expected
+
+**Diagnosis**:
+```python
+import time
+
+start = time.time()
+result = await workflow.execute(data)
+print(f"Duration: {time.time() - start:.2f}s")
+```
+
+**Solutions**:
+
+1. **Use parallel execution**:
+```python
+from nadoo_flow import ParallelNode
+
+# Sequential (slow)
+workflow = NodeA() | NodeB() | NodeC()
+
+# Parallel (fast)
+workflow = ParallelNode([NodeA(), NodeB(), NodeC()])
+```
+
+2. **Implement caching**:
+```python
+from functools import lru_cache
+
+class CachedNode(ChainableNode):
+    @lru_cache(maxsize=100)
+    async def _cached_operation(self, key: str):
+        # Expensive operation
+        pass
+```
+
+3. **Optimize LLM calls**:
+```python
+# Use cheaper model for simple tasks
+simple_llm = LLMNode(model="gpt-3.5-turbo")
+
+# Reduce max_tokens
+llm = LLMNode(model="gpt-4", max_tokens=500)
+```
+
+#### Memory Issues
+
+**Symptom**: `MemoryError` or high memory usage
+
+**Solution**:
+```python
+# Process in batches
+async def process_batch(items, batch_size=10):
+    for i in range(0, len(items), batch_size):
+        batch = items[i:i+batch_size]
+        results = await asyncio.gather(*[
+            workflow.execute(item) for item in batch
+        ])
+        # Process results immediately
+        yield results
+
+# Clear caches periodically
+import gc
+gc.collect()
+```
+
+### Data and Type Issues
+
+#### Type Mismatch
+
+**Symptom**: `TypeError: expected dict, got str`
+
+**Solution**:
+```python
+# Add type validation
+from pydantic import BaseModel
+
+class WorkflowInput(BaseModel):
+    message: str
+    user_id: str
+
+# Validate before execution
+validated = WorkflowInput(**input_data)
+result = await workflow.execute(validated.dict())
+```
+
+#### Missing Keys
+
+**Symptom**: `KeyError: 'expected_key'`
+
+**Solution**:
+```python
+# Use .get() with defaults
+value = data.get("key", "default_value")
+
+# Or validate with Pydantic
+class Input(BaseModel):
+    required_field: str
+    optional_field: str = "default"
+```
+
+### Workflow Errors
+
+#### Node Not Executing
+
+**Symptom**: Node seems to be skipped
+
+**Diagnosis**:
+```python
+# Add logging
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+class DebugNode(ChainableNode):
+    async def execute(self, data):
+        print(f"Executing with data: {data}")
+        result = await self.process(data)
+        print(f"Result: {result}")
+        return result
+```
+
+#### Infinite Loops
+
+**Symptom**: Workflow never completes
+
+**Solution**:
+```python
+# Add maximum iterations
+class SafeLoopNode(ChainableNode):
+    def __init__(self, max_iterations=100):
+        super().__init__()
+        self.max_iterations = max_iterations
+
+    async def execute(self, data):
+        iterations = 0
+        while condition and iterations < self.max_iterations:
+            # Process
+            iterations += 1
+
+        if iterations >= self.max_iterations:
+            raise RuntimeError("Max iterations reached")
+```
+
+### Integration Issues
+
+#### Database Connection Errors
+
+**Symptom**: `OperationalError: could not connect to server`
+
+**Solution**:
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.pool import NullPool
+
+# Use connection pooling
+engine = create_engine(
+    database_url,
+    pool_size=10,
+    max_overflow=20,
+    pool_pre_ping=True  # Verify connections
+)
+
+# Add retry logic
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=10)
+)
+async def connect_db():
+    return await database.connect()
+```
+
+#### API Integration Failures
+
+**Symptom**: External API calls failing
+
+**Solution**:
+```python
+import aiohttp
+from aiohttp import ClientTimeout
+
+async def api_call_with_retry():
+    timeout = ClientTimeout(total=30)
+
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        for attempt in range(3):
+            try:
+                async with session.get(url) as response:
+                    return await response.json()
+            except aiohttp.ClientError as e:
+                if attempt == 2:
+                    raise
+                await asyncio.sleep(2 ** attempt)
+```
+
+## Debugging Techniques
+
+### Enable Debug Logging
+
+```python
+import logging
+
+# Set up logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+# Create logger
+logger = logging.getLogger("nadoo_flow")
+logger.setLevel(logging.DEBUG)
+```
+
+### Add Breakpoints
+
+```python
+class DebugNode(ChainableNode):
+    async def execute(self, data):
+        import pdb; pdb.set_trace()  # Add breakpoint
+        result = await self.process(data)
+        return result
+```
+
+### Trace Execution
+
+```python
+class TracingNode(ChainableNode):
+    async def execute(self, data):
+        print(f"[{self.__class__.__name__}] Input: {data}")
+
+        try:
+            result = await self.process(data)
+            print(f"[{self.__class__.__name__}] Output: {result}")
+            return result
+        except Exception as e:
+            print(f"[{self.__class__.__name__}] Error: {e}")
+            raise
+```
+
+### Profile Performance
+
+```python
+import cProfile
+import pstats
+
+async def profile_workflow():
+    profiler = cProfile.Profile()
+    profiler.enable()
+
+    result = await workflow.execute(data)
+
+    profiler.disable()
+    stats = pstats.Stats(profiler)
+    stats.sort_stats('cumulative')
+    stats.print_stats(10)  # Top 10 slowest
+```
+
+## Error Messages Explained
+
+| Error | Meaning | Solution |
+|-------|---------|----------|
+| `RuntimeWarning: coroutine never awaited` | Missing `await` | Add `await` before async call |
+| `Event loop is already running` | Nested event loops | Use `nest_asyncio` or restructure code |
+| `AuthenticationError` | Invalid API key | Check API key configuration |
+| `RateLimitError` | Too many requests | Implement rate limiting/retry |
+| `TimeoutError` | Operation took too long | Increase timeout or optimize |
+| `ConnectionError` | Network/DB issue | Check connectivity, add retry |
+| `ValidationError` | Invalid input data | Validate input with Pydantic |
+| `MemoryError` | Out of memory | Process in batches, clear caches |
+
+## Getting Help
+
+If you're still stuck:
+
+<Steps>
+  <Step title="Check Documentation">
+    Review the [API Reference](/api/overview) and [Examples](/examples/overview)
+  </Step>
+  <Step title="Search Issues">
+    Check [GitHub Issues](https://github.com/nadoo-ai) for similar problems
+  </Step>
+  <Step title="Ask Community">
+    Join our [Discord](https://discord.gg/9gCsxSn6) for community help
+  </Step>
+  <Step title="Create Issue">
+    Open a GitHub issue with:
+    - Error message
+    - Minimal reproducible example
+    - Environment details (Python version, OS, etc.)
+  </Step>
+</Steps>
+
+## Reporting Bugs
+
+When reporting bugs, include:
+
+```python
+# System information
+import sys
+import platform
+
+print(f"Python: {sys.version}")
+print(f"Platform: {platform.platform()}")
+
+# Package versions
+import nadoo_flow
+print(f"Nadoo Flow Core: {nadoo_flow.__version__}")
+
+# Minimal reproducible example
+from nadoo_flow import LLMNode
+
+workflow = LLMNode(model="gpt-4")
+result = await workflow.execute({"prompt": "test"})
+# Error occurs here
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="FAQ" icon="question" href="/resources/faq">
+    Frequently asked questions
+  </Card>
+  <Card title="Best Practices" icon="lightbulb" href="/resources/best-practices">
+    Learn best practices
+  </Card>
+</CardGroup>

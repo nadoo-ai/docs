@@ -1,0 +1,117 @@
+# Nadoo Flow Core Documentation
+
+Documentation for Nadoo Flow Core - A flexible workflow orchestration framework with multi-backend support for building AI agents and automation workflows.
+
+## Overview
+
+Nadoo Flow Core is a production-ready workflow orchestration framework designed for building AI agents, automation workflows, and no-code/low-code platforms. It provides a type-safe, async-first, modular architecture with minimal dependencies.
+
+## Key Features
+
+- Type-safe with full Pydantic support
+- Async-first architecture built on asyncio
+- Modular, composable nodes with clear interfaces
+- Native SSE support for real-time streaming updates
+- Conditional branching, loops, and parallel execution
+- Built-in observability with execution tracking
+- Multi-backend support (native, LangGraph, CrewAI, A2A)
+
+## Documentation Structure
+
+### Get Started
+- Installation guide: /installation
+- Quick start tutorial: /quickstart
+- Design philosophy: /philosophy
+
+### Core Components
+- Nodes and node types: /core/nodes
+- Chaining API: /core/chaining
+- Workflow context: /core/context
+- Execution engine: /core/execution
+
+### Advanced Features
+- Parallel execution strategies: /advanced/parallel-execution
+- Resilience patterns (retry, fallback): /advanced/resilience
+- Real-time streaming: /advanced/streaming
+- Memory and chat history: /advanced/memory
+- Callbacks and observability: /advanced/callbacks
+- Response caching: /advanced/caching
+- Rate limiting: /advanced/rate-limiting
+
+### API Reference
+- Base classes and interfaces: /api/base
+- Chaining API: /api/chain
+- Parallel execution: /api/parallel
+- Batch processing: /api/batch
+- Memory management: /api/memory
+- Streaming: /api/streaming
+- Callbacks: /api/callbacks
+- Tools: /api/tools
+- Output parsers: /api/parsers
+- Prompt templates: /api/prompts
+
+### Examples
+- Basic workflow: /examples/basic-workflow
+- Node chaining: /examples/chaining-nodes
+- Parallel search: /examples/parallel-search
+- Streaming chat: /examples/streaming-chat
+- RAG pipeline: /examples/rag-pipeline
+- Human-in-the-loop: /examples/human-in-loop
+- Advanced features: /examples/advanced-features
+
+## Core Concepts
+
+### Nodes
+Nodes are the building blocks of workflows. Each node implements the IStepNode interface with execute(), validate(), and lifecycle hooks.
+
+### Workflow Context
+Shared state across all nodes in a workflow, managing global variables, node contexts, and execution paths.
+
+### Chaining API
+Fluent interface for composing workflows using the pipe operator (|), similar to LangChain's LCEL but with Nadoo-specific naming.
+
+### Multi-Backend Architecture
+Extensible design supporting multiple backend implementations through the IWorkflowBackend protocol.
+
+## Installation
+
+```bash
+pip install nadoo-flow-core
+```
+
+With optional CEL expression support:
+```bash
+pip install nadoo-flow-core[cel]
+```
+
+## Quick Example
+
+```python
+from nadoo_flow import ChainableNode, FunctionNode, NodeResult
+
+# Define chainable nodes
+class UppercaseNode(ChainableNode):
+    async def execute(self, node_context, workflow_context):
+        text = node_context.input_data.get("text", "")
+        return NodeResult(success=True, output={"text": text.upper()})
+
+# Chain nodes with pipe operator
+chain = UppercaseNode() | FunctionNode(lambda x: {"text": x["text"][::-1]})
+result = await chain.run({"text": "hello"})
+# Output: {'text': 'OLLEH'}
+```
+
+## Repository
+
+GitHub: https://github.com/nadoo-ai/nadoo-ai-kb
+
+## License
+
+See repository for license information
+
+## Contact
+
+- Website: https://nadoo.ai
+- Documentation: https://docs.nadoo.ai
+- Community: https://discord.gg/nadoo-ai
+- Email: support@nadoo.ai

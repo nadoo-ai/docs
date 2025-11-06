@@ -1,0 +1,600 @@
+---
+title: 'Migration Guide'
+description: 'Migrate from other AI frameworks to Nadoo AI'
+sidebarTitle: 'Migration'
+'og:title': 'Migration Guide - Nadoo AI'
+icon: 'arrow-right-arrow-left'
+---
+
+## Overview
+
+This guide helps you migrate existing AI workflows from other frameworks to Nadoo Flow Core. We cover the most common patterns and provide code examples for smooth transitions.
+
+## From LangChain
+
+### Basic Chain Migration
+
+<Tabs>
+  <Tab title="LangChain">
+    ```python
+    from langchain.chains import LLMChain
+    from langchain.llms import OpenAI
+    from langchain.prompts import PromptTemplate
+
+    prompt = PromptTemplate(
+        template="Summarize: {text}",
+        input_variables=["text"]
+    )
+
+    llm = OpenAI(temperature=0.7)
+    chain = LLMChain(llm=llm, prompt=prompt)
+
+    result = chain.run(text="Long article here...")
+    print(result)
+    ```
+  </Tab>
+  <Tab title="Nadoo Flow Core">
+    ```python
+    from nadoo_flow import LLMNode, FunctionNode
+
+    # Create workflow
+    workflow = (
+        FunctionNode(lambda x: {
+            "prompt": f"Summarize: {x['text']}"
+        })
+        | LLMNode(model="gpt-3.5-turbo", temperature=0.7)
+    )
+
+    # Execute
+    result = await workflow.execute({"text": "Long article here..."})
+    print(result["content"])
+    ```
+  </Tab>
+</Tabs>
+
+### Sequential Chain
+
+<Tabs>
+  <Tab title="LangChain">
+    ```python
+    from langchain.chains import SimpleSequentialChain
+
+    chain1 = LLMChain(llm=llm, prompt=prompt1)
+    chain2 = LLMChain(llm=llm, prompt=prompt2)
+
+    overall_chain = SimpleSequentialChain(
+        chains=[chain1, chain2]
+    )
+
+    result = overall_chain.run("input")
+    ```
+  </Tab>
+  <Tab title="Nadoo Flow Core">
+    ```python
+    from nadoo_flow import LLMNode
+
+    workflow = (
+        LLMNode(model="gpt-3.5-turbo", system_prompt="First task")
+        | LLMNode(model="gpt-3.5-turbo", system_prompt="Second task")
+    )
+
+    result = await workflow.execute({"message": "input"})
+    ```
+  </Tab>
+</Tabs>
+
+### Memory/Chat History
+
+<Tabs>
+  <Tab title="LangChain">
+    ```python
+    from langchain.memory import ConversationBufferMemory
+    from langchain.chains import ConversationChain
+
+    memory = ConversationBufferMemory()
+    conversation = ConversationChain(
+        llm=llm,
+        memory=memory
+    )
+
+    response1 = conversation.predict(input="Hi")
+    response2 = conversation.predict(input="What did I say?")
+    ```
+  </Tab>
+  <Tab title="Nadoo Flow Core">
+    ```python
+    from nadoo_flow import ConversationMemoryNode, LLMNode
+
+    memory = ConversationMemoryNode(max_turns=10)
+
+    async def chat(message: str, user_id: str):
+        # Add user message
+        await memory.add_turn(user_id, "user", message)
+
+        # Get history
+        history = await memory.get_history(user_id)
+
+        # Generate response
+        llm = LLMNode(model="gpt-3.5-turbo")
+        result = await llm.execute({
+            "message": message,
+            "history": history
+        })
+
+        # Store assistant response
+        await memory.add_turn(user_id, "assistant", result["content"])
+
+        return result["content"]
+    ```
+  </Tab>
+</Tabs>
+
+### Retrieval QA
+
+<Tabs>
+  <Tab title="LangChain">
+    ```python
+    from langchain.chains import RetrievalQA
+    from langchain.vectorstores import FAISS
+    from langchain.embeddings import OpenAIEmbeddings
+
+    embeddings = OpenAIEmbeddings()
+    vectorstore = FAISS.from_texts(texts, embeddings)
+
+    qa = RetrievalQA.from_chain_type(
+        llm=llm,
+        retriever=vectorstore.as_retriever()
+    )
+
+    result = qa.run("What is Nadoo?")
+    ```
+  </Tab>
+  <Tab title="Nadoo Flow Core">
+    ```python
+    from nadoo_flow import ChainableNode, LLMNode, VectorSearchNode
+
+    class RAGPipeline(ChainableNode):
+        def __init__(self):
+            super().__init__()
+            self.vector_search = VectorSearchNode(index_name="docs")
+            self.llm = LLMNode(model="gpt-4")
+
+        async def execute(self, data):
+            # Retrieve relevant docs
+            retrieved = await self.vector_search.execute({
+                "query": data["query"],
+                "top_k": 3
+            })
+
+            # Generate answer with context
+            context = "\n".join([doc["content"] for doc in retrieved["results"]])
+            prompt = f"Context: {context}\n\nQuestion: {data['query']}\n\nAnswer:"
+
+            response = await self.llm.execute({"prompt": prompt})
+            return {
+                "answer": response["content"],
+                "sources": retrieved["results"]
+            }
+
+    # Usage
+    rag = RAGPipeline()
+    result = await rag.execute({"query": "What is Nadoo?"})
+    ```
+  </Tab>
+</Tabs>
+
+## From CrewAI
+
+### Agent Migration
+
+<Tabs>
+  <Tab title="CrewAI">
+    ```python
+    from crewai import Agent, Task, Crew
+
+    researcher = Agent(
+        role="Researcher",
+        goal="Research and gather information",
+        backstory="Expert researcher",
+        verbose=True
+    )
+
+    task = Task(
+        description="Research AI frameworks",
+        agent=researcher
+    )
+
+    crew = Crew(agents=[researcher], tasks=[task])
+    result = crew.kickoff()
+    ```
+  </Tab>
+  <Tab title="Nadoo Flow Core">
+    ```python
+    from nadoo_flow import ChainableNode, LLMNode
+
+    class ResearchAgent(ChainableNode):
+        def __init__(self):
+            super().__init__()
+            self.llm = LLMNode(
+                model="gpt-4",
+                system_prompt="""You are an expert researcher.
+                Your goal is to research and gather information.
+                Be thorough and accurate."""
+            )
+
+        async def execute(self, data):
+            task = data.get("task", "")
+
+            # Research step
+            result = await self.llm.execute({
+                "prompt": f"Research task: {task}"
+            })
+
+            return {
+                "research_findings": result["content"],
+                "agent_role": "Researcher"
+            }
+
+    # Usage
+    agent = ResearchAgent()
+    result = await agent.execute({"task": "Research AI frameworks"})
+    ```
+  </Tab>
+</Tabs>
+
+### Multi-Agent Workflow
+
+<Tabs>
+  <Tab title="CrewAI">
+    ```python
+    researcher = Agent(role="Researcher", ...)
+    writer = Agent(role="Writer", ...)
+
+    research_task = Task(description="Research", agent=researcher)
+    write_task = Task(description="Write", agent=writer)
+
+    crew = Crew(agents=[researcher, writer], tasks=[research_task, write_task])
+    ```
+  </Tab>
+  <Tab title="Nadoo Flow Core">
+    ```python
+    from nadoo_flow import ChainableNode, LLMNode
+
+    class ResearchAgent(ChainableNode):
+        async def execute(self, data):
+            llm = LLMNode(model="gpt-4", system_prompt="You are a researcher")
+            return await llm.execute(data)
+
+    class WriterAgent(ChainableNode):
+        async def execute(self, data):
+            llm = LLMNode(model="gpt-4", system_prompt="You are a writer")
+            research = data.get("research_findings", "")
+            return await llm.execute({
+                "prompt": f"Write based on: {research}"
+            })
+
+    # Sequential workflow
+    workflow = ResearchAgent() | WriterAgent()
+
+    # Or parallel if independent
+    from nadoo_flow import ParallelNode
+    parallel_agents = ParallelNode([ResearchAgent(), WriterAgent()])
+    ```
+  </Tab>
+</Tabs>
+
+## From AutoGen
+
+### Conversational Agents
+
+<Tabs>
+  <Tab title="AutoGen">
+    ```python
+    from autogen import AssistantAgent, UserProxyAgent
+
+    assistant = AssistantAgent(
+        name="assistant",
+        llm_config={"model": "gpt-4"}
+    )
+
+    user_proxy = UserProxyAgent(
+        name="user_proxy",
+        human_input_mode="NEVER"
+    )
+
+    user_proxy.initiate_chat(
+        assistant,
+        message="Solve this problem"
+    )
+    ```
+  </Tab>
+  <Tab title="Nadoo Flow Core">
+    ```python
+    from nadoo_flow import ConversationMemoryNode, LLMNode
+
+    class ConversationalAgent:
+        def __init__(self):
+            self.memory = ConversationMemoryNode()
+            self.llm = LLMNode(model="gpt-4")
+
+        async def chat(self, message: str, session_id: str):
+            # Add user message
+            await self.memory.add_turn(session_id, "user", message)
+
+            # Get conversation context
+            history = await self.memory.get_history(session_id)
+
+            # Generate response
+            result = await self.llm.execute({
+                "message": message,
+                "history": history
+            })
+
+            # Store response
+            await self.memory.add_turn(session_id, "assistant", result["content"])
+
+            return result["content"]
+
+    # Usage
+    agent = ConversationalAgent()
+    response = await agent.chat("Solve this problem", session_id="user123")
+    ```
+  </Tab>
+</Tabs>
+
+## Migration Checklist
+
+<Steps>
+  <Step title="Assess Current Implementation">
+    - List all chains/agents/workflows
+    - Identify external dependencies
+    - Document data flows
+    - Note any custom components
+  </Step>
+  <Step title="Plan Migration">
+    - Prioritize workflows by complexity
+    - Identify reusable patterns
+    - Plan for testing strategy
+    - Schedule migration phases
+  </Step>
+  <Step title="Migrate Core Workflows">
+    - Start with simplest workflows
+    - Convert one workflow at a time
+    - Test thoroughly
+    - Update integrations
+  </Step>
+  <Step title="Update Dependencies">
+    - Install Nadoo Flow Core
+    - Update import statements
+    - Configure environment
+    - Update deployment configs
+  </Step>
+  <Step title="Test & Validate">
+    - Unit test each workflow
+    - Integration testing
+    - Performance testing
+    - User acceptance testing
+  </Step>
+  <Step title="Deploy">
+    - Deploy to staging
+    - Monitor for issues
+    - Gradual rollout to production
+    - Keep old system as fallback
+  </Step>
+</Steps>
+
+## Common Patterns
+
+### Pattern 1: Simple LLM Call
+
+```python
+# Before (any framework)
+result = llm.generate("prompt")
+
+# After (Nadoo)
+result = await LLMNode(model="gpt-4").execute({"prompt": "prompt"})
+```
+
+### Pattern 2: Chain of Operations
+
+```python
+# Before
+step1 = operation1(input)
+step2 = operation2(step1)
+step3 = operation3(step2)
+
+# After
+workflow = (
+    FunctionNode(operation1)
+    | FunctionNode(operation2)
+    | FunctionNode(operation3)
+)
+result = await workflow.execute(input)
+```
+
+### Pattern 3: Parallel Execution
+
+```python
+# Before
+results = [func(input) for func in functions]
+
+# After
+workflow = ParallelNode([
+    FunctionNode(func) for func in functions
+])
+results = await workflow.execute(input)
+```
+
+### Pattern 4: Conditional Logic
+
+```python
+# Before
+if condition:
+    result = path_a(input)
+else:
+    result = path_b(input)
+
+# After
+router = ConditionalNode()
+router.add_path("condition_true", path_a_node)
+router.add_path("condition_false", path_b_node)
+result = await router.execute(input)
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Async/Await Issues">
+    **Problem**: Your old code was synchronous
+
+    **Solution**:
+    - Add `async` to function definitions
+    - Use `await` for all node executions
+    - Update calling code to handle async
+    ```python
+    # Wrap sync functions
+    async def async_wrapper(data):
+        return sync_function(data)
+    ```
+  </Accordion>
+
+  <Accordion title="Data Format Differences">
+    **Problem**: Input/output formats don't match
+
+    **Solution**:
+    - Use FunctionNode to transform data
+    - Create adapter nodes
+    ```python
+    adapter = FunctionNode(lambda x: {
+        "new_format": x["old_format"]
+    })
+    workflow = adapter | main_workflow
+    ```
+  </Accordion>
+
+  <Accordion title="Missing Features">
+    **Problem**: Framework-specific features not available
+
+    **Solution**:
+    - Implement custom nodes
+    - Use parallel workflows
+    - Check Flow Core examples
+    - Request feature via GitHub
+  </Accordion>
+
+  <Accordion title="Performance Issues">
+    **Problem**: Migration is slower than expected
+
+    **Solution**:
+    - Enable async throughout
+    - Use ParallelNode for independent tasks
+    - Implement caching
+    - Profile and optimize bottlenecks
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+### 1. Incremental Migration
+
+Don't migrate everything at once:
+
+```python
+# Start small
+simple_workflow = LLMNode(model="gpt-4")
+
+# Gradually add complexity
+workflow = (
+    PreprocessNode()
+    | LLMNode(model="gpt-4")
+    | PostprocessNode()
+)
+
+# Finally migrate complex workflows
+full_workflow = build_complex_workflow()
+```
+
+### 2. Maintain Backward Compatibility
+
+Create compatibility layers:
+
+```python
+class LangChainCompatNode(ChainableNode):
+    """Wrapper for LangChain components"""
+
+    def __init__(self, langchain_chain):
+        super().__init__()
+        self.chain = langchain_chain
+
+    async def execute(self, data):
+        # Convert to LangChain format
+        lc_input = convert_to_langchain(data)
+
+        # Run LangChain chain
+        result = self.chain.run(lc_input)
+
+        # Convert back
+        return convert_from_langchain(result)
+```
+
+### 3. Test Continuously
+
+```python
+# Unit tests
+async def test_workflow():
+    result = await workflow.execute(test_input)
+    assert result["output"] == expected_output
+
+# Integration tests
+async def test_end_to_end():
+    result = await full_workflow.execute(real_data)
+    validate_result(result)
+```
+
+### 4. Document Changes
+
+Keep a migration log:
+
+```markdown
+## Migration Log
+
+### 2024-01-15
+- Migrated user_onboarding workflow
+- Replaced LangChain SimpleSequentialChain
+- Performance: 45% faster
+- Issues: None
+
+### 2024-01-20
+- Migrated RAG pipeline
+- Custom vector search implementation
+- Performance: Similar
+- Issues: Memory management (resolved)
+```
+
+## Getting Help
+
+<CardGroup cols={2}>
+  <Card title="Discord Community" icon="discord" href="https://discord.gg/9gCsxSn6">
+    Ask migration questions
+  </Card>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/nadoo-ai">
+    Report migration issues
+  </Card>
+  <Card title="Examples" icon="code" href="/examples/overview">
+    Browse migration examples
+  </Card>
+  <Card title="Comparison" icon="code-compare" href="/resources/comparison">
+    Framework comparison guide
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Best Practices" icon="lightbulb" href="/resources/best-practices">
+    Learn Nadoo best practices
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/resources/troubleshooting">
+    Common issues and solutions
+  </Card>
+</CardGroup>

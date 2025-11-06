@@ -1,0 +1,509 @@
+---
+title: 'Parallel Execution'
+description: 'Execute multiple nodes concurrently for improved performance'
+sidebarTitle: 'Parallel'
+'og:title': 'Parallel Execution - Nadoo Flow Core'
+icon: 'timeline'
+---
+
+## Overview
+
+Parallel execution in Flow Core allows multiple nodes to run concurrently, significantly improving performance for workflows with independent operations.
+
+## ParallelNode
+
+The `ParallelNode` class enables concurrent execution of multiple nodes:
+
+```python
+from nadoo_flow import ParallelNode
+
+# Execute multiple operations in parallel
+parallel = ParallelNode([
+    DatabaseQueryNode(),
+    APICallNode(),
+    FileProcessingNode()
+])
+
+result = await parallel.run(input_data)
+```
+
+## Basic Parallel Execution
+
+### Creating Parallel Nodes
+
+```python
+from nadoo_flow import ParallelNode, BaseNode
+
+class DataFetchNode(BaseNode):
+    def __init__(self, source):
+        self.source = source
+        super().__init__(node_id=f"fetch_{source}")
+
+    async def execute(self, node_context, workflow_context):
+        # Simulate fetching data
+        await asyncio.sleep(1)  # Network delay
+        data = await fetch_from_source(self.source)
+        return NodeResult(success=True, output={self.source: data})
+
+# Create parallel fetcher
+parallel_fetcher = ParallelNode([
+    DataFetchNode("database"),
+    DataFetchNode("api"),
+    DataFetchNode("cache")
+])
+
+# Execute all three concurrently
+results = await parallel_fetcher.run({})
+# Total time: ~1 second instead of 3
+```
+
+### Aggregating Results
+
+```python
+class ParallelAggregator(ParallelNode):
+    """Execute nodes in parallel and aggregate results"""
+
+    def __init__(self, nodes, aggregation_strategy="merge"):
+        super().__init__(nodes)
+        self.aggregation_strategy = aggregation_strategy
+
+    async def execute(self, node_context, workflow_context):
+        # Run nodes in parallel
+        results = await super().execute(node_context, workflow_context)
+
+        # Aggregate based on strategy
+        if self.aggregation_strategy == "merge":
+            merged = {}
+            for result in results:
+                if result.success:
+                    merged.update(result.output)
+            return NodeResult(success=True, output=merged)
+
+        elif self.aggregation_strategy == "list":
+            outputs = [r.output for r in results if r.success]
+            return NodeResult(success=True, output=outputs)
+
+        elif self.aggregation_strategy == "first":
+            for result in results:
+                if result.success:
+                    return result
+            return NodeResult(success=False, error="All nodes failed")
+```
+
+## Fan-Out/Fan-In Pattern
+
+Process items in parallel then combine results:
+
+```python
+from nadoo_flow import FanOutFanInNode
+
+class ItemProcessor(BaseNode):
+    async def execute(self, node_context, workflow_context):
+        item = node_context.input_data
+        # Process individual item
+        result = await self.process_item(item)
+        return NodeResult(success=True, output=result)
+
+# Create fan-out/fan-in node
+fan_out_fan_in = FanOutFanInNode(
+    processor=ItemProcessor(),
+    max_concurrency=10
+)
+
+# Process list of items in parallel
+items = [{"id": i} for i in range(100)]
+results = await fan_out_fan_in.run({"items": items})
+```
+
+### Custom Fan-Out/Fan-In
+
+```python
+class CustomFanOutFanIn(BaseNode):
+    def __init__(self, processor_node, max_workers=10):
+        super().__init__(node_id="fan_out_fan_in")
+        self.processor = processor_node
+        self.max_workers = max_workers
+
+    async def execute(self, node_context, workflow_context):
+        items = node_context.input_data.get("items", [])
+
+        # Create semaphore for concurrency control
+        semaphore = asyncio.Semaphore(self.max_workers)
+
+        async def process_with_limit(item):
+            async with semaphore:
+                item_context = NodeContext(f"item_{item.get('id')}")
+                item_context.input_data = item
+                return await self.processor.execute(
+                    item_context, workflow_context
+                )
+
+        # Process all items
+        tasks = [process_with_limit(item) for item in items]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Separate successes and failures
+        successes = []
+        failures = []
+
+        for item, result in zip(items, results):
+            if isinstance(result, Exception):
+                failures.append({"item": item, "error": str(result)})
+            elif result.success:
+                successes.append(result.output)
+            else:
+                failures.append({"item": item, "error": result.error})
+
+        return NodeResult(
+            success=len(failures) == 0,
+            output={
+                "processed": successes,
+                "failed": failures,
+                "total": len(items),
+                "success_count": len(successes)
+            }
+        )
+```
+
+## Concurrency Control
+
+### Limiting Concurrency
+
+```python
+class LimitedParallelNode(ParallelNode):
+    """Parallel node with concurrency limit"""
+
+    def __init__(self, nodes, max_concurrent=5):
+        super().__init__(nodes)
+        self.max_concurrent = max_concurrent
+
+    async def execute(self, node_context, workflow_context):
+        semaphore = asyncio.Semaphore(self.max_concurrent)
+        results = []
+
+        async def execute_with_limit(node):
+            async with semaphore:
+                node_ctx = NodeContext(node.node_id)
+                node_ctx.input_data = node_context.input_data
+                return await node.execute(node_ctx, workflow_context)
+
+        tasks = [execute_with_limit(node) for node in self.nodes]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        return self._aggregate_results(results)
+```
+
+### Dynamic Concurrency
+
+```python
+class DynamicParallelNode(ParallelNode):
+    """Adjust concurrency based on system load"""
+
+    async def execute(self, node_context, workflow_context):
+        # Determine optimal concurrency
+        cpu_count = os.cpu_count()
+        current_load = await self._get_system_load()
+
+        if current_load < 0.5:
+            max_concurrent = cpu_count * 2
+        elif current_load < 0.8:
+            max_concurrent = cpu_count
+        else:
+            max_concurrent = max(cpu_count // 2, 1)
+
+        # Execute with dynamic limit
+        return await self._execute_with_limit(
+            node_context, workflow_context, max_concurrent
+        )
+```
+
+## Parallel Workflows
+
+### Parallel Branches
+
+```python
+class ParallelBranches(BaseNode):
+    """Execute different workflow branches in parallel"""
+
+    def __init__(self):
+        super().__init__(node_id="parallel_branches")
+
+        # Define branches
+        self.email_branch = (
+            PrepareEmailNode()
+            | SendEmailNode()
+            | LogEmailNode()
+        )
+
+        self.sms_branch = (
+            PrepareSMSNode()
+            | SendSMSNode()
+            | LogSMSNode()
+        )
+
+        self.push_branch = (
+            PreparePushNode()
+            | SendPushNode()
+            | LogPushNode()
+        )
+
+    async def execute(self, node_context, workflow_context):
+        # Execute all branches in parallel
+        tasks = [
+            self.email_branch.run(node_context.input_data),
+            self.sms_branch.run(node_context.input_data),
+            self.push_branch.run(node_context.input_data)
+        ]
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Check results
+        email_result, sms_result, push_result = results
+
+        return NodeResult(
+            success=True,
+            output={
+                "email": email_result if not isinstance(email_result, Exception) else str(email_result),
+                "sms": sms_result if not isinstance(sms_result, Exception) else str(sms_result),
+                "push": push_result if not isinstance(push_result, Exception) else str(push_result)
+            }
+        )
+```
+
+### Map-Reduce Pattern
+
+```python
+class MapReduceNode(BaseNode):
+    """Implement map-reduce pattern"""
+
+    def __init__(self, mapper, reducer, chunk_size=10):
+        super().__init__(node_id="map_reduce")
+        self.mapper = mapper
+        self.reducer = reducer
+        self.chunk_size = chunk_size
+
+    async def execute(self, node_context, workflow_context):
+        data = node_context.input_data.get("data", [])
+
+        # Chunk data
+        chunks = [
+            data[i:i+self.chunk_size]
+            for i in range(0, len(data), self.chunk_size)
+        ]
+
+        # Map phase - process chunks in parallel
+        map_tasks = []
+        for i, chunk in enumerate(chunks):
+            chunk_context = NodeContext(f"chunk_{i}")
+            chunk_context.input_data = {"chunk": chunk}
+            map_tasks.append(
+                self.mapper.execute(chunk_context, workflow_context)
+            )
+
+        map_results = await asyncio.gather(*map_tasks)
+
+        # Reduce phase
+        reduce_context = NodeContext("reduce")
+        reduce_context.input_data = {
+            "mapped_results": [r.output for r in map_results if r.success]
+        }
+
+        reduce_result = await self.reducer.execute(
+            reduce_context, workflow_context
+        )
+
+        return reduce_result
+```
+
+## Race Conditions
+
+### First to Complete
+
+```python
+class RaceNode(ParallelNode):
+    """Return result from first node to complete successfully"""
+
+    async def execute(self, node_context, workflow_context):
+        tasks = []
+        for node in self.nodes:
+            node_ctx = NodeContext(node.node_id)
+            node_ctx.input_data = node_context.input_data
+            task = asyncio.create_task(
+                node.execute(node_ctx, workflow_context)
+            )
+            tasks.append(task)
+
+        # Wait for first successful result
+        while tasks:
+            done, pending = await asyncio.wait(
+                tasks, return_when=asyncio.FIRST_COMPLETED
+            )
+
+            for task in done:
+                try:
+                    result = await task
+                    if result.success:
+                        # Cancel remaining tasks
+                        for t in pending:
+                            t.cancel()
+                        return result
+                except Exception:
+                    pass
+
+            tasks = list(pending)
+
+        return NodeResult(
+            success=False,
+            error="All nodes failed"
+        )
+```
+
+### Timeout with Fallback
+
+```python
+class TimeoutParallelNode(ParallelNode):
+    """Execute with timeout and fallback"""
+
+    def __init__(self, primary_nodes, fallback_nodes, timeout=30):
+        super().__init__(primary_nodes)
+        self.fallback_nodes = fallback_nodes
+        self.timeout = timeout
+
+    async def execute(self, node_context, workflow_context):
+        try:
+            # Try primary nodes with timeout
+            result = await asyncio.wait_for(
+                super().execute(node_context, workflow_context),
+                timeout=self.timeout
+            )
+            return result
+        except asyncio.TimeoutError:
+            # Execute fallback nodes
+            logger.warning("Primary nodes timed out, executing fallback")
+            fallback_parallel = ParallelNode(self.fallback_nodes)
+            return await fallback_parallel.execute(
+                node_context, workflow_context
+            )
+```
+
+## Error Handling in Parallel
+
+### Partial Failure Handling
+
+```python
+class RobustParallelNode(ParallelNode):
+    """Handle partial failures in parallel execution"""
+
+    def __init__(self, nodes, failure_threshold=0.5):
+        super().__init__(nodes)
+        self.failure_threshold = failure_threshold
+
+    async def execute(self, node_context, workflow_context):
+        results = await super().execute(node_context, workflow_context)
+
+        successful = [r for r in results if r.success]
+        failed = [r for r in results if not r.success]
+
+        success_rate = len(successful) / len(results)
+
+        if success_rate >= self.failure_threshold:
+            return NodeResult(
+                success=True,
+                output={
+                    "successful": [r.output for r in successful],
+                    "failed": [r.error for r in failed],
+                    "success_rate": success_rate
+                }
+            )
+        else:
+            return NodeResult(
+                success=False,
+                error=f"Too many failures: {len(failed)}/{len(results)}"
+            )
+```
+
+## Performance Monitoring
+
+### Parallel Execution Metrics
+
+```python
+class MonitoredParallelNode(ParallelNode):
+    """Track performance metrics for parallel execution"""
+
+    async def execute(self, node_context, workflow_context):
+        metrics = {
+            "start_time": time.time(),
+            "node_times": {},
+            "total_nodes": len(self.nodes)
+        }
+
+        # Execute with timing
+        tasks = []
+        for node in self.nodes:
+            task = self._timed_execution(
+                node, node_context, workflow_context, metrics
+            )
+            tasks.append(task)
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Calculate metrics
+        metrics["end_time"] = time.time()
+        metrics["total_duration"] = metrics["end_time"] - metrics["start_time"]
+        metrics["average_time"] = (
+            sum(metrics["node_times"].values()) / len(metrics["node_times"])
+        )
+
+        return NodeResult(
+            success=True,
+            output={
+                "results": results,
+                "metrics": metrics
+            }
+        )
+
+    async def _timed_execution(self, node, node_context, workflow_context, metrics):
+        start = time.time()
+        result = await node.execute(node_context, workflow_context)
+        metrics["node_times"][node.node_id] = time.time() - start
+        return result
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Appropriate Concurrency Limits">
+    Don't spawn unlimited concurrent tasks. Use semaphores or pools.
+    ```python
+    semaphore = asyncio.Semaphore(10)
+    async with semaphore:
+        await node.execute()
+    ```
+  </Accordion>
+  <Accordion title="Handle Partial Failures">
+    Decide how to handle cases where some nodes succeed and others fail.
+  </Accordion>
+  <Accordion title="Consider Resource Constraints">
+    Monitor CPU and memory usage when running many parallel operations.
+  </Accordion>
+  <Accordion title="Use Timeouts">
+    Always set timeouts for parallel operations to avoid hanging.
+    ```python
+    await asyncio.wait_for(parallel.execute(), timeout=60)
+    ```
+  </Accordion>
+  <Accordion title="Log Parallel Execution">
+    Add detailed logging to track which operations are running concurrently.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Streaming" icon="stream" href="/flow-core/advanced/streaming">
+    Learn about real-time streaming
+  </Card>
+  <Card title="Resilience" icon="shield" href="/flow-core/advanced/resilience">
+    Implement retry and fallback patterns
+  </Card>
+</CardGroup>

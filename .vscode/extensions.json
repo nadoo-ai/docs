@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "mintlify.document",
+    "editorconfig.editorconfig",
+    "yzhang.markdown-all-in-one",
+    "davidanson.vscode-markdownlint",
+    "unifiedjs.vscode-mdx",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint"
+  ]
+}

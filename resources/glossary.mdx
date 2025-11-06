@@ -1,0 +1,329 @@
+---
+title: 'Glossary'
+description: 'Definitions of terms used in Nadoo AI'
+sidebarTitle: 'Glossary'
+'og:title': 'Glossary - Nadoo AI'
+icon: 'book'
+---
+
+## A
+
+### Agent
+An autonomous entity that can perceive its environment, make decisions, and take actions to achieve specific goals. In Nadoo, agents are typically implemented as workflows combining LLMs with tools and logic.
+
+### API (Application Programming Interface)
+A set of protocols and tools for building software applications. Nadoo provides APIs for integrating AI workflows into your applications.
+
+### Async/Await
+Python keywords for asynchronous programming. Nadoo Flow Core is async-native, meaning all node executions use `async def` and `await`.
+
+## B
+
+### Backend
+The execution engine that runs workflows. Nadoo Flow Core currently has a native backend, with LangGraph and CrewAI backends planned.
+
+### Batch Processing
+Executing multiple items through a workflow in groups rather than one at a time. Improves efficiency for large datasets.
+
+### Backoff
+A strategy for spacing out retry attempts after failures, typically exponential (1s, 2s, 4s, 8s, etc.).
+
+### Builder
+The visual no-code platform for creating AI workflows, currently in enterprise preview.
+
+## C
+
+### Callback
+A function that's called when specific events occur during workflow execution (e.g., on_start, on_complete, on_error).
+
+### Chain
+A sequence of nodes connected together using the pipe operator (`|`). Data flows from one node to the next.
+
+```python
+workflow = NodeA() | NodeB() | NodeC()
+```
+
+### ChainableNode
+The base class for creating custom nodes in Flow Core. Nodes must implement the `execute` method.
+
+### Circuit Breaker
+A pattern that prevents cascading failures by temporarily disabling a failing component.
+
+### Conditional Node
+A node that routes data to different paths based on conditions.
+
+### Context
+Information that persists across node executions within a workflow, including workflow state and metadata.
+
+## D
+
+### DAG (Directed Acyclic Graph)
+A graph structure with directed edges and no cycles, used to represent workflow dependencies.
+
+### Deployment
+The process of making a workflow available in a production environment.
+
+## E
+
+### Embedding
+A numerical vector representation of text, used for semantic search and similarity comparisons.
+
+### Error Handler
+A component that manages errors gracefully, providing fallback behavior when nodes fail.
+
+### Event Loop
+The core of Python's async execution model, managing concurrent operations.
+
+### Execution
+The process of running a workflow or node with specific input data.
+
+## F
+
+### Fallback
+An alternative action or value used when the primary operation fails.
+
+### Flow Core
+The open-source Python framework for building AI workflows, the foundation of Nadoo AI.
+
+### Function Node
+A node that wraps a simple Python function for use in workflows.
+
+```python
+node = FunctionNode(lambda x: {"result": x["value"] * 2})
+```
+
+## G
+
+### GPT (Generative Pre-trained Transformer)
+A type of large language model. Nadoo supports GPT-3.5 and GPT-4.
+
+### Graph
+A representation of workflows showing nodes and their connections.
+
+## H
+
+### HITL (Human-in-the-Loop)
+Workflows that incorporate human judgment, approval, or feedback.
+
+### Hook
+A custom function that runs at specific points in workflow execution.
+
+## I
+
+### Idempotent
+An operation that produces the same result regardless of how many times it's executed.
+
+### Integration
+Connecting Nadoo workflows with external systems, APIs, or databases.
+
+## L
+
+### LLM (Large Language Model)
+AI models trained on vast amounts of text data, capable of understanding and generating human-like text. Examples: GPT-4, Claude, Gemini.
+
+### LLM Node
+A node that calls a large language model to process text.
+
+```python
+llm = LLMNode(model="gpt-4", temperature=0.7)
+```
+
+## M
+
+### Memory
+Storage of conversation history or workflow state for context-aware processing.
+
+### Merge Node
+A node that combines outputs from parallel executions into a single result.
+
+### Metadata
+Additional information about data, workflows, or executions (timestamps, IDs, etc.).
+
+### Model
+In ML context: the LLM being used (e.g., "gpt-4")
+In data context: a structured representation of data (e.g., Pydantic model)
+
+## N
+
+### Nadoo AI
+The platform consisting of Flow Core (open source) and Builder (enterprise preview).
+
+### Node
+The basic building block of workflows. Each node performs a specific operation and can be connected to other nodes.
+
+### Node Context
+Information specific to a node's execution, including input data and node-specific state.
+
+## O
+
+### Orchestration
+Coordinating the execution of multiple components or services in a workflow.
+
+### Output Parser
+A component that converts unstructured LLM outputs into structured data formats.
+
+## P
+
+### Parallel Node
+A node that executes multiple child nodes concurrently.
+
+```python
+parallel = ParallelNode([NodeA(), NodeB(), NodeC()])
+```
+
+### Parser
+A component that converts text into structured data, often used with LLM outputs.
+
+### Pipeline
+A series of processing steps, synonymous with workflow or chain in Nadoo.
+
+### Prompt
+The text input provided to a language model to generate a response.
+
+### Prompt Template
+A reusable pattern for creating prompts with variable placeholders.
+
+## R
+
+### RAG (Retrieval-Augmented Generation)
+A technique combining information retrieval with LLM generation to provide accurate, context-aware responses.
+
+### Rate Limiting
+Controlling the frequency of operations to avoid exceeding service limits.
+
+### Retry Node
+A node that automatically retries failed operations with configurable backoff.
+
+### Router
+A node that directs data to different paths based on conditions.
+
+## S
+
+### Schema
+A definition of the structure and types of data, often using Pydantic models.
+
+### Semantic Search
+Finding relevant information based on meaning rather than exact keyword matches.
+
+### Streaming
+Sending data in chunks as it becomes available rather than waiting for complete processing.
+
+```python
+async for chunk in streaming_node.stream_execute(data):
+    print(chunk)
+```
+
+### System Prompt
+Instructions given to an LLM defining its role, behavior, and constraints.
+
+## T
+
+### Temperature
+A parameter controlling the randomness of LLM outputs (0 = deterministic, 1 = creative).
+
+### Token
+The basic unit of text for LLMs. A token is roughly 4 characters or 0.75 words.
+
+### Tool
+A function or capability that an LLM can use to perform specific tasks (e.g., web search, calculations).
+
+## V
+
+### Validation
+Checking that data meets specified requirements before processing.
+
+### Vector
+A numerical array representing text or other data in high-dimensional space.
+
+### Vector Database
+A database optimized for storing and searching vectors (e.g., for semantic search).
+
+### Vector Store
+A component that manages vector storage and retrieval operations.
+
+## W
+
+### Webhook
+An HTTP endpoint that receives notifications when events occur.
+
+### Workflow
+A connected sequence of nodes that process data to accomplish a specific task.
+
+### Workflow Context
+Global state and metadata shared across all nodes in a workflow execution.
+
+## Common Abbreviations
+
+| Abbreviation | Full Term |
+|--------------|-----------|
+| **AI** | Artificial Intelligence |
+| **API** | Application Programming Interface |
+| **CLI** | Command Line Interface |
+| **DAG** | Directed Acyclic Graph |
+| **GPT** | Generative Pre-trained Transformer |
+| **HITL** | Human-in-the-Loop |
+| **LLM** | Large Language Model |
+| **ML** | Machine Learning |
+| **NLP** | Natural Language Processing |
+| **OCR** | Optical Character Recognition |
+| **RAG** | Retrieval-Augmented Generation |
+| **REST** | Representational State Transfer |
+| **SDK** | Software Development Kit |
+| **UI** | User Interface |
+| **UX** | User Experience |
+| **VPC** | Virtual Private Cloud |
+
+## Code Examples
+
+### Basic Workflow
+```python
+from nadoo_flow import LLMNode, FunctionNode
+
+workflow = (
+    FunctionNode(lambda x: {"prompt": x["input"]})
+    | LLMNode(model="gpt-4")
+    | FunctionNode(lambda x: {"result": x["content"]})
+)
+
+result = await workflow.execute({"input": "Hello"})
+```
+
+### Custom Node
+```python
+from nadoo_flow import ChainableNode
+
+class CustomNode(ChainableNode):
+    async def execute(self, data):
+        # Your processing logic
+        return {"processed": data}
+```
+
+### Parallel Execution
+```python
+from nadoo_flow import ParallelNode
+
+parallel = ParallelNode([
+    LLMNode(model="gpt-4", name="summarizer"),
+    LLMNode(model="gpt-4", name="translator"),
+    LLMNode(model="gpt-4", name="classifier")
+])
+
+results = await parallel.execute(data)
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Complete API documentation
+  </Card>
+  <Card title="Examples" icon="book-open" href="/examples/overview">
+    Practical code examples
+  </Card>
+  <Card title="Best Practices" icon="lightbulb" href="/resources/best-practices">
+    Recommended patterns
+  </Card>
+  <Card title="FAQ" icon="question" href="/resources/faq">
+    Frequently asked questions
+  </Card>
+</CardGroup>

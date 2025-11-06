@@ -1,0 +1,493 @@
+---
+title: 'parallel'
+description: 'API reference for parallel and concurrent execution'
+sidebarTitle: 'parallel'
+'og:title': 'Parallel Module - Nadoo Flow Core API'
+icon: 'timeline'
+---
+
+## Overview
+
+The `parallel` module provides classes and utilities for concurrent node execution.
+
+## Classes
+
+### ParallelNode
+
+Execute multiple nodes concurrently.
+
+```python
+from nadoo_flow import ParallelNode
+
+parallel = ParallelNode([
+    NodeA(),
+    NodeB(),
+    NodeC()
+])
+
+results = await parallel.run(input_data)
+```
+
+#### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `nodes` | `List[BaseNode]` | Yes | Nodes to execute in parallel |
+| `max_concurrency` | `int` | No | Maximum concurrent executions (default: None) |
+| `aggregation_strategy` | `str` | No | How to combine results ("merge", "list", "first") |
+| `fail_fast` | `bool` | No | Stop on first failure (default: False) |
+
+#### Methods
+
+##### execute
+
+Execute all nodes in parallel.
+
+```python
+async def execute(
+    node_context: NodeContext,
+    workflow_context: WorkflowContext
+) -> NodeResult
+```
+
+**Returns:**
+- `NodeResult` with aggregated outputs
+
+##### add_node
+
+Add a node to parallel execution.
+
+```python
+def add_node(node: BaseNode) -> None
+```
+
+##### remove_node
+
+Remove a node from parallel execution.
+
+```python
+def remove_node(node_id: str) -> None
+```
+
+---
+
+### FanOutFanInNode
+
+Execute a single node on multiple data items in parallel.
+
+```python
+from nadoo_flow import FanOutFanInNode
+
+fan_out_fan_in = FanOutFanInNode(
+    processor=ProcessorNode(),
+    max_concurrency=10
+)
+
+results = await fan_out_fan_in.run({"items": items_list})
+```
+
+#### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `processor` | `BaseNode` | Yes | Node to apply to each item |
+| `max_concurrency` | `int` | No | Max parallel items (default: 10) |
+| `batch_size` | `int` | No | Items per batch (default: None) |
+| `item_key` | `str` | No | Key for items in input (default: "items") |
+
+#### Methods
+
+##### execute
+
+Process items in parallel.
+
+```python
+async def execute(
+    node_context: NodeContext,
+    workflow_context: WorkflowContext
+) -> NodeResult
+```
+
+**Input Format:**
+```python
+{
+    "items": [item1, item2, item3, ...]
+}
+```
+
+**Output Format:**
+```python
+{
+    "processed": [result1, result2, result3, ...],
+    "failed": [{"item": item, "error": error}, ...],
+    "total": 100,
+    "success_count": 95,
+    "failure_count": 5
+}
+```
+
+---
+
+### MapReduceNode
+
+Map-reduce pattern implementation.
+
+```python
+from nadoo_flow import MapReduceNode
+
+map_reduce = MapReduceNode(
+    mapper=MapperNode(),
+    reducer=ReducerNode(),
+    chunk_size=100
+)
+```
+
+#### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `mapper` | `BaseNode` | Yes | Node for map phase |
+| `reducer` | `BaseNode` | Yes | Node for reduce phase |
+| `chunk_size` | `int` | No | Items per chunk (default: 10) |
+| `max_mappers` | `int` | No | Max parallel mappers |
+
+---
+
+### RaceNode
+
+Return result from first node to complete successfully.
+
+```python
+from nadoo_flow import RaceNode
+
+race = RaceNode([
+    FastAPINode(),
+    SlowAPINode(),
+    FallbackNode()
+])
+
+# Returns first successful result
+result = await race.run(input_data)
+```
+
+#### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `nodes` | `List[BaseNode]` | Yes | Nodes to race |
+| `timeout` | `float` | No | Overall timeout in seconds |
+| `cancel_others` | `bool` | No | Cancel remaining on success (default: True) |
+
+---
+
+## Aggregation Strategies
+
+### MergeAggregator
+
+Merge outputs into single dictionary.
+
+```python
+from nadoo_flow.parallel import MergeAggregator
+
+aggregator = MergeAggregator(
+    conflict_resolution="last"  # "first", "last", "error"
+)
+
+merged = aggregator.aggregate(results)
+```
+
+### ListAggregator
+
+Collect outputs as list.
+
+```python
+from nadoo_flow.parallel import ListAggregator
+
+aggregator = ListAggregator(
+    filter_none=True,
+    flatten=False
+)
+
+listed = aggregator.aggregate(results)
+```
+
+### CustomAggregator
+
+Define custom aggregation logic.
+
+```python
+from nadoo_flow.parallel import CustomAggregator
+
+class SumAggregator(CustomAggregator):
+    def aggregate(self, results):
+        total = 0
+        for result in results:
+            if result.success:
+                total += result.output.get("value", 0)
+        return {"total": total}
+```
+
+---
+
+## Concurrency Control
+
+### Semaphore
+
+Control concurrent executions.
+
+```python
+from nadoo_flow.parallel import create_semaphore
+
+semaphore = create_semaphore(max_concurrent=5)
+
+async with semaphore:
+    # Only 5 concurrent executions allowed
+    await node.execute()
+```
+
+### DynamicConcurrency
+
+Adjust concurrency based on system load.
+
+```python
+from nadoo_flow.parallel import DynamicConcurrency
+
+concurrency = DynamicConcurrency(
+    min_concurrent=1,
+    max_concurrent=20,
+    target_cpu_usage=0.7
+)
+
+current_limit = await concurrency.get_limit()
+```
+
+---
+
+## Usage Patterns
+
+### Basic Parallel Execution
+
+```python
+from nadoo_flow import ParallelNode, BaseNode
+
+class DataFetcher(BaseNode):
+    def __init__(self, source):
+        self.source = source
+        super().__init__(node_id=f"fetch_{source}")
+
+    async def execute(self, node_context, workflow_context):
+        data = await fetch_from_source(self.source)
+        return NodeResult(success=True, output={self.source: data})
+
+# Execute fetchers in parallel
+parallel = ParallelNode([
+    DataFetcher("database"),
+    DataFetcher("api"),
+    DataFetcher("cache")
+])
+
+results = await parallel.run({})
+```
+
+### Parallel Branches
+
+```python
+class ParallelBranches(BaseNode):
+    def __init__(self):
+        super().__init__(node_id="parallel_branches")
+
+        # Define branches
+        self.branches = ParallelNode([
+            self.create_email_branch(),
+            self.create_sms_branch(),
+            self.create_push_branch()
+        ])
+
+    async def execute(self, node_context, workflow_context):
+        return await self.branches.execute(node_context, workflow_context)
+
+    def create_email_branch(self):
+        return EmailPrepare() | EmailSend() | EmailLog()
+
+    def create_sms_branch(self):
+        return SMSPrepare() | SMSSend() | SMSLog()
+```
+
+### Batch Processing
+
+```python
+from nadoo_flow import FanOutFanInNode
+
+class ItemProcessor(BaseNode):
+    async def execute(self, node_context, workflow_context):
+        item = node_context.input_data
+        # Process item
+        result = await process_item(item)
+        return NodeResult(success=True, output=result)
+
+# Process items in parallel batches
+batch_processor = FanOutFanInNode(
+    processor=ItemProcessor(),
+    max_concurrency=20,
+    batch_size=100
+)
+
+# Process 1000 items
+items = [{"id": i, "data": f"item_{i}"} for i in range(1000)]
+results = await batch_processor.run({"items": items})
+
+print(f"Processed: {results['success_count']}/{results['total']}")
+```
+
+### Map-Reduce Example
+
+```python
+class WordMapper(BaseNode):
+    async def execute(self, node_context, workflow_context):
+        text_chunk = node_context.input_data["chunk"]
+        words = text_chunk.split()
+        word_counts = {}
+
+        for word in words:
+            word_counts[word] = word_counts.get(word, 0) + 1
+
+        return NodeResult(success=True, output={"counts": word_counts})
+
+class WordReducer(BaseNode):
+    async def execute(self, node_context, workflow_context):
+        all_counts = node_context.input_data["mapped_results"]
+        total_counts = {}
+
+        for counts in all_counts:
+            for word, count in counts["counts"].items():
+                total_counts[word] = total_counts.get(word, 0) + count
+
+        return NodeResult(success=True, output={"word_counts": total_counts})
+
+# Create map-reduce pipeline
+word_count = MapReduceNode(
+    mapper=WordMapper(),
+    reducer=WordReducer(),
+    chunk_size=1000
+)
+
+# Process large text
+result = await word_count.run({"data": large_text})
+```
+
+---
+
+## Error Handling
+
+### Partial Failure Handling
+
+```python
+class RobustParallelNode(ParallelNode):
+    def __init__(self, nodes, failure_threshold=0.5):
+        super().__init__(nodes)
+        self.failure_threshold = failure_threshold
+
+    async def execute(self, node_context, workflow_context):
+        results = await super().execute(node_context, workflow_context)
+
+        successful = [r for r in results if r.success]
+        failed = [r for r in results if not r.success]
+
+        success_rate = len(successful) / len(results)
+
+        if success_rate >= self.failure_threshold:
+            return NodeResult(
+                success=True,
+                output={
+                    "successful": successful,
+                    "failed": failed,
+                    "success_rate": success_rate
+                }
+            )
+        else:
+            return NodeResult(
+                success=False,
+                error=f"Too many failures: {len(failed)}/{len(results)}"
+            )
+```
+
+---
+
+## Performance Monitoring
+
+### ParallelMetrics
+
+Track parallel execution metrics.
+
+```python
+from nadoo_flow.parallel import ParallelMetrics
+
+metrics = ParallelMetrics()
+
+parallel = ParallelNode(
+    nodes=[...],
+    metrics_collector=metrics
+)
+
+await parallel.run(input_data)
+
+stats = metrics.get_statistics()
+print(f"Average execution time: {stats['avg_execution_time']}")
+print(f"Throughput: {stats['throughput']} nodes/sec")
+```
+
+---
+
+## Configuration
+
+### ParallelConfig
+
+Configure parallel execution behavior.
+
+```python
+from nadoo_flow.parallel import ParallelConfig
+
+config = ParallelConfig(
+    max_concurrency=50,
+    timeout_per_node=30,
+    retry_failed=True,
+    retry_count=3,
+    fail_fast=False,
+    collect_metrics=True
+)
+
+parallel = ParallelNode(nodes, config=config)
+```
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Set Concurrency Limits">
+    Always set appropriate concurrency limits to avoid overwhelming resources.
+    ```python
+    parallel = ParallelNode(nodes, max_concurrency=10)
+    ```
+  </Accordion>
+  <Accordion title="Handle Partial Failures">
+    Decide how to handle scenarios where some nodes succeed and others fail.
+  </Accordion>
+  <Accordion title="Monitor Resource Usage">
+    Track CPU and memory usage when running many parallel operations.
+  </Accordion>
+  <Accordion title="Use Timeouts">
+    Set timeouts to prevent hanging operations.
+    ```python
+    race = RaceNode(nodes, timeout=60)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## See Also
+
+- [Parallel Execution](/flow-core/advanced/parallel) - Parallel concepts
+- [Streaming](/flow-core/api-reference/streaming) - Streaming API
+- [Resilience](/flow-core/api-reference/resilience) - Resilience patterns API

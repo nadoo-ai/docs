@@ -1,0 +1,389 @@
+---
+title: 'API Reference'
+description: 'Complete reference for Nadoo AI API endpoints'
+---
+
+## Base URL
+
+All API requests should be made to:
+
+```
+https://api.nadoo.ai/v1
+```
+
+<Note>
+  For enterprise customers, custom endpoints may be available. Contact support for details.
+</Note>
+
+## Authentication
+
+Nadoo AI uses API keys for authentication. Include your API key in the request headers:
+
+```bash
+curl https://api.nadoo.ai/v1/models \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+<Warning>
+  Keep your API keys secure and never expose them in client-side code.
+</Warning>
+
+## Request Format
+
+### Headers
+
+All requests must include these headers:
+
+| Header | Value | Required |
+|--------|-------|----------|
+| Authorization | Bearer YOUR_API_KEY | Yes |
+| Content-Type | application/json | Yes |
+| Accept | application/json | Yes |
+| X-Organization | org_id | No |
+
+### Request Body
+
+POST requests should send JSON-encoded parameters:
+
+```json
+{
+  "model": "nadoo-gpt-4",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello!"
+    }
+  ],
+  "temperature": 0.7
+}
+```
+
+## Response Format
+
+### Successful Response
+
+```json
+{
+  "id": "resp_abc123",
+  "object": "completion",
+  "created": 1699123456,
+  "model": "nadoo-gpt-4",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Hello! How can I help you today?"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 20,
+    "total_tokens": 30
+  }
+}
+```
+
+### Error Response
+
+```json
+{
+  "error": {
+    "type": "invalid_request_error",
+    "message": "Invalid API key provided",
+    "code": "invalid_api_key",
+    "param": null
+  }
+}
+```
+
+## Rate Limits
+
+API rate limits vary by plan:
+
+<Tabs>
+  <Tab title="Free Tier">
+    - **Requests per minute**: 20
+    - **Tokens per minute**: 40,000
+    - **Concurrent requests**: 1
+  </Tab>
+  <Tab title="Starter">
+    - **Requests per minute**: 60
+    - **Tokens per minute**: 100,000
+    - **Concurrent requests**: 3
+  </Tab>
+  <Tab title="Pro">
+    - **Requests per minute**: 300
+    - **Tokens per minute**: 500,000
+    - **Concurrent requests**: 10
+  </Tab>
+  <Tab title="Enterprise">
+    - **Requests per minute**: Custom
+    - **Tokens per minute**: Custom
+    - **Concurrent requests**: Custom
+  </Tab>
+</Tabs>
+
+### Rate Limit Headers
+
+Each response includes rate limit information:
+
+```http
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 45
+X-RateLimit-Reset: 1699123456
+X-RateLimit-Reset-After: 42
+```
+
+## Error Codes
+
+<AccordionGroup>
+  <Accordion title="400 Bad Request">
+    The request was invalid or malformed.
+    ```json
+    {
+      "error": {
+        "type": "invalid_request_error",
+        "message": "Missing required parameter: model"
+      }
+    }
+    ```
+  </Accordion>
+  <Accordion title="401 Unauthorized">
+    Authentication failed.
+    ```json
+    {
+      "error": {
+        "type": "authentication_error",
+        "message": "Invalid API key"
+      }
+    }
+    ```
+  </Accordion>
+  <Accordion title="403 Forbidden">
+    The API key doesn't have permissions for this operation.
+    ```json
+    {
+      "error": {
+        "type": "permission_error",
+        "message": "Your API key does not have access to this model"
+      }
+    }
+    ```
+  </Accordion>
+  <Accordion title="404 Not Found">
+    The requested resource doesn't exist.
+    ```json
+    {
+      "error": {
+        "type": "not_found_error",
+        "message": "Model not found"
+      }
+    }
+    ```
+  </Accordion>
+  <Accordion title="429 Too Many Requests">
+    Rate limit exceeded.
+    ```json
+    {
+      "error": {
+        "type": "rate_limit_error",
+        "message": "Rate limit exceeded. Please retry after 60 seconds"
+      }
+    }
+    ```
+  </Accordion>
+  <Accordion title="500 Internal Server Error">
+    Server error. Retry with exponential backoff.
+    ```json
+    {
+      "error": {
+        "type": "server_error",
+        "message": "Internal server error"
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Pagination
+
+List endpoints support pagination:
+
+```bash
+curl "https://api.nadoo.ai/v1/models?limit=10&offset=20" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Pagination Parameters
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| limit | integer | Number of items to return | 20 |
+| offset | integer | Number of items to skip | 0 |
+| order | string | Sort order (asc/desc) | desc |
+
+### Pagination Response
+
+```json
+{
+  "data": [...],
+  "has_more": true,
+  "total": 150,
+  "limit": 20,
+  "offset": 20
+}
+```
+
+## Idempotency
+
+Ensure request idempotency by including an idempotency key:
+
+```bash
+curl https://api.nadoo.ai/v1/completions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Idempotency-Key: unique-request-id" \
+  -d '{"model": "nadoo-gpt-4", "prompt": "Hello"}'
+```
+
+<Info>
+  Idempotency keys are stored for 24 hours. Repeated requests with the same key return the original response.
+</Info>
+
+## Versioning
+
+The API version is included in the URL path. The current version is `v1`.
+
+### Version Header
+
+You can also specify the version via header:
+
+```bash
+curl https://api.nadoo.ai/completions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "API-Version: 2024-01"
+```
+
+### Deprecation Policy
+
+- APIs are supported for at least 12 months after deprecation announcement
+- Deprecated endpoints return a `Deprecation` header
+- Migration guides are provided for breaking changes
+
+## Available Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Models" icon="brain">
+    List and retrieve available models
+    ```
+    GET /v1/models
+    GET /v1/models/{model_id}
+    ```
+  </Card>
+  <Card title="Completions" icon="message">
+    Generate text completions
+    ```
+    POST /v1/completions
+    POST /v1/chat/completions
+    ```
+  </Card>
+  <Card title="Embeddings" icon="vector-square">
+    Create text embeddings
+    ```
+    POST /v1/embeddings
+    ```
+  </Card>
+  <Card title="Images" icon="image">
+    Generate and edit images
+    ```
+    POST /v1/images/generations
+    POST /v1/images/edits
+    ```
+  </Card>
+  <Card title="Audio" icon="microphone">
+    Transcribe and translate audio
+    ```
+    POST /v1/audio/transcriptions
+    POST /v1/audio/translations
+    ```
+  </Card>
+  <Card title="Fine-tuning" icon="sliders">
+    Fine-tune models
+    ```
+    POST /v1/fine-tunes
+    GET /v1/fine-tunes/{fine_tune_id}
+    ```
+  </Card>
+</CardGroup>
+
+## SDKs and Libraries
+
+Official SDKs are available for popular languages:
+
+<Tabs>
+  <Tab title="Node.js">
+    ```bash
+    npm install @nadoo-ai/sdk
+    ```
+    [View on GitHub](https://github.com/nadoo-ai/nadoo-node)
+  </Tab>
+  <Tab title="Python">
+    ```bash
+    pip install nadoo-ai
+    ```
+    [View on GitHub](https://github.com/nadoo-ai/nadoo-python)
+  </Tab>
+  <Tab title="Go">
+    ```bash
+    go get github.com/nadoo-ai/nadoo-go
+    ```
+    [View on GitHub](https://github.com/nadoo-ai/nadoo-go)
+  </Tab>
+  <Tab title="Ruby">
+    ```bash
+    gem install nadoo-ai
+    ```
+    [View on GitHub](https://github.com/nadoo-ai/nadoo-ruby)
+  </Tab>
+</Tabs>
+
+## Testing
+
+### Sandbox Environment
+
+Test your integration using our sandbox:
+
+```
+https://sandbox-api.nadoo.ai/v1
+```
+
+<Note>
+  Sandbox API keys start with `sk_test_`. Data in sandbox is cleared daily.
+</Note>
+
+### Postman Collection
+
+Import our Postman collection for easy testing:
+
+<Card title="Postman Collection" icon="rocket" href="https://www.postman.com/nadoo-ai/workspace/nadoo-api">
+  Test API endpoints interactively
+</Card>
+
+## Support
+
+<CardGroup cols={2}>
+  <Card title="API Status" icon="signal" href="https://status.nadoo.ai">
+    Check service status and incidents
+  </Card>
+  <Card title="Developer Forum" icon="comments" href="https://forum.nadoo.ai">
+    Get help from the community
+  </Card>
+  <Card title="Support Portal" icon="headset" href="https://support.nadoo.ai">
+    Contact technical support
+  </Card>
+  <Card title="Changelog" icon="list" href="https://changelog.nadoo.ai">
+    View API updates and changes
+  </Card>
+</CardGroup>

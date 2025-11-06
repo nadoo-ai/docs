@@ -1,0 +1,18 @@
+{
+  "name": "docs",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "mintlify dev",
+    "build": "mintlify build",
+    "preview": "mintlify preview",
+    "deploy": "mintlify deploy",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "devDependencies": {
+    "mintlify": "^4.2.187"
+  }
+}

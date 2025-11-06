@@ -1,0 +1,335 @@
+---
+title: 'Installation'
+description: 'Install Nadoo AI SDK in your project'
+---
+
+## Installation Methods
+
+Choose your preferred method to install the Nadoo AI SDK.
+
+### Package Managers
+
+<Tabs>
+  <Tab title="Node.js">
+    <CodeGroup>
+    ```bash npm
+    npm install @nadoo-ai/sdk
+    ```
+
+    ```bash yarn
+    yarn add @nadoo-ai/sdk
+    ```
+
+    ```bash pnpm
+    pnpm add @nadoo-ai/sdk
+    ```
+
+    ```bash bun
+    bun add @nadoo-ai/sdk
+    ```
+    </CodeGroup>
+  </Tab>
+  <Tab title="Python">
+    ```bash
+    pip install nadoo-ai
+    ```
+
+    Or using Poetry:
+    ```bash
+    poetry add nadoo-ai
+    ```
+  </Tab>
+  <Tab title="Go">
+    ```bash
+    go get github.com/nadoo-ai/nadoo-go
+    ```
+  </Tab>
+  <Tab title="Ruby">
+    ```bash
+    gem install nadoo-ai
+    ```
+
+    Or add to Gemfile:
+    ```ruby
+    gem 'nadoo-ai'
+    ```
+  </Tab>
+</Tabs>
+
+## System Requirements
+
+### Minimum Requirements
+
+<CardGroup cols={2}>
+  <Card title="Node.js" icon="node">
+    Version 18.0 or higher
+  </Card>
+  <Card title="Python" icon="python">
+    Version 3.8 or higher
+  </Card>
+  <Card title="Go" icon="golang">
+    Version 1.19 or higher
+  </Card>
+  <Card title="Ruby" icon="gem">
+    Version 3.0 or higher
+  </Card>
+</CardGroup>
+
+### Operating System Support
+
+<Info>
+  Nadoo AI SDK supports all major operating systems.
+</Info>
+
+- ✅ macOS 11.0+
+- ✅ Windows 10+ (including WSL2)
+- ✅ Ubuntu 20.04+
+- ✅ Debian 10+
+- ✅ CentOS 8+
+- ✅ Alpine Linux 3.14+
+
+## Verification
+
+After installation, verify that everything is working correctly:
+
+<CodeGroup>
+
+```javascript Node.js
+const { NadooAI } = require('@nadoo-ai/sdk');
+
+const client = new NadooAI({
+  apiKey: 'test-key'
+});
+
+console.log('Nadoo AI SDK version:', client.version);
+```
+
+```python Python
+import nadoo_ai
+
+client = nadoo_ai.Client(api_key="test-key")
+print(f"Nadoo AI SDK version: {nadoo_ai.__version__}")
+```
+
+```go Go
+package main
+
+import (
+    "fmt"
+    nadoo "github.com/nadoo-ai/nadoo-go"
+)
+
+func main() {
+    client := nadoo.NewClient("test-key")
+    fmt.Printf("Nadoo AI SDK initialized: %v\n", client)
+}
+```
+
+</CodeGroup>
+
+## Docker Installation
+
+For containerized environments:
+
+```dockerfile
+# Node.js example
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY . .
+
+ENV NADOO_API_KEY=your_api_key_here
+
+CMD ["node", "index.js"]
+```
+
+<Accordion title="Docker Compose Example">
+```yaml
+version: '3.8'
+
+services:
+  app:
+    build: .
+    environment:
+      - NADOO_API_KEY=${NADOO_API_KEY}
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+```
+</Accordion>
+
+## Cloud Deployments
+
+### Serverless Functions
+
+<Tabs>
+  <Tab title="AWS Lambda">
+    ```javascript
+    // handler.js
+    const { NadooAI } = require('@nadoo-ai/sdk');
+
+    const client = new NadooAI({
+      apiKey: process.env.NADOO_API_KEY
+    });
+
+    exports.handler = async (event) => {
+      const response = await client.completions.create({
+        model: "nadoo-gpt-4",
+        prompt: event.prompt
+      });
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify(response)
+      };
+    };
+    ```
+  </Tab>
+  <Tab title="Vercel">
+    ```javascript
+    // api/nadoo.js
+    import { NadooAI } from '@nadoo-ai/sdk';
+
+    const client = new NadooAI({
+      apiKey: process.env.NADOO_API_KEY
+    });
+
+    export default async function handler(req, res) {
+      const response = await client.completions.create({
+        model: "nadoo-gpt-4",
+        prompt: req.body.prompt
+      });
+
+      res.status(200).json(response);
+    }
+    ```
+  </Tab>
+  <Tab title="Netlify">
+    ```javascript
+    // netlify/functions/nadoo.js
+    const { NadooAI } = require('@nadoo-ai/sdk');
+
+    exports.handler = async (event) => {
+      const client = new NadooAI({
+        apiKey: process.env.NADOO_API_KEY
+      });
+
+      const { prompt } = JSON.parse(event.body);
+
+      const response = await client.completions.create({
+        model: "nadoo-gpt-4",
+        prompt: prompt
+      });
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify(response)
+      };
+    };
+    ```
+  </Tab>
+</Tabs>
+
+## TypeScript Support
+
+The SDK includes TypeScript definitions out of the box:
+
+```typescript
+import { NadooAI, CompletionResponse } from '@nadoo-ai/sdk';
+
+const client = new NadooAI({
+  apiKey: process.env.NADOO_API_KEY as string
+});
+
+async function generateText(prompt: string): Promise<CompletionResponse> {
+  return await client.completions.create({
+    model: "nadoo-gpt-4",
+    prompt: prompt,
+    maxTokens: 100,
+    temperature: 0.7
+  });
+}
+```
+
+## Troubleshooting Installation
+
+<AccordionGroup>
+  <Accordion title="Permission Denied">
+    If you encounter permission errors, try:
+    ```bash
+    sudo npm install -g @nadoo-ai/sdk
+    # Or use a Node version manager like nvm
+    ```
+  </Accordion>
+  <Accordion title="Network Issues">
+    Behind a corporate proxy? Configure npm:
+    ```bash
+    npm config set proxy http://proxy.company.com:8080
+    npm config set https-proxy http://proxy.company.com:8080
+    ```
+  </Accordion>
+  <Accordion title="Version Conflicts">
+    Clear your package cache:
+    ```bash
+    npm cache clean --force
+    rm -rf node_modules package-lock.json
+    npm install
+    ```
+  </Accordion>
+  <Accordion title="Build Failures">
+    Install build tools:
+    ```bash
+    # macOS
+    xcode-select --install
+
+    # Ubuntu/Debian
+    sudo apt-get install build-essential
+
+    # Windows
+    npm install --global windows-build-tools
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Platform-Specific Notes
+
+<Warning>
+  Some platforms may require additional configuration.
+</Warning>
+
+### Windows
+
+- Use PowerShell or Command Prompt as Administrator for global installations
+- Consider using WSL2 for better compatibility
+
+### macOS
+
+- Ensure Xcode Command Line Tools are installed
+- May need to allow terminal access in System Preferences > Security & Privacy
+
+### Linux
+
+- May require sudo for global installations
+- Ensure you have proper SSL certificates installed
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/essentials/configuration">
+    Configure the SDK for your needs
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Build your first application
+  </Card>
+  <Card title="API Reference" icon="book" href="/api-reference/introduction">
+    Explore available endpoints
+  </Card>
+  <Card title="Support" icon="life-ring" href="mailto:support@nadoo.ai">
+    Get help from our team
+  </Card>
+</CardGroup>

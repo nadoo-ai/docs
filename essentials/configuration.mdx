@@ -1,0 +1,441 @@
+---
+title: 'Configuration'
+description: 'Configure Nadoo AI SDK for your application'
+---
+
+## Configuration Options
+
+The Nadoo AI SDK provides extensive configuration options to customize behavior for your specific needs.
+
+## Basic Configuration
+
+### Environment Variables
+
+The recommended way to configure the SDK is through environment variables:
+
+```bash .env
+# Required
+NADOO_API_KEY=your_api_key_here
+
+# Optional
+NADOO_API_URL=https://api.nadoo.ai/v1
+NADOO_TIMEOUT=30000
+NADOO_MAX_RETRIES=3
+NADOO_ORG_ID=your_organization_id
+```
+
+<Warning>
+  Never commit `.env` files to version control. Add `.env` to your `.gitignore` file.
+</Warning>
+
+### SDK Initialization
+
+<CodeGroup>
+
+```javascript Node.js
+const { NadooAI } = require('@nadoo-ai/sdk');
+
+const client = new NadooAI({
+  apiKey: process.env.NADOO_API_KEY,
+  baseURL: process.env.NADOO_API_URL,
+  timeout: parseInt(process.env.NADOO_TIMEOUT),
+  maxRetries: parseInt(process.env.NADOO_MAX_RETRIES),
+  organization: process.env.NADOO_ORG_ID
+});
+```
+
+```python Python
+import os
+from nadoo_ai import Client
+
+client = Client(
+    api_key=os.getenv("NADOO_API_KEY"),
+    base_url=os.getenv("NADOO_API_URL"),
+    timeout=int(os.getenv("NADOO_TIMEOUT", 30000)),
+    max_retries=int(os.getenv("NADOO_MAX_RETRIES", 3)),
+    organization=os.getenv("NADOO_ORG_ID")
+)
+```
+
+```typescript TypeScript
+import { NadooAI, NadooAIConfig } from '@nadoo-ai/sdk';
+
+const config: NadooAIConfig = {
+  apiKey: process.env.NADOO_API_KEY!,
+  baseURL: process.env.NADOO_API_URL,
+  timeout: Number(process.env.NADOO_TIMEOUT),
+  maxRetries: Number(process.env.NADOO_MAX_RETRIES),
+  organization: process.env.NADOO_ORG_ID
+};
+
+const client = new NadooAI(config);
+```
+
+</CodeGroup>
+
+## Advanced Configuration
+
+### Request Configuration
+
+Configure individual requests with specific options:
+
+```javascript
+const response = await client.completions.create({
+  model: "nadoo-gpt-4",
+  prompt: "Hello, world!",
+  // Request-specific configuration
+  config: {
+    timeout: 60000, // Override default timeout
+    headers: {
+      'X-Custom-Header': 'value'
+    },
+    retry: {
+      times: 5,
+      initialDelay: 1000,
+      maxDelay: 30000
+    }
+  }
+});
+```
+
+### Retry Strategy
+
+Customize retry behavior for failed requests:
+
+<Tabs>
+  <Tab title="Exponential Backoff">
+    ```javascript
+    const client = new NadooAI({
+      apiKey: process.env.NADOO_API_KEY,
+      retryConfig: {
+        strategy: 'exponential',
+        maxRetries: 5,
+        initialDelay: 1000,
+        maxDelay: 60000,
+        factor: 2
+      }
+    });
+    ```
+  </Tab>
+  <Tab title="Linear Backoff">
+    ```javascript
+    const client = new NadooAI({
+      apiKey: process.env.NADOO_API_KEY,
+      retryConfig: {
+        strategy: 'linear',
+        maxRetries: 3,
+        delay: 2000
+      }
+    });
+    ```
+  </Tab>
+  <Tab title="Custom Strategy">
+    ```javascript
+    const client = new NadooAI({
+      apiKey: process.env.NADOO_API_KEY,
+      retryConfig: {
+        strategy: 'custom',
+        shouldRetry: (error, attempt) => {
+          return attempt < 3 && error.status === 429;
+        },
+        getDelay: (attempt) => {
+          return Math.min(1000 * Math.pow(2, attempt), 30000);
+        }
+      }
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Proxy Configuration
+
+### HTTP/HTTPS Proxy
+
+Configure the SDK to work behind a corporate proxy:
+
+```javascript
+const { NadooAI } = require('@nadoo-ai/sdk');
+const { HttpsProxyAgent } = require('https-proxy-agent');
+
+const proxyAgent = new HttpsProxyAgent('http://proxy.company.com:8080');
+
+const client = new NadooAI({
+  apiKey: process.env.NADOO_API_KEY,
+  httpAgent: proxyAgent,
+  httpsAgent: proxyAgent
+});
+```
+
+### SOCKS Proxy
+
+For SOCKS proxy support:
+
+```javascript
+const { SocksProxyAgent } = require('socks-proxy-agent');
+
+const agent = new SocksProxyAgent('socks5://localhost:1080');
+
+const client = new NadooAI({
+  apiKey: process.env.NADOO_API_KEY,
+  httpAgent: agent,
+  httpsAgent: agent
+});
+```
+
+## Logging Configuration
+
+### Built-in Logger
+
+Enable detailed logging for debugging:
+
+```javascript
+const client = new NadooAI({
+  apiKey: process.env.NADOO_API_KEY,
+  debug: true,
+  logger: {
+    level: 'debug', // 'error' | 'warn' | 'info' | 'debug'
+    format: 'json', // 'json' | 'text'
+    output: process.stdout
+  }
+});
+```
+
+### Custom Logger Integration
+
+Integrate with your existing logging solution:
+
+<CodeGroup>
+
+```javascript Winston
+const winston = require('winston');
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.File({ filename: 'nadoo.log' })
+  ]
+});
+
+const client = new NadooAI({
+  apiKey: process.env.NADOO_API_KEY,
+  logger: {
+    log: (level, message, meta) => {
+      logger.log(level, message, meta);
+    }
+  }
+});
+```
+
+```javascript Pino
+const pino = require('pino');
+const logger = pino();
+
+const client = new NadooAI({
+  apiKey: process.env.NADOO_API_KEY,
+  logger: {
+    log: (level, message, meta) => {
+      logger[level]({ ...meta }, message);
+    }
+  }
+});
+```
+
+</CodeGroup>
+
+## Security Configuration
+
+### API Key Management
+
+<Info>
+  Use a secure key management service in production environments.
+</Info>
+
+<Tabs>
+  <Tab title="AWS Secrets Manager">
+    ```javascript
+    const { SecretsManager } = require('aws-sdk');
+    const sm = new SecretsManager();
+
+    async function getApiKey() {
+      const secret = await sm.getSecretValue({
+        SecretId: 'nadoo-api-key'
+      }).promise();
+      return JSON.parse(secret.SecretString).apiKey;
+    }
+
+    const client = new NadooAI({
+      apiKey: await getApiKey()
+    });
+    ```
+  </Tab>
+  <Tab title="Azure Key Vault">
+    ```javascript
+    const { SecretClient } = require('@azure/keyvault-secrets');
+    const { DefaultAzureCredential } = require('@azure/identity');
+
+    const credential = new DefaultAzureCredential();
+    const vaultUrl = 'https://vault.vault.azure.net';
+    const secretClient = new SecretClient(vaultUrl, credential);
+
+    async function getApiKey() {
+      const secret = await secretClient.getSecret('nadoo-api-key');
+      return secret.value;
+    }
+
+    const client = new NadooAI({
+      apiKey: await getApiKey()
+    });
+    ```
+  </Tab>
+</Tabs>
+
+### Request Signing
+
+Enable request signing for additional security:
+
+```javascript
+const crypto = require('crypto');
+
+const client = new NadooAI({
+  apiKey: process.env.NADOO_API_KEY,
+  requestSigner: (request) => {
+    const timestamp = Date.now().toString();
+    const signature = crypto
+      .createHmac('sha256', process.env.NADOO_SECRET_KEY)
+      .update(`${request.method}${request.url}${timestamp}`)
+      .digest('hex');
+
+    request.headers['X-Timestamp'] = timestamp;
+    request.headers['X-Signature'] = signature;
+
+    return request;
+  }
+});
+```
+
+## Performance Configuration
+
+### Connection Pooling
+
+Optimize connection management:
+
+```javascript
+const client = new NadooAI({
+  apiKey: process.env.NADOO_API_KEY,
+  connectionPool: {
+    maxSockets: 50,
+    maxFreeSockets: 10,
+    timeout: 60000,
+    keepAlive: true,
+    keepAliveMsecs: 30000
+  }
+});
+```
+
+### Response Caching
+
+Implement caching for identical requests:
+
+```javascript
+const NodeCache = require('node-cache');
+const cache = new NodeCache({ stdTTL: 600 });
+
+const client = new NadooAI({
+  apiKey: process.env.NADOO_API_KEY,
+  cache: {
+    get: (key) => cache.get(key),
+    set: (key, value, ttl) => cache.set(key, value, ttl),
+    delete: (key) => cache.del(key),
+    clear: () => cache.flushAll()
+  }
+});
+```
+
+## Rate Limiting
+
+Configure client-side rate limiting:
+
+```javascript
+const client = new NadooAI({
+  apiKey: process.env.NADOO_API_KEY,
+  rateLimit: {
+    maxRequests: 100,
+    perMilliseconds: 60000,
+    maxConcurrent: 10
+  }
+});
+```
+
+## Configuration Validation
+
+The SDK validates configuration on initialization:
+
+```javascript
+try {
+  const client = new NadooAI({
+    apiKey: process.env.NADOO_API_KEY,
+    validateConfig: true // Default: true
+  });
+} catch (error) {
+  if (error.code === 'INVALID_CONFIG') {
+    console.error('Configuration error:', error.message);
+  }
+}
+```
+
+## Environment-Specific Configuration
+
+<Accordion title="Development Configuration">
+```javascript
+const devConfig = {
+  apiKey: process.env.NADOO_API_KEY_DEV,
+  baseURL: 'https://dev-api.nadoo.ai/v1',
+  debug: true,
+  logger: { level: 'debug' },
+  timeout: 60000
+};
+```
+</Accordion>
+
+<Accordion title="Staging Configuration">
+```javascript
+const stagingConfig = {
+  apiKey: process.env.NADOO_API_KEY_STAGING,
+  baseURL: 'https://staging-api.nadoo.ai/v1',
+  debug: false,
+  logger: { level: 'info' },
+  timeout: 30000
+};
+```
+</Accordion>
+
+<Accordion title="Production Configuration">
+```javascript
+const prodConfig = {
+  apiKey: process.env.NADOO_API_KEY_PROD,
+  baseURL: 'https://api.nadoo.ai/v1',
+  debug: false,
+  logger: { level: 'error' },
+  timeout: 20000,
+  maxRetries: 5
+};
+```
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="book" href="/api-reference/introduction">
+    Explore available endpoints
+  </Card>
+  <Card title="Examples" icon="flask" href="/examples">
+    See configuration examples
+  </Card>
+  <Card title="Best Practices" icon="star" href="/best-practices">
+    Learn optimization techniques
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/troubleshooting">
+    Common configuration issues
+  </Card>
+</CardGroup>

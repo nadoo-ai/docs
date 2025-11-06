@@ -1,0 +1,255 @@
+---
+title: 'API Reference'
+description: 'Complete API documentation for Nadoo AI platform'
+sidebarTitle: 'Overview'
+'og:title': 'Nadoo AI API Reference'
+icon: 'code'
+---
+
+## API Documentation
+
+Comprehensive API reference for all Nadoo AI platform components.
+
+## Available APIs
+
+<CardGroup cols={2}>
+  <Card
+    title="Flow Core APIs"
+    icon="cube"
+    href="/api/flow-core/base"
+  >
+    **Open Source**
+
+    Python framework APIs for workflow orchestration
+  </Card>
+  <Card
+    title="Builder APIs"
+    icon="palette"
+    href="/api/builder/rest-api"
+  >
+    **Coming Soon**
+
+    REST APIs for the visual builder platform
+  </Card>
+</CardGroup>
+
+## Flow Core API Modules
+
+The Flow Core framework provides 14 main modules:
+
+### Core Modules
+
+| Module | Description | Status |
+|--------|-------------|--------|
+| [`base`](/api/flow-core/base) | Core types and workflow execution | ✅ Stable |
+| [`chain`](/api/flow-core/chain) | Chaining API with pipe operator | ✅ Stable |
+| [`parallel`](/api/flow-core/parallel) | Parallel and concurrent execution | ✅ Stable |
+| [`callbacks`](/api/flow-core/callbacks) | Event handling and observability | ✅ Stable |
+
+### Feature Modules
+
+| Module | Description | Status |
+|--------|-------------|--------|
+| [`memory`](/api/flow-core/memory) | Chat history and session management | ✅ Stable |
+| [`streaming`](/api/flow-core/streaming) | Real-time event streaming | ✅ Stable |
+| [`resilience`](/api/flow-core/resilience) | Retry and fallback patterns | ✅ Stable |
+| [`caching`](/api/flow-core/caching) | Response caching mechanisms | ✅ Stable |
+| [`rate_limiting`](/api/flow-core/rate-limiting) | API quota management | ✅ Stable |
+| [`batch`](/api/flow-core/batch) | Batch processing operations | ✅ Stable |
+| [`tools`](/api/flow-core/tools) | Tool registry and management | ✅ Stable |
+| [`parsers`](/api/flow-core/parsers) | Output parsing and extraction | ✅ Stable |
+| [`prompts`](/api/flow-core/prompts) | Prompt templates and formatting | ✅ Stable |
+| [`backends`](/api/flow-core/backends) | Multi-backend support | 🚧 In Progress |
+
+## API Conventions
+
+### Import Structure
+
+All public APIs are exposed through the main module:
+
+```python
+from nadoo_flow import (
+    # Core classes
+    ChainableNode,
+    WorkflowExecutor,
+    NodeResult,
+    WorkflowContext,
+    NodeContext,
+
+    # Helper nodes
+    FunctionNode,
+    PassthroughNode,
+
+    # Advanced features
+    ParallelNode,
+    RetryableNode,
+    CachedNode,
+
+    # And more...
+)
+```
+
+### Async-First Design
+
+All execution methods are async by default:
+
+```python
+# Async execution
+result = await node.execute(node_context, workflow_context)
+result = await workflow.run(input_data)
+
+# Streaming
+async for chunk in workflow.stream(input_data):
+    process(chunk)
+```
+
+### Type Safety
+
+All APIs use type hints and Pydantic models:
+
+```python
+from typing import Dict, Any, Optional
+from pydantic import BaseModel
+
+class NodeConfig(BaseModel):
+    timeout: float = 30.0
+    retries: int = 3
+    metadata: Optional[Dict[str, Any]] = None
+```
+
+### Error Handling
+
+Consistent error handling across all APIs:
+
+```python
+from nadoo_flow import NodeResult
+
+try:
+    # Your logic
+    return NodeResult(success=True, output=data)
+except Exception as e:
+    return NodeResult(
+        success=False,
+        error=str(e),
+        output={}
+    )
+```
+
+## Common Patterns
+
+### Node Definition
+
+```python
+from nadoo_flow import ChainableNode, NodeResult
+
+class MyNode(ChainableNode):
+    def __init__(self):
+        super().__init__(
+            node_id="my_node",
+            node_type="custom",
+            name="My Custom Node"
+        )
+
+    async def execute(self, node_context, workflow_context):
+        # Your logic here
+        return NodeResult(
+            success=True,
+            output={"result": "data"}
+        )
+```
+
+### Workflow Composition
+
+```python
+# Using pipe operator
+workflow = node1 | node2 | node3
+
+# Using WorkflowExecutor
+executor = WorkflowExecutor()
+executor.add_node(node1)
+executor.add_node(node2)
+executor.add_edge("node1", "node2")
+```
+
+### Context Management
+
+```python
+# Workflow context for global state
+context = WorkflowContext()
+context.set_global_variable("user_id", "123")
+
+# Node context for local state
+node_context.input_data  # Input from previous node
+node_context.output_data  # Output to next node
+```
+
+## API Stability
+
+We follow semantic versioning:
+
+- **Stable** (✅): No breaking changes without major version bump
+- **In Progress** (🚧): May have breaking changes in minor versions
+- **Experimental** (🔬): May change or be removed at any time
+
+## Quick Reference
+
+### Essential Classes
+
+| Class | Purpose | Module |
+|-------|---------|--------|
+| `ChainableNode` | Base class for custom nodes | `base` |
+| `WorkflowExecutor` | Workflow execution engine | `base` |
+| `NodeResult` | Node execution result | `base` |
+| `WorkflowContext` | Global workflow state | `base` |
+| `FunctionNode` | Wrap functions as nodes | `chain` |
+| `ParallelNode` | Parallel execution | `parallel` |
+
+### Key Methods
+
+| Method | Description | Returns |
+|--------|-------------|---------|
+| `node.run(input)` | Execute single node | `Dict[str, Any]` |
+| `node.stream(input)` | Stream node outputs | `AsyncIterator[Dict]` |
+| `workflow.execute(context)` | Execute workflow | `WorkflowContext` |
+| `chain.pipe(other)` | Chain nodes with `\|` | `NodeChain` |
+
+## Getting Started
+
+<Steps>
+  <Step title="Import the framework">
+    ```python
+    from nadoo_flow import ChainableNode, NodeResult
+    ```
+  </Step>
+  <Step title="Define your nodes">
+    ```python
+    class MyNode(ChainableNode):
+        async def execute(self, node_context, workflow_context):
+            return NodeResult(success=True, output={})
+    ```
+  </Step>
+  <Step title="Compose workflows">
+    ```python
+    workflow = MyNode() | ProcessNode() | OutputNode()
+    ```
+  </Step>
+  <Step title="Execute">
+    ```python
+    result = await workflow.run({"input": "data"})
+    ```
+  </Step>
+</Steps>
+
+## Support
+
+<CardGroup cols={3}>
+  <Card title="Examples" icon="flask" href="/examples/flow-core/basic-workflow">
+    Learn from code examples
+  </Card>
+  <Card title="GitHub" icon="github" href="https://github.com/nadoo-ai/nadoo-ai-kb">
+    View source code
+  </Card>
+  <Card title="Discord" icon="discord" href="https://discord.gg/nadoo-ai">
+    Get community help
+  </Card>
+</CardGroup>

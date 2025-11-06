@@ -1,0 +1,404 @@
+---
+title: 'Frequently Asked Questions'
+description: 'Common questions about Nadoo AI'
+sidebarTitle: 'FAQ'
+'og:title': 'FAQ - Nadoo AI'
+icon: 'question'
+---
+
+## General Questions
+
+### What is Nadoo AI?
+
+Nadoo AI is a platform for building AI agents and workflows, consisting of:
+- **Flow Core**: Open-source Python framework for workflow orchestration
+- **Builder**: Visual no-code platform for creating AI applications (enterprise preview)
+
+### Is Nadoo AI open source?
+
+**Flow Core** is fully open source and available on [GitHub](https://github.com/nadoo-ai).
+
+**Builder** is currently in enterprise preview and will have its source code organized and released publicly in the future.
+
+### What license does Nadoo Flow Core use?
+
+Nadoo Flow Core uses an MIT open source license, allowing free commercial use.
+
+### How does Nadoo compare to LangChain?
+
+Nadoo Flow Core is:
+- **Lighter**: Minimal dependencies (5 vs 47+ packages)
+- **Faster**: Async-native throughout
+- **Simpler**: Cleaner, more predictable API
+- **Focused**: Production-ready workflows vs rapid prototyping
+
+See our [comparison guide](/resources/comparison) for details.
+
+### Do I need to know Python to use Nadoo?
+
+- **Flow Core**: Yes, requires Python knowledge
+- **Builder**: No, provides visual no-code interface (coming soon)
+
+## Technical Questions
+
+### What Python version is required?
+
+Python 3.11 or higher is required for Nadoo Flow Core.
+
+```bash
+python --version  # Should be 3.11+
+```
+
+### Can I use Nadoo with async/await?
+
+Yes! Nadoo Flow Core is async-native by design. All node executions use `async`/`await`:
+
+```python
+result = await workflow.execute(data)
+```
+
+### Which LLM providers are supported?
+
+Currently supported:
+- OpenAI (GPT-3.5, GPT-4)
+- Anthropic Claude
+- Google Gemini
+
+Coming soon:
+- Azure OpenAI
+- Local models (Ollama, LM Studio)
+- Custom providers
+
+### Can I use Nadoo without LLMs?
+
+Absolutely! Nadoo Flow Core is a general workflow orchestration framework. You can build workflows using only custom nodes without any LLM calls.
+
+### Does Nadoo support streaming?
+
+Yes, Nadoo supports streaming responses:
+
+```python
+from nadoo_flow import StreamingNode
+
+async for chunk in streaming_node.stream_execute(data):
+    print(chunk["content"], end="", flush=True)
+```
+
+### Can I deploy Nadoo workflows in production?
+
+Yes! Nadoo is designed for production use with:
+- Async-first architecture
+- Minimal overhead
+- Error handling and retries
+- Monitoring and metrics support
+
+### Does Nadoo work with FastAPI?
+
+Yes, Nadoo integrates seamlessly with FastAPI:
+
+```python
+from fastapi import FastAPI
+from nadoo_flow import LLMNode
+
+app = FastAPI()
+workflow = LLMNode(model="gpt-4")
+
+@app.post("/chat")
+async def chat(message: str):
+    result = await workflow.execute({"message": message})
+    return {"response": result["content"]}
+```
+
+## Flow Core Questions
+
+### How do I create a custom node?
+
+Extend `ChainableNode` and implement the `execute` method:
+
+```python
+from nadoo_flow import ChainableNode
+
+class MyCustomNode(ChainableNode):
+    async def execute(self, data):
+        # Your logic here
+        return {"result": "processed"}
+```
+
+### How do I chain nodes together?
+
+Use the pipe operator (`|`):
+
+```python
+workflow = NodeA() | NodeB() | NodeC()
+result = await workflow.execute(input_data)
+```
+
+### How do I execute nodes in parallel?
+
+Use `ParallelNode`:
+
+```python
+from nadoo_flow import ParallelNode
+
+parallel = ParallelNode([NodeA(), NodeB(), NodeC()])
+results = await parallel.execute(data)
+```
+
+### Can I use conditional logic in workflows?
+
+Yes, use `ConditionalNode`:
+
+```python
+from nadoo_flow import ConditionalNode
+
+router = ConditionalNode()
+router.add_path("condition_a", PathA())
+router.add_path("condition_b", PathB())
+```
+
+### How do I handle errors?
+
+Use `ErrorHandlerNode` or try/except:
+
+```python
+from nadoo_flow import ErrorHandlerNode
+
+workflow = ErrorHandlerNode(
+    node=RiskyNode(),
+    fallback={"status": "failed"}
+)
+```
+
+### Can I retry failed operations?
+
+Yes, use `RetryNode`:
+
+```python
+from nadoo_flow import RetryNode
+
+workflow = RetryNode(
+    node=UnreliableNode(),
+    max_retries=3,
+    backoff_factor=2.0
+)
+```
+
+## Builder Questions
+
+### When will Builder be publicly available?
+
+Builder is currently in enterprise preview. Public release timeline will be announced once the platform reaches feature completeness. Join our [Discord](https://discord.gg/9gCsxSn6) for updates.
+
+### How do I get access to Builder?
+
+For enterprise access, contact: enterprise@nadoo.ai
+
+### Will Builder be open source?
+
+The plan is to organize and release Builder's source code publicly in the future, following the enterprise preview period.
+
+### Can I export workflows from Builder to Flow Core code?
+
+Yes! Builder workflows compile to Flow Core Python code, which you can export and customize.
+
+### Does Builder support version control?
+
+Yes, Builder includes:
+- Workflow versioning
+- Change tracking
+- Rollback capabilities
+- Git integration (planned)
+
+## Pricing Questions
+
+### Is Nadoo Flow Core free?
+
+Yes, Flow Core is fully open source and free to use, including for commercial projects.
+
+### What about LLM API costs?
+
+You pay only for the LLM API calls you make (OpenAI, Anthropic, etc.). Nadoo itself adds no additional costs.
+
+### Is there enterprise support?
+
+Yes, enterprise support is available. Contact: enterprise@nadoo.ai
+
+### Will Builder have a free tier?
+
+Pricing details for Builder will be announced closer to public release.
+
+## Migration Questions
+
+### Can I migrate from LangChain?
+
+Yes! See our [migration guide](/resources/migration) for detailed instructions and code examples.
+
+### Is migration from CrewAI possible?
+
+Yes, CrewAI workflows can be migrated to Nadoo. The migration guide covers this.
+
+### Will my existing code break if I migrate?
+
+Migration requires code changes, but you can:
+- Migrate incrementally
+- Keep both frameworks during transition
+- Use compatibility layers
+
+### How long does migration typically take?
+
+Depends on complexity:
+- Simple workflows: Hours to days
+- Medium complexity: 1-2 weeks
+- Large applications: Weeks to months
+
+## Performance Questions
+
+### Is Nadoo faster than LangChain?
+
+In our benchmarks:
+- Simple LLM chain: 27% faster
+- Parallel execution (5 tasks): 72% faster
+- Memory usage: 65% lower
+
+See [comparison guide](/resources/comparison) for details.
+
+### What's the maximum throughput?
+
+Depends on your infrastructure and LLM provider rate limits. Flow Core itself adds minimal overhead.
+
+### Does Nadoo support caching?
+
+Yes, you can implement caching at multiple levels:
+- LLM response caching
+- Function result caching
+- Database query caching
+
+### Can I scale Nadoo horizontally?
+
+Yes, Nadoo workflows are stateless and can run across multiple instances.
+
+## Integration Questions
+
+### Which databases are supported?
+
+Flow Core works with any database through custom nodes. Common integrations:
+- PostgreSQL
+- MySQL
+- MongoDB
+- Redis
+- Vector databases (Pinecone, Weaviate, etc.)
+
+### Can I integrate with external APIs?
+
+Yes, easily integrate any REST or GraphQL API:
+
+```python
+from nadoo_flow import APICallNode
+
+api_node = APICallNode(
+    url="https://api.example.com",
+    method="POST"
+)
+```
+
+### Does Nadoo support webhooks?
+
+Yes, you can trigger workflows via webhooks using FastAPI or similar frameworks.
+
+### Can I use Nadoo with Kubernetes?
+
+Yes, Nadoo works great in Kubernetes:
+- Stateless execution
+- Horizontal scaling
+- Health check support
+
+## Security Questions
+
+### How does Nadoo handle API keys?
+
+We recommend using environment variables:
+
+```python
+import os
+api_key = os.getenv("OPENAI_API_KEY")
+```
+
+Never hardcode keys in your code.
+
+### Is my data secure?
+
+Nadoo Flow Core runs entirely in your infrastructure. Your data never leaves your environment unless you explicitly send it to external APIs (like OpenAI).
+
+### Does Nadoo log sensitive information?
+
+Nadoo doesn't log data by default. Implement your own logging with appropriate filters for sensitive information.
+
+### Is Nadoo compliant with GDPR/HIPAA?
+
+Since Flow Core runs in your infrastructure, compliance depends on your implementation and deployment. Builder (enterprise) includes compliance features.
+
+## Community Questions
+
+### How can I contribute?
+
+Contributions are welcome!
+1. Check [GitHub Issues](https://github.com/nadoo-ai)
+2. Fork the repository
+3. Submit pull requests
+4. Join [Discord](https://discord.gg/9gCsxSn6) discussions
+
+### Where can I get help?
+
+- **Documentation**: [docs.nadoo.ai](https://docs.nadoo.ai)
+- **Discord**: [discord.gg/9gCsxSn6](https://discord.gg/9gCsxSn6)
+- **GitHub**: [github.com/nadoo-ai](https://github.com/nadoo-ai)
+- **Email**: support@nadoo.ai
+
+### Is there a community forum?
+
+Join our [Discord server](https://discord.gg/9gCsxSn6) for discussions, questions, and updates.
+
+### Are there any example projects?
+
+Yes! Check out:
+- [Examples](/examples/overview) in documentation
+- GitHub repository examples
+- Community Discord for shared projects
+
+## Roadmap Questions
+
+### What features are planned?
+
+See our [roadmap](/builder/roadmap) for details. Key items:
+- Additional LLM provider support
+- Multi-agent frameworks
+- Visual debugging tools
+- Enhanced monitoring
+
+### Can I request features?
+
+Yes! Submit feature requests via:
+- GitHub Issues
+- Discord feedback channel
+- Email: feedback@nadoo.ai
+
+### When will X feature be released?
+
+Check the [roadmap](/builder/roadmap) for planned features and estimated timelines.
+
+## Still Have Questions?
+
+<CardGroup cols={2}>
+  <Card title="Discord Community" icon="discord" href="https://discord.gg/9gCsxSn6">
+    Join our Discord for real-time help
+  </Card>
+  <Card title="GitHub Discussions" icon="github" href="https://github.com/nadoo-ai">
+    Browse and start discussions
+  </Card>
+  <Card title="Documentation" icon="book" href="/getting-started">
+    Read the full documentation
+  </Card>
+  <Card title="Contact Us" icon="envelope" href="mailto:support@nadoo.ai">
+    Email our support team
+  </Card>
+</CardGroup>

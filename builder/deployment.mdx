@@ -1,0 +1,486 @@
+---
+title: 'Deployment Guide'
+description: 'Deploy your AI workflows to production'
+sidebarTitle: 'Deployment'
+'og:title': 'Deployment - Nadoo Builder'
+icon: 'rocket'
+---
+
+<Warning>
+  **Enterprise Preview**: Deployment features are currently available for enterprise customers. Public deployment options will be announced in the future.
+</Warning>
+
+## Deployment Overview
+
+Deploy your Nadoo workflows from development to production with confidence. The platform supports multiple deployment targets and strategies.
+
+## Deployment Options
+
+<CardGroup cols={2}>
+  <Card title="Cloud support" icon="cloud">
+    **Coming Soon**
+
+    Fully managed cloud deployment with auto-scaling
+  </Card>
+  <Card title="On-Premise" icon="server">
+    **Available Now**
+
+    Deploy to your own infrastructure with full control
+  </Card>
+  <Card title="Hybrid" icon="arrows-split-up-and-left">
+    **Available Now**
+
+    Mix cloud and on-premise for optimal performance
+  </Card>
+  <Card title="Edge" icon="microchip">
+    **Roadmap**
+
+    Deploy to edge locations for low latency
+  </Card>
+</CardGroup>
+
+## Deployment Process
+
+<Steps>
+  <Step title="Prepare Workflow">
+    Validate and optimize your workflow for production
+  </Step>
+  <Step title="Configure Environment">
+    Set up environment variables and resources
+  </Step>
+  <Step title="Deploy">
+    Push to selected deployment target
+  </Step>
+  <Step title="Monitor">
+    Track performance and health metrics
+  </Step>
+  <Step title="Scale">
+    Adjust resources based on demand
+  </Step>
+</Steps>
+
+## On-Premise Deployment
+
+### System Requirements
+
+**Minimum Requirements**:
+- CPU: 4 cores
+- RAM: 16 GB
+- Storage: 100 GB SSD
+- OS: Ubuntu 20.04+ / RHEL 8+
+
+**Recommended for Production**:
+- CPU: 16+ cores
+- RAM: 64+ GB
+- Storage: 500 GB+ SSD
+- Network: 10 Gbps
+
+### Installation Steps
+
+```bash
+# Download Nadoo Platform installer
+curl -sSL https://nadoo.ai/install.sh | bash
+
+# Configure installation
+nadoo config init
+
+# Set deployment mode
+nadoo config set mode production
+
+# Install components
+nadoo install --components all
+
+# Start services
+nadoo start
+```
+
+### Docker Deployment
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+services:
+  nadoo-api:
+    image: nadoo/api:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://...
+      - REDIS_URL=redis://...
+
+  nadoo-worker:
+    image: nadoo/worker:latest
+    environment:
+      - FLOW_CORE_BACKEND=native
+      - WORKER_CONCURRENCY=4
+
+  nadoo-frontend:
+    image: nadoo/builder:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=http://nadoo-api:8000
+```
+
+### Kubernetes Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nadoo-platform
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nadoo
+  template:
+    metadata:
+      labels:
+        app: nadoo
+    spec:
+      containers:
+      - name: api
+        image: nadoo/api:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+```
+
+## Environment Configuration
+
+### Environment Variables
+
+```env
+# Core Settings
+NADOO_ENV=production
+NADOO_API_KEY=your-api-key
+NADOO_SECRET_KEY=your-secret-key
+
+# Database
+DATABASE_URL=postgresql://user:pass@localhost/nadoo
+DATABASE_POOL_SIZE=20
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
+REDIS_MAX_CONNECTIONS=50
+
+# Flow Core
+FLOW_CORE_BACKEND=native
+FLOW_CORE_MAX_WORKERS=10
+
+# LLM Configuration
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Storage
+S3_BUCKET=nadoo-workflows
+S3_ACCESS_KEY=...
+S3_SECRET_KEY=...
+```
+
+### Secrets Management
+
+<Tabs>
+  <Tab title="Environment Files">
+    ```bash
+    # Use .env files with proper permissions
+    chmod 600 .env
+    source .env
+    ```
+  </Tab>
+  <Tab title="Kubernetes Secrets">
+    ```yaml
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: nadoo-secrets
+    type: Opaque
+    data:
+      openai-api-key: <base64-encoded>
+      database-url: <base64-encoded>
+    ```
+  </Tab>
+  <Tab title="Cloud KMS">
+    ```python
+    # Use cloud provider KMS
+    from nadoo.security import SecretManager
+
+    secrets = SecretManager(provider="aws")
+    api_key = secrets.get("openai-api-key")
+    ```
+  </Tab>
+</Tabs>
+
+## Workflow Deployment
+
+### CLI Deployment
+
+```bash
+# Deploy single workflow
+nadoo deploy workflow.yaml --env production
+
+# Deploy with specific version
+nadoo deploy workflow.yaml --version 1.2.0
+
+# Deploy to staging first
+nadoo deploy workflow.yaml --env staging --promote-to production
+```
+
+### API Deployment
+
+```python
+from nadoo import DeploymentClient
+
+client = DeploymentClient(api_key="...")
+
+# Deploy workflow
+deployment = client.deploy(
+    workflow_path="workflow.yaml",
+    environment="production",
+    config={
+        "auto_scale": True,
+        "min_instances": 1,
+        "max_instances": 10
+    }
+)
+
+print(f"Deployed: {deployment.id}")
+```
+
+### CI/CD Integration
+
+```yaml
+# GitHub Actions example
+name: Deploy Workflow
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Deploy to Nadoo
+        uses: nadoo-ai/deploy-action@v1
+        with:
+          api-key: ${{ secrets.NADOO_API_KEY }}
+          workflow: workflow.yaml
+          environment: production
+```
+
+## Scaling Configuration
+
+### Horizontal Scaling
+
+```yaml
+scaling:
+  enabled: true
+  min_replicas: 2
+  max_replicas: 20
+  metrics:
+    - type: cpu
+      target: 70
+    - type: memory
+      target: 80
+    - type: queue_length
+      target: 100
+```
+
+### Vertical Scaling
+
+```yaml
+resources:
+  requests:
+    cpu: "1"
+    memory: "2Gi"
+  limits:
+    cpu: "4"
+    memory: "8Gi"
+  gpu:
+    enabled: true
+    type: "nvidia-t4"
+    count: 1
+```
+
+## Monitoring and Observability
+
+### Metrics Collection
+
+```python
+# Prometheus metrics
+from nadoo.monitoring import metrics
+
+metrics.configure(
+    endpoint="/metrics",
+    port=9090
+)
+
+# Custom metrics
+workflow_executions = metrics.counter(
+    "workflow_executions_total",
+    "Total workflow executions"
+)
+```
+
+### Logging Configuration
+
+```yaml
+logging:
+  level: INFO
+  outputs:
+    - type: console
+    - type: file
+      path: /var/log/nadoo/
+    - type: elasticsearch
+      host: logs.example.com
+      index: nadoo-logs
+```
+
+### Health Checks
+
+```python
+# Health check endpoints
+GET /health        # Basic health
+GET /health/ready  # Readiness check
+GET /health/live   # Liveness check
+
+# Response
+{
+  "status": "healthy",
+  "version": "0.1.0",
+  "services": {
+    "database": "connected",
+    "redis": "connected",
+    "storage": "connected"
+  }
+}
+```
+
+## Performance Optimization
+
+<AccordionGroup>
+  <Accordion title="Caching Strategy">
+    - Enable Redis caching for frequently accessed data
+    - Cache LLM responses when appropriate
+    - Use CDN for static assets
+    - Implement query result caching
+  </Accordion>
+  <Accordion title="Resource Optimization">
+    - Right-size container resources
+    - Use spot instances for batch workloads
+    - Implement request batching
+    - Enable connection pooling
+  </Accordion>
+  <Accordion title="Network Optimization">
+    - Use regional deployments
+    - Enable gRPC for internal communication
+    - Compress API responses
+    - Implement request coalescing
+  </Accordion>
+</AccordionGroup>
+
+## Security Best Practices
+
+### Network Security
+
+- Use VPC/private networks
+- Implement WAF rules
+- Enable DDoS protection
+- Use SSL/TLS everywhere
+
+### Access Control
+
+```yaml
+security:
+  authentication:
+    type: jwt
+    issuer: https://auth.nadoo.ai
+  authorization:
+    type: rbac
+    policies:
+      - role: admin
+        permissions: ["*"]
+      - role: developer
+        permissions: ["deploy", "monitor"]
+      - role: viewer
+        permissions: ["read"]
+```
+
+### Compliance
+
+- Data encryption at rest and in transit
+- Audit logging for all operations
+- Regular security scanning
+- Compliance with GDPR/SOC2
+
+## Rollback and Recovery
+
+### Rollback Strategy
+
+```bash
+# List deployments
+nadoo deployment list
+
+# Rollback to previous version
+nadoo deployment rollback workflow-id
+
+# Rollback to specific version
+nadoo deployment rollback workflow-id --version 1.0.0
+```
+
+### Backup and Recovery
+
+```bash
+# Backup workflow definitions
+nadoo backup create --type workflows
+
+# Backup entire platform state
+nadoo backup create --type full
+
+# Restore from backup
+nadoo backup restore backup-id
+```
+
+## Troubleshooting
+
+### Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| **High latency** | Check network config, enable caching |
+| **Out of memory** | Increase resource limits, optimize workflow |
+| **Connection errors** | Verify firewall rules, check service health |
+| **Deployment fails** | Check logs, validate workflow, verify permissions |
+
+### Debug Mode
+
+```bash
+# Enable debug logging
+nadoo config set log_level DEBUG
+
+# Run with verbose output
+nadoo deploy workflow.yaml -v
+
+# Trace specific execution
+nadoo trace execution-id
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Monitoring" icon="chart-line" href="/deployment/monitoring">
+    Set up monitoring and alerting
+  </Card>
+  <Card title="Best Practices" icon="shield-check" href="/resources/best-practices">
+    Learn deployment best practices
+  </Card>
+</CardGroup>

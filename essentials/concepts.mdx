@@ -1,0 +1,223 @@
+---
+title: 'Core Concepts'
+description: 'Understand the fundamental concepts of Nadoo AI'
+---
+
+## Overview
+
+Nadoo AI is built on several core concepts that power our AI infrastructure. Understanding these concepts will help you make the most of our platform.
+
+## Key Concepts
+
+### Models
+
+<Info>
+  Models are the foundation of Nadoo AI's capabilities. Each model is optimized for specific tasks and use cases.
+</Info>
+
+<CardGroup cols={2}>
+  <Card title="Language Models" icon="brain">
+    Advanced NLP models for text generation, analysis, and understanding
+  </Card>
+  <Card title="Vision Models" icon="eye">
+    Computer vision models for image analysis and generation
+  </Card>
+  <Card title="Audio Models" icon="microphone">
+    Speech recognition and audio processing capabilities
+  </Card>
+  <Card title="Multimodal Models" icon="layer-group">
+    Models that can process multiple input types simultaneously
+  </Card>
+</CardGroup>
+
+### Prompts
+
+Prompts are the instructions you provide to AI models. Effective prompting is crucial for getting the best results.
+
+<Accordion title="Prompt Engineering Best Practices">
+  - Be specific and clear in your instructions
+  - Provide context when necessary
+  - Use examples to demonstrate desired output
+  - Iterate and refine based on results
+</Accordion>
+
+### Tokens
+
+Tokens are the basic units of text that models process.
+
+```python
+# Example: How text is tokenized
+text = "Hello, Nadoo AI!"
+tokens = tokenize(text)
+# Result: ["Hello", ",", " Nad", "oo", " AI", "!"]
+# Token count: 6
+```
+
+<Note>
+  Different models may tokenize text differently. Understanding token limits helps optimize API usage and costs.
+</Note>
+
+### Context Window
+
+The context window defines how much information a model can process in a single request.
+
+<Tabs>
+  <Tab title="Standard Models">
+    - **nadoo-gpt-3.5**: 4,096 tokens
+    - **nadoo-gpt-4**: 8,192 tokens
+  </Tab>
+  <Tab title="Extended Models">
+    - **nadoo-gpt-4-32k**: 32,768 tokens
+    - **nadoo-gpt-4-turbo**: 128,000 tokens
+  </Tab>
+</Tabs>
+
+## Architecture Overview
+
+### Request Flow
+
+<Steps>
+  <Step title="Client Request">
+    Your application sends a request to Nadoo AI API
+  </Step>
+  <Step title="Authentication">
+    API key is validated and permissions are checked
+  </Step>
+  <Step title="Processing">
+    Request is routed to the appropriate model
+  </Step>
+  <Step title="Inference">
+    Model processes the input and generates output
+  </Step>
+  <Step title="Response">
+    Results are returned to your application
+  </Step>
+</Steps>
+
+### Rate Limiting
+
+Our API implements rate limiting to ensure fair usage and system stability.
+
+| Tier | Requests/min | Tokens/min | Concurrent |
+|------|-------------|------------|------------|
+| Free | 20 | 40,000 | 1 |
+| Starter | 60 | 100,000 | 3 |
+| Pro | 300 | 500,000 | 10 |
+| Enterprise | Custom | Custom | Custom |
+
+## Data Privacy & Security
+
+### Data Handling
+
+<AccordionGroup>
+  <Accordion title="Data Processing">
+    All data is processed in memory and not stored unless explicitly requested
+  </Accordion>
+  <Accordion title="Encryption">
+    End-to-end encryption for all API communications using TLS 1.3
+  </Accordion>
+  <Accordion title="Compliance">
+    SOC 2 Type II certified, GDPR compliant, and CCPA ready
+  </Accordion>
+  <Accordion title="Data Residency">
+    Choose your preferred data processing region for compliance
+  </Accordion>
+</AccordionGroup>
+
+## Model Selection Guide
+
+Choose the right model for your use case:
+
+<CardGroup cols={2}>
+  <Card title="Text Generation" icon="pen">
+    **Recommended**: nadoo-gpt-4
+
+    Best for creative writing, content generation, and complex reasoning
+  </Card>
+  <Card title="Code Generation" icon="code">
+    **Recommended**: nadoo-codex
+
+    Optimized for programming tasks and code completion
+  </Card>
+  <Card title="Conversational AI" icon="comments">
+    **Recommended**: nadoo-gpt-3.5-turbo
+
+    Fast and cost-effective for chatbots and assistants
+  </Card>
+  <Card title="Data Analysis" icon="chart-line">
+    **Recommended**: nadoo-analyst
+
+    Specialized in data interpretation and insights
+  </Card>
+</CardGroup>
+
+## Performance Optimization
+
+### Caching Strategies
+
+Implement caching to reduce API calls and improve response times:
+
+```javascript
+const cache = new Map();
+
+async function getCachedResponse(prompt) {
+  const cacheKey = hashPrompt(prompt);
+
+  if (cache.has(cacheKey)) {
+    return cache.get(cacheKey);
+  }
+
+  const response = await client.completions.create({
+    model: "nadoo-gpt-4",
+    prompt: prompt
+  });
+
+  cache.set(cacheKey, response);
+  return response;
+}
+```
+
+### Batch Processing
+
+Process multiple requests efficiently:
+
+```python
+# Batch multiple prompts for better throughput
+prompts = ["prompt1", "prompt2", "prompt3"]
+responses = await client.batch.create(
+    model="nadoo-gpt-4",
+    prompts=prompts
+)
+```
+
+## Error Handling
+
+<Warning>
+  Always implement proper error handling to ensure your application gracefully handles API failures.
+</Warning>
+
+Common error codes and their meanings:
+
+| Code | Description | Action |
+|------|------------|--------|
+| 400 | Bad Request | Check request parameters |
+| 401 | Unauthorized | Verify API key |
+| 429 | Rate Limited | Implement backoff strategy |
+| 500 | Server Error | Retry with exponential backoff |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/essentials/installation">
+    Set up Nadoo AI in your project
+  </Card>
+  <Card title="Configuration" icon="gear" href="/essentials/configuration">
+    Configure SDK for your needs
+  </Card>
+  <Card title="API Reference" icon="book" href="/api-reference/introduction">
+    Explore available endpoints
+  </Card>
+  <Card title="Examples" icon="flask" href="/examples">
+    See practical implementations
+  </Card>
+</CardGroup>
