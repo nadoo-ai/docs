@@ -46,62 +46,151 @@ class StreamEventType(Enum):
 
 ### Basic Streaming Node
 
-```python
-from nadoo_flow import StreamingNode, StreamEvent
+Use `StreamingNode` mixin to add streaming capabilities:
 
-class ChatStreamingNode(StreamingNode):
+```python
+from nadoo_flow import BaseNode, StreamingNode, StreamEventType, NodeResult
+import asyncio
+
+class ChatStreamingNode(BaseNode, StreamingNode):
     """Node that streams tokens"""
 
-    async def stream_execute(self, node_context, workflow_context):
-        # Stream start event
-        yield StreamEvent(
-            type=StreamEventType.NODE_START,
-            data={"node_id": self.node_id}
+    def __init__(self):
+        BaseNode.__init__(
+            self,
+            node_id="chat_streaming",
+            node_type="chat",
+            name="ChatStreaming",
+            config={}
         )
+        StreamingNode.__init__(self)
+
+    async def execute(self, node_context, workflow_context):
+        # Get streaming context
+        stream_ctx = self.get_streaming_context(workflow_context)
+
+        # Emit start event
+        await self.emit_start(stream_ctx, node_context)
 
         # Stream tokens
         response = "Hello, how can I help you today?"
         for token in response.split():
-            yield StreamEvent(
-                type=StreamEventType.TOKEN,
-                data={"token": token + " "}
-            )
+            await self.emit_token(stream_ctx, token + " ", self.node_id)
             await asyncio.sleep(0.1)  # Simulate typing
 
-        # Stream complete event
-        yield StreamEvent(
-            type=StreamEventType.NODE_COMPLETE,
-            data={"output": response}
-        )
+        # Emit end event
+        result = NodeResult(success=True, output={"response": response})
+        await self.emit_end(stream_ctx, node_context, result)
+
+        return result
 ```
 
 ### LLM Streaming
 
 ```python
-class LLMStreamingNode(StreamingNode):
+class LLMStreamingNode(BaseNode, StreamingNode):
     """Stream LLM responses token by token"""
 
-    async def stream_execute(self, node_context, workflow_context):
-        prompt = node_context.input_data.get("prompt")
+    def __init__(self, model_name: str = "gpt-4"):
+        BaseNode.__init__(
+            self,
+            node_id="llm_streaming",
+            node_type="llm",
+            name="LLMStreaming",
+            config={}
+        )
+        StreamingNode.__init__(self)
+        self.model_name = model_name
 
-        # Start streaming
-        yield StreamEvent(
-            type=StreamEventType.NODE_START,
-            data={"model": self.model_name}
+    async def execute(self, node_context, workflow_context):
+        prompt = node_context.input_data.get("prompt")
+        stream_ctx = self.get_streaming_context(workflow_context)
+
+        # Emit LLM start event
+        await self.emit_event(
+            stream_ctx,
+            StreamEventType.LLM_START,
+            self.node_id,
+            data={"model": self.model_name, "prompt": prompt}
         )
 
         full_response = ""
-        async for token in self.llm.stream(prompt):
+        # Simulate LLM streaming (replace with actual LLM API)
+        tokens = ["Hello", " ", "world", "!", " ", "How", " ", "can", " ", "I", " ", "help", "?"]
+        for token in tokens:
             full_response += token
 
-            # Stream each token
-            yield StreamEvent(
-                type=StreamEventType.TOKEN,
-                data={
-                    "token": token,
-                    "accumulated": full_response
-                }
-            )
+            # Emit token event
+            await self.emit_token(stream_ctx, token, self.node_id)
+            await asyncio.sleep(0.05)
+
+        # Emit LLM end event
+        result = NodeResult(success=True, output={"response": full_response})
+        await self.emit_event(
+            stream_ctx,
+            StreamEventType.LLM_END,
+            self.node_id,
+            data={"response": full_response}
+        )
+
+        return result
+```
+
+### StreamingNode Helper Methods
+
+The `StreamingNode` mixin provides useful helpers:
+
+```python
+# Available helper methods:
+await self.emit_start(stream_ctx, node_context)          # Node start event
+await self.emit_end(stream_ctx, node_context, result)    # Node end event
+await self.emit_error(stream_ctx, node_context, error)   # Node error event
+await self.emit_token(stream_ctx, token, node_id)        # LLM token event
+
+# Generic event emission:
+await self.emit_event(
+    stream_ctx,
+    StreamEventType.CUSTOM,
+    "my_event",
+    data={"custom_field": "value"}
+)
+```
+
+## Using Streaming Context
+
+### Setting Up Streaming
+
+```python
+from nadoo_flow import StreamingContext, WorkflowContext
+import asyncio
+
+async def run_with_streaming():
+    # Create workflow context
+    workflow_context = WorkflowContext()
+
+    # Create and attach streaming context
+    streaming_context = StreamingContext(buffer_size=100)
+    workflow_context.streaming_context = streaming_context
+
+    # Use as async context manager
+    async with streaming_context:
+        # Start streaming consumer
+        async def consume_events():
+            async for event in streaming_context.stream():
+                print(f"[{event.event_type.value}] {event.name}: {event.data}")
+
+        # Run consumer in background
+        consumer_task = asyncio.create_task(consume_events())
+
+        # Execute node
+        node = ChatStreamingNode()
+        result = await node.execute(node_context, workflow_context)
+
+        # Wait for all events to be consumed
+        await consumer_task
+
+# Run
+asyncio.run(run_with_streaming())
 
         # Complete
         yield StreamEvent(

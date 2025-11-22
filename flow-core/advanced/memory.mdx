@@ -10,141 +10,169 @@ icon: 'brain'
 
 Flow Core's memory management enables AI agents to maintain conversation history, remember context across interactions, and provide coherent multi-turn conversations.
 
-## Memory Types
+## Chat History Types
 
-### ConversationMemory
+### InMemoryChatHistory
 
-Basic conversation memory for chat applications:
+Basic in-memory chat history for conversation storage:
 
 ```python
-from nadoo_flow.memory import ConversationMemory
+from nadoo_flow import InMemoryChatHistory, Message
 
-# Create memory instance
-memory = ConversationMemory(max_messages=50)
+# Create history instance
+history = InMemoryChatHistory()
 
 # Add messages
-memory.add_message("user", "Hello, how are you?")
-memory.add_message("assistant", "I'm doing well, thank you!")
+await history.add_message(Message.user("Hello, how are you?"))
+await history.add_message(Message.assistant("I'm doing well, thank you!"))
 
 # Get conversation history
-history = memory.get_history()
-print(history)
-# [
-#   {"role": "user", "content": "Hello, how are you?"},
-#   {"role": "assistant", "content": "I'm doing well, thank you!"}
-# ]
+messages = await history.get_messages()
+for msg in messages:
+    print(f"{msg.role}: {msg.content}")
+# user: Hello, how are you?
+# assistant: I'm doing well, thank you!
+
+# Clear history
+await history.clear()
 ```
 
-### BufferMemory
+### SlidingWindowChatHistory
 
-Simple buffer-based memory with size limit:
+Sliding window that keeps only recent N messages (for token management):
 
 ```python
-from nadoo_flow.memory import BufferMemory
+from nadoo_flow import InMemoryChatHistory, SlidingWindowChatHistory, Message
 
-class BufferMemory:
-    """Fixed-size conversation buffer"""
+# Create windowed history
+base_history = InMemoryChatHistory()
+window_history = SlidingWindowChatHistory(
+    base_history=base_history,
+    window_size=10  # Keep only last 10 messages
+)
 
-    def __init__(self, max_size=1000):
-        self.max_size = max_size
-        self.buffer = []
+# Add messages
+await window_history.add_message(Message.user("Message 1"))
+await window_history.add_message(Message.assistant("Response 1"))
+# ... add more messages ...
 
-    def add_message(self, role, content, metadata=None):
-        """Add message to buffer"""
-        message = {
-            "role": role,
-            "content": content,
-            "timestamp": datetime.now(),
-            "metadata": metadata or {}
-        }
-
-        self.buffer.append(message)
-
-        # Trim if exceeds max size
-        if len(self.buffer) > self.max_size:
-            self.buffer.pop(0)
-
-    def get_history(self, last_n=None):
-        """Get conversation history"""
-        if last_n:
-            return self.buffer[-last_n:]
-        return self.buffer
-
-    def clear(self):
-        """Clear memory"""
-        self.buffer.clear()
+# Get only recent messages (last 10)
+recent_messages = await window_history.get_messages()
 ```
 
-### WindowMemory
+### RedisChatHistory
 
-Sliding window of recent messages:
+Redis-backed persistent chat history for distributed systems:
 
 ```python
-from nadoo_flow.memory import WindowMemory
+from nadoo_flow import RedisChatHistory, Message
+import redis
 
-class WindowMemory:
-    """Keep only recent messages"""
+# Create Redis history
+redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
+history = RedisChatHistory(
+    session_id="user_123",
+    redis_client=redis_client,
+    key_prefix="chat:",
+    ttl=3600  # 1 hour TTL
+)
 
-    def __init__(self, window_size=10):
-        self.window_size = window_size
-        self.messages = []
+# Add messages
+await history.add_message(Message.user("Hello"))
+await history.add_message(Message.assistant("Hi there!"))
 
-    def add_message(self, role, content):
-        self.messages.append({"role": role, "content": content})
-
-        # Keep only window_size messages
-        if len(self.messages) > self.window_size:
-            self.messages = self.messages[-self.window_size:]
-
-    def get_context(self):
-        """Get windowed context"""
-        return self.messages
+# Get messages (persisted in Redis)
+messages = await history.get_messages()
 ```
 
-## Summary Memory
+### Message Class
 
-### ConversationSummaryMemory
-
-Summarize conversations to save space:
+All chat histories use the `Message` class:
 
 ```python
-class ConversationSummaryMemory:
-    """Summarize old conversations"""
+from nadoo_flow import Message
 
-    def __init__(self, summarizer, max_messages=20):
-        self.summarizer = summarizer
-        self.max_messages = max_messages
-        self.messages = []
-        self.summary = ""
+# Create messages
+user_msg = Message.user("What's the weather?")
+assistant_msg = Message.assistant("It's sunny today!")
+system_msg = Message.system("You are a helpful assistant")
 
-    async def add_message(self, role, content):
-        self.messages.append({"role": role, "content": content})
+# Access message properties
+print(user_msg.role)      # "user"
+print(user_msg.content)   # "What's the weather?"
+```
 
-        # Summarize when threshold reached
-        if len(self.messages) > self.max_messages:
-            await self._summarize_and_trim()
+## Session Management
 
-    async def _summarize_and_trim(self):
-        """Summarize old messages"""
-        # Take first half of messages to summarize
-        to_summarize = self.messages[:len(self.messages)//2]
+### SessionHistoryManager
 
-        # Generate summary
-        summary_text = await self.summarizer.summarize(to_summarize)
+Manage multiple chat histories for different sessions:
 
-        # Update summary
-        if self.summary:
-            self.summary = await self.summarizer.combine_summaries(
-                self.summary, summary_text
-            )
-        else:
-            self.summary = summary_text
+```python
+from nadoo_flow import (
+    SessionHistoryManager,
+    InMemoryChatHistory,
+    create_inmemory_history_manager
+)
 
-        # Keep only recent messages
-        self.messages = self.messages[len(self.messages)//2:]
+# Create manager with history factory
+manager = SessionHistoryManager(
+    history_factory=lambda session_id: InMemoryChatHistory(),
+    window_size=10  # Optional: use sliding window
+)
 
-    def get_context(self):
-        """Get summary + recent messages"""
+# Or use convenience function
+manager = create_inmemory_history_manager(window_size=10)
+
+# Get history for a session (creates if doesn't exist)
+history = await manager.get_history("user_123")
+
+# Add messages
+await history.add_message(Message.user("Hello"))
+await history.add_message(Message.assistant("Hi!"))
+
+# Get messages
+messages = await history.get_messages()
+```
+
+### ChatHistoryNode
+
+Mixin class to add chat history to any node:
+
+```python
+from nadoo_flow import BaseNode, ChatHistoryNode, SessionHistoryManager, Message, NodeResult
+
+class ConversationalNode(BaseNode, ChatHistoryNode):
+    """Node with built-in chat history"""
+
+    def __init__(self, node_id: str, history_manager: SessionHistoryManager):
+        BaseNode.__init__(
+            self,
+            node_id=node_id,
+            node_type="conversational",
+            name="Conversational",
+            config={}
+        )
+        ChatHistoryNode.__init__(self, history_manager=history_manager)
+
+    async def execute(self, node_context, workflow_context):
+        # Get history for this session
+        history = await self.get_history(workflow_context)
+
+        # Get user message
+        user_message = node_context.input_data.get("message")
+        await history.add_message(Message.user(user_message))
+
+        # Get conversation context
+        messages = await history.get_messages()
+
+        # Process with history context
+        response = f"You said: {user_message} (with {len(messages)} message context)"
+
+        # Save assistant response
+        await history.add_message(Message.assistant(response))
+
+        return NodeResult(success=True, output={"response": response})
         context = []
 
         if self.summary:
