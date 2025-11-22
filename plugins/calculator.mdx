@@ -1,0 +1,354 @@
+---
+title: 'Calculator Plugin'
+description: 'Safe mathematical calculations without external dependencies'
+sidebarTitle: 'Calculator'
+'og:title': 'Calculator Plugin - Nadoo Official Plugins'
+icon: 'calculator'
+---
+
+## Overview
+
+The Calculator plugin provides safe mathematical calculations for your Nadoo workflows. It supports basic arithmetic operations, built-in mathematical functions, and ensures security through restricted evaluation.
+
+<Info>
+**Category**: Utility | **Author**: Nadoo Team | **Version**: 1.0.0 | **License**: MIT
+</Info>
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="Safe Evaluation" icon="shield-check">
+    Restricted builtins prevent code injection
+  </Card>
+
+  <Card title="No Dependencies" icon="box">
+    Works out of the box, no external packages needed
+  </Card>
+
+  <Card title="Rich Operations" icon="function">
+    Supports arithmetic, functions, and parentheses
+  </Card>
+
+  <Card title="Fast Performance" icon="bolt">
+    Lightning-fast calculations
+  </Card>
+</CardGroup>
+
+## Installation
+
+### Download Pre-built
+
+```bash
+# Download from releases
+wget https://github.com/nadoo-ai/official-plugins/releases/download/v1.0.0/calculator-1.0.0.nadoo-plugin
+
+# Install to workspace
+nadoo-plugin install calculator-1.0.0.nadoo-plugin --workspace your-workspace-id
+```
+
+### Build from Source
+
+```bash
+# Clone repository
+git clone https://github.com/nadoo-ai/official-plugins
+cd official-plugins
+
+# Build calculator plugin
+python build_plugins.py
+
+# Install
+nadoo-plugin install dist/calculator-1.0.0.nadoo-plugin --workspace your-workspace-id
+```
+
+## Tools
+
+### calculate
+
+Perform mathematical calculations.
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `expression` | string | Yes | Mathematical expression to evaluate |
+
+#### Supported Operations
+
+**Arithmetic Operators**:
+- `+` - Addition
+- `-` - Subtraction
+- `*` - Multiplication
+- `/` - Division
+- `**` - Exponentiation (power)
+- `%` - Modulo (remainder)
+
+**Built-in Functions**:
+- `abs(x)` - Absolute value
+- `round(x, n)` - Round to n decimal places
+- `min(x, y, ...)` - Minimum value
+- `max(x, y, ...)` - Maximum value
+- `sum([x, y, ...])` - Sum of values
+- `pow(x, y)` - Power (same as `x ** y`)
+
+**Grouping**:
+- `()` - Parentheses for grouping expressions
+
+#### Response Format
+
+```json
+{
+  "success": true,
+  "expression": "2 + 2 * 3",
+  "result": 8
+}
+```
+
+## Usage Examples
+
+### Basic Arithmetic
+
+```python
+from nadoo_plugin.api import ToolsClient
+
+tools = ToolsClient(base_url, token, context)
+
+# Simple addition
+result = tools.invoke(
+    tool_name="calculator:calculate",
+    parameters={"expression": "2 + 2"}
+)
+# {"success": true, "expression": "2 + 2", "result": 4}
+
+# Multiplication and division
+result = tools.invoke(
+    tool_name="calculator:calculate",
+    parameters={"expression": "10 * 5 / 2"}
+)
+# {"success": true, "expression": "10 * 5 / 2", "result": 25.0}
+```
+
+### Order of Operations
+
+```python
+# Follows PEMDAS/BODMAS
+result = tools.invoke(
+    tool_name="calculator:calculate",
+    parameters={"expression": "2 + 2 * 3"}
+)
+# {"success": true, "expression": "2 + 2 * 3", "result": 8}
+
+# Using parentheses
+result = tools.invoke(
+    tool_name="calculator:calculate",
+    parameters={"expression": "(2 + 2) * 3"}
+)
+# {"success": true, "expression": "(2 + 2) * 3", "result": 12}
+```
+
+### Built-in Functions
+
+```python
+# Absolute value
+result = tools.invoke(
+    tool_name="calculator:calculate",
+    parameters={"expression": "abs(-10)"}
+)
+# {"success": true, "expression": "abs(-10)", "result": 10}
+
+# Maximum and minimum
+result = tools.invoke(
+    tool_name="calculator:calculate",
+    parameters={"expression": "max(5, 10, 3) + min(2, 8, 4)"}
+)
+# {"success": true, "expression": "max(5, 10, 3) + min(2, 8, 4)", "result": 12}
+
+# Sum of numbers
+result = tools.invoke(
+    tool_name="calculator:calculate",
+    parameters={"expression": "sum([1, 2, 3, 4, 5])"}
+)
+# {"success": true, "expression": "sum([1, 2, 3, 4, 5])", "result": 15}
+```
+
+### Power and Exponentiation
+
+```python
+# Using ** operator
+result = tools.invoke(
+    tool_name="calculator:calculate",
+    parameters={"expression": "2 ** 8"}
+)
+# {"success": true, "expression": "2 ** 8", "result": 256}
+
+# Using pow function
+result = tools.invoke(
+    tool_name="calculator:calculate",
+    parameters={"expression": "pow(3, 4)"}
+)
+# {"success": true, "expression": "pow(3, 4)", "result": 81}
+
+# Complex expression
+result = tools.invoke(
+    tool_name="calculator:calculate",
+    parameters={"expression": "(2 + 3) ** 2 - 10"}
+)
+# {"success": true, "expression": "(2 + 3) ** 2 - 10", "result": 15}
+```
+
+### In Workflow
+
+```python
+from nadoo_flow import BaseNode, NodeResult, NodeContext, WorkflowContext
+
+class CalculatorNode(BaseNode):
+    """Node that uses calculator plugin"""
+
+    def __init__(self):
+        super().__init__(
+            node_id="calculator",
+            node_type="calculation",
+            name="Calculator",
+            config={}
+        )
+
+    async def execute(
+        self,
+        node_context: NodeContext,
+        workflow_context: WorkflowContext
+    ) -> NodeResult:
+        # Get expression from input
+        expression = node_context.input_data.get("expression", "0")
+
+        # Call calculator plugin
+        result = await self.call_tool(
+            tool_name="calculator:calculate",
+            parameters={"expression": expression}
+        )
+
+        if result.get("success"):
+            return NodeResult(
+                success=True,
+                output={
+                    "result": result["result"],
+                    "expression": expression
+                }
+            )
+        else:
+            return NodeResult(
+                success=False,
+                error=result.get("error", "Calculation failed")
+            )
+```
+
+## Error Handling
+
+The calculator returns structured error messages for invalid inputs:
+
+```python
+# Invalid syntax
+result = tools.invoke(
+    tool_name="calculator:calculate",
+    parameters={"expression": "2 + + 2"}
+)
+# {
+#   "success": false,
+#   "error": "Invalid expression syntax: ...",
+#   "expression": "2 + + 2"
+# }
+
+# Forbidden operation
+result = tools.invoke(
+    tool_name="calculator:calculate",
+    parameters={"expression": "import os"}
+)
+# {
+#   "success": false,
+#   "error": "Forbidden operation: import",
+#   "expression": "import os"
+# }
+
+# Division by zero
+result = tools.invoke(
+    tool_name="calculator:calculate",
+    parameters={"expression": "10 / 0"}
+)
+# {
+#   "success": false,
+#   "error": "Division by zero",
+#   "expression": "10 / 0"
+# }
+```
+
+## Security
+
+### Safe Evaluation
+
+The plugin uses restricted `eval()` with limited builtins to prevent:
+- ❌ Code injection
+- ❌ File system access
+- ❌ Network operations
+- ❌ Import statements
+- ❌ Attribute access
+
+Only safe mathematical operations are allowed.
+
+### Validation
+
+- Expression length: 1-500 characters
+- Only allowed functions and operators
+- No access to Python internals
+
+## Limitations
+
+<Warning>
+The calculator plugin has the following limitations:
+- Maximum expression length: 500 characters
+- No variable assignment
+- No custom function definitions
+- Limited to provided built-in functions
+</Warning>
+
+## Use Cases
+
+<AccordionGroup>
+  <Accordion title="Financial Calculations">
+    Calculate totals, percentages, tax, discounts in financial workflows
+  </Accordion>
+
+  <Accordion title="Data Processing">
+    Aggregate numeric data, compute statistics, derive metrics
+  </Accordion>
+
+  <Accordion title="AI Agent Math">
+    Let AI agents perform calculations as part of their reasoning
+  </Accordion>
+
+  <Accordion title="Form Validation">
+    Validate numeric inputs and computed fields
+  </Accordion>
+</AccordionGroup>
+
+## Contributing
+
+Found a bug or want to improve this plugin? Contributions are welcome!
+
+1. Fork [official-plugins](https://github.com/nadoo-ai/official-plugins)
+2. Make your changes to `calculator/main.py`
+3. Test thoroughly
+4. Submit a pull request
+
+## License
+
+MIT License - Nadoo Team
+
+## Support
+
+<CardGroup cols={2}>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/nadoo-ai/official-plugins/issues">
+    Report bugs or request features
+  </Card>
+
+  <Card title="Source Code" icon="code" href="https://github.com/nadoo-ai/official-plugins/tree/main/calculator">
+    View plugin source code
+  </Card>
+</CardGroup>

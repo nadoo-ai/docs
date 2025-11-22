@@ -73,6 +73,10 @@
       "url": "plugin-sdk"
     },
     {
+      "name": "Official Plugins",
+      "url": "plugins"
+    },
+    {
       "name": "Builder",
       "url": "builder"
     },
@@ -181,6 +185,14 @@
             "plugin-sdk/api/storage"
           ]
         }
+      ]
+    },
+    {
+      "group": "Official Plugins",
+      "pages": [
+        "plugins/overview",
+        "plugins/calculator",
+        "plugins/web-search"
       ]
     },
     {

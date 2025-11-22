@@ -1,0 +1,284 @@
+---
+title: 'Official Plugins'
+description: 'Community-contributed plugins for Nadoo AI Platform'
+sidebarTitle: 'Overview'
+'og:title': 'Official Plugins - Nadoo AI'
+icon: 'puzzle-piece'
+---
+
+## What are Official Plugins?
+
+Official Plugins is a curated collection of community-contributed plugins for Nadoo AI Platform. These plugins extend Nadoo's capabilities by providing ready-to-use tools for various tasks.
+
+All plugins are:
+- ✅ **Free and open-source** (MIT License)
+- ✅ **Community-reviewed** for quality and security
+- ✅ **Ready to install** with pre-built packages
+- ✅ **Well-documented** with examples and guides
+
+## Available Plugins
+
+<CardGroup cols={2}>
+  <Card title="Calculator" icon="calculator" href="/plugins/calculator">
+    **Category**: Utility | **Author**: Nadoo Team
+
+    Safe mathematical calculations without external dependencies
+  </Card>
+
+  <Card title="Web Search" icon="magnifying-glass" href="/plugins/web-search">
+    **Category**: Utility | **Author**: Nadoo Team
+
+    Real-time web search powered by Tavily AI
+  </Card>
+</CardGroup>
+
+## Quick Start
+
+### Install a Plugin
+
+Download from [GitHub Releases](https://github.com/nadoo-ai/official-plugins/releases) or build from source:
+
+```bash
+# Download pre-built plugin
+nadoo-plugin install calculator-1.0.0.nadoo-plugin --workspace your-workspace-id
+
+# Or build from source
+git clone https://github.com/nadoo-ai/official-plugins
+cd official-plugins
+python build_plugins.py
+cd dist
+nadoo-plugin install calculator-1.0.0.nadoo-plugin --workspace your-workspace-id
+```
+
+### Use in Your Workflow
+
+Once installed, plugins are available as tools in your workflows:
+
+```python
+from nadoo_flow import BaseNode, NodeResult
+
+class CalculatorNode(BaseNode):
+    async def execute(self, node_context, workflow_context):
+        # Call calculator plugin tool
+        result = await self.call_tool(
+            tool_name="calculator:calculate",
+            parameters={"expression": "2 + 2 * 3"}
+        )
+
+        return NodeResult(
+            success=True,
+            output={"result": result}
+        )
+```
+
+## Plugin Categories
+
+### 🛠️ Utility (2 plugins)
+- **Calculator** - Mathematical calculations
+- **Web Search** - Real-time web search
+
+### 🔮 Coming Soon
+- Email integration
+- Database connectors
+- File processing
+- Social media integrations
+- Cloud storage
+- Translation services
+
+## For Plugin Developers
+
+### Creating a Plugin
+
+Want to contribute your own plugin?
+
+<Steps>
+  <Step title="Install SDK">
+    ```bash
+    pip install nadoo-plugin-sdk
+    ```
+  </Step>
+
+  <Step title="Create Plugin">
+    ```bash
+    nadoo-plugin create my-awesome-plugin
+    cd my-awesome-plugin
+    ```
+  </Step>
+
+  <Step title="Implement Tools">
+    ```python
+    from nadoo_plugin import NadooPlugin, tool, parameter
+
+    class MyPlugin(NadooPlugin):
+        @tool(name="my_tool", description="Does something awesome")
+        @parameter("input", type="string", required=True)
+        def my_tool(self, input: str) -> dict:
+            return {"result": f"Processed: {input}"}
+
+    plugin = MyPlugin()
+    ```
+  </Step>
+
+  <Step title="Test Locally">
+    ```bash
+    nadoo-plugin test --tool my_tool --params '{"input": "test"}'
+    ```
+  </Step>
+
+  <Step title="Submit PR">
+    Fork [official-plugins](https://github.com/nadoo-ai/official-plugins) and submit a pull request
+  </Step>
+</Steps>
+
+### Plugin Structure
+
+Each plugin directory contains:
+
+```
+plugin-name/
+├── main.py           # Plugin implementation
+├── manifest.yaml     # Plugin metadata
+├── README.md         # Documentation
+└── requirements.txt  # Dependencies (optional)
+```
+
+### Quality Guidelines
+
+<AccordionGroup>
+  <Accordion title="Documentation">
+    - Clear README with features, usage, and examples
+    - Document all parameters and return values
+    - Include troubleshooting section
+  </Accordion>
+
+  <Accordion title="Security">
+    - Never hardcode API keys or secrets
+    - Validate all user inputs
+    - Use safe evaluation methods
+    - Follow OWASP security guidelines
+  </Accordion>
+
+  <Accordion title="Code Quality">
+    - Handle errors gracefully
+    - Add proper logging
+    - Use descriptive variable names
+    - Include type hints
+  </Accordion>
+
+  <Accordion title="Testing">
+    - Test all tools thoroughly
+    - Include edge cases
+    - Verify error handling
+    - Test with various inputs
+  </Accordion>
+</AccordionGroup>
+
+## Contributors
+
+### 👨‍💻 Core Team
+
+<Card title="Nadoo Team" icon="users">
+  **Plugins**: calculator, web-search
+
+  **GitHub**: [@nadoo-ai](https://github.com/nadoo-ai)
+</Card>
+
+### 🌟 Community Contributors
+
+Want to see your name here? [Contribute a plugin!](https://github.com/nadoo-ai/official-plugins)
+
+<Note>
+When you contribute a plugin, you'll be added to this list with:
+- Your name/GitHub handle
+- Link to your plugin
+- Brief description of your contribution
+</Note>
+
+## How to Contribute
+
+We welcome plugin contributions from developers worldwide!
+
+### Contribution Process
+
+1. **Discuss Your Idea**: Open an issue to discuss your plugin idea
+2. **Fork Repository**: Fork the [official-plugins](https://github.com/nadoo-ai/official-plugins) repo
+3. **Develop Plugin**: Follow the plugin structure and guidelines
+4. **Test Thoroughly**: Ensure your plugin works correctly
+5. **Submit PR**: Submit a pull request with your plugin
+6. **Code Review**: Maintainers will review within 48 hours
+7. **Merge & Release**: Once approved, your plugin will be included in the next release
+
+### What We Look For
+
+✅ **Clear Value**: Plugin solves a real problem
+✅ **Good Documentation**: README with examples and setup instructions
+✅ **Clean Code**: Well-structured, readable code
+✅ **Error Handling**: Graceful handling of errors
+✅ **Security**: No hardcoded secrets, input validation
+✅ **Tests**: Verified to work correctly
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Plugin SDK Docs" icon="book" href="/plugin-sdk/overview">
+    Learn how to build plugins
+  </Card>
+
+  <Card title="Quick Start" icon="rocket" href="/plugin-sdk/quickstart">
+    Build your first plugin in 5 minutes
+  </Card>
+
+  <Card title="GitHub Repository" icon="github" href="https://github.com/nadoo-ai/official-plugins">
+    View source code and contribute
+  </Card>
+
+  <Card title="API Reference" icon="code" href="/plugin-sdk/api/llm">
+    Complete API documentation
+  </Card>
+</CardGroup>
+
+## Statistics
+
+<CardGroup cols={4}>
+  <Card title="Total Plugins" icon="puzzle-piece">
+    **2**
+  </Card>
+
+  <Card title="Categories" icon="folder">
+    **1**
+  </Card>
+
+  <Card title="Contributors" icon="users">
+    **1**
+  </Card>
+
+  <Card title="License" icon="scale-balanced">
+    **MIT**
+  </Card>
+</CardGroup>
+
+## License
+
+All plugins in this collection are licensed under the **MIT License**. Individual plugin authors retain copyright of their contributions.
+
+By contributing a plugin, you agree to license it under MIT, making it free for anyone to use, modify, and distribute.
+
+## Support & Community
+
+<CardGroup cols={2}>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/nadoo-ai/official-plugins/issues">
+    Report bugs or request features
+  </Card>
+
+  <Card title="Discussions" icon="comments" href="https://github.com/nadoo-ai/official-plugins/discussions">
+    Ask questions and share ideas
+  </Card>
+
+  <Card title="Discord Community" icon="discord" href="https://discord.gg/9gCsxSn6">
+    Chat with other developers
+  </Card>
+
+  <Card title="Security Issues" icon="shield" href="mailto:security@nadoo.ai">
+    Report security vulnerabilities
+  </Card>
+</CardGroup>

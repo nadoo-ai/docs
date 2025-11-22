@@ -1,0 +1,507 @@
+---
+title: 'Web Search Plugin'
+description: 'Real-time web search powered by Tavily AI'
+sidebarTitle: 'Web Search'
+'og:title': 'Web Search Plugin - Nadoo Official Plugins'
+icon: 'magnifying-glass'
+---
+
+## Overview
+
+The Web Search plugin enables real-time web searching using Tavily AI's powerful search API. Get relevant, up-to-date information from across the web directly in your Nadoo workflows.
+
+<Info>
+**Category**: Utility | **Author**: Nadoo Team | **Version**: 1.0.0 | **License**: MIT
+</Info>
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="Real-time Search" icon="clock">
+    Get up-to-date information from the web
+  </Card>
+
+  <Card title="AI-Powered" icon="sparkles">
+    Tavily AI ranks results by relevance
+  </Card>
+
+  <Card title="Configurable Depth" icon="sliders">
+    Choose between basic and advanced search
+  </Card>
+
+  <Card title="Country Filtering" icon="globe">
+    Filter results by country
+  </Card>
+</CardGroup>
+
+## Installation
+
+### Prerequisites
+
+You need a Tavily API key:
+1. Visit [tavily.com](https://tavily.com)
+2. Sign up for a free account
+3. Get your API key from the dashboard
+
+### Set Environment Variable
+
+```bash
+export TAVILY_API_KEY="tvly-xxxxxxxxxxxxx"
+```
+
+### Download Pre-built
+
+```bash
+# Download from releases
+wget https://github.com/nadoo-ai/official-plugins/releases/download/v1.0.0/web-search-1.0.0.nadoo-plugin
+
+# Install to workspace
+nadoo-plugin install web-search-1.0.0.nadoo-plugin --workspace your-workspace-id
+```
+
+### Build from Source
+
+```bash
+# Clone repository
+git clone https://github.com/nadoo-ai/official-plugins
+cd official-plugins
+
+# Build web-search plugin
+python build_plugins.py
+
+# Install
+nadoo-plugin install dist/web-search-1.0.0.nadoo-plugin --workspace your-workspace-id
+```
+
+## Tools
+
+### search
+
+Search the web and get relevant results.
+
+#### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `query` | string | Yes | - | Search query |
+| `max_results` | number | No | 5 | Number of results (1-20) |
+| `search_depth` | string | No | `"basic"` | Search depth: `"basic"` or `"advanced"` |
+| `country` | string | No | - | Country filter (e.g., "south korea", "united states") |
+
+#### Response Format
+
+```json
+{
+  "success": true,
+  "query": "latest AI news",
+  "results": [
+    {
+      "title": "Article Title",
+      "url": "https://example.com/article",
+      "content": "Article content snippet...",
+      "score": 0.95
+    }
+  ],
+  "answer": "Direct answer to the query (if available)",
+  "images": []
+}
+```
+
+## Usage Examples
+
+### Basic Search
+
+```python
+from nadoo_plugin.api import ToolsClient
+
+tools = ToolsClient(base_url, token, context)
+
+# Simple search
+result = tools.invoke(
+    tool_name="web-search:search",
+    parameters={"query": "latest AI news"}
+)
+
+# Access results
+for item in result["results"]:
+    print(f"{item['title']}: {item['url']}")
+    print(f"Relevance: {item['score']}")
+    print(f"Content: {item['content'][:200]}...")
+```
+
+### Advanced Search
+
+```python
+# More comprehensive search with advanced depth
+result = tools.invoke(
+    tool_name="web-search:search",
+    parameters={
+        "query": "machine learning trends 2024",
+        "max_results": 10,
+        "search_depth": "advanced"
+    }
+)
+
+# Advanced search provides:
+# - More results
+# - Better relevance ranking
+# - Deeper analysis
+```
+
+### Country-Specific Search
+
+```python
+# Search within specific country
+result = tools.invoke(
+    tool_name="web-search:search",
+    parameters={
+        "query": "AI companies",
+        "country": "south korea",
+        "max_results": 5
+    }
+)
+
+# Get news from specific region
+result = tools.invoke(
+    tool_name="web-search:search",
+    parameters={
+        "query": "tech news today",
+        "country": "united states"
+    }
+)
+```
+
+### In AI Agent Workflow
+
+```python
+from nadoo_flow import BaseNode, NodeResult, NodeContext, WorkflowContext
+
+class WebSearchNode(BaseNode):
+    """Node that searches the web"""
+
+    def __init__(self):
+        super().__init__(
+            node_id="web_search",
+            node_type="search",
+            name="WebSearch",
+            config={}
+        )
+
+    async def execute(
+        self,
+        node_context: NodeContext,
+        workflow_context: WorkflowContext
+    ) -> NodeResult:
+        # Get query from user input
+        query = node_context.input_data.get("query", "")
+
+        if not query:
+            return NodeResult(
+                success=False,
+                error="No search query provided"
+            )
+
+        # Search the web
+        result = await self.call_tool(
+            tool_name="web-search:search",
+            parameters={
+                "query": query,
+                "max_results": 5,
+                "search_depth": "basic"
+            }
+        )
+
+        if result.get("success"):
+            return NodeResult(
+                success=True,
+                output={
+                    "query": query,
+                    "results": result["results"],
+                    "answer": result.get("answer")
+                }
+            )
+        else:
+            return NodeResult(
+                success=False,
+                error=result.get("error", "Search failed")
+            )
+```
+
+### RAG Pattern (Search + LLM)
+
+```python
+from nadoo_plugin.api import ToolsClient, LLMClient
+
+class RAGSearchNode(BaseNode):
+    """Search web and generate answer with LLM"""
+
+    async def execute(
+        self,
+        node_context: NodeContext,
+        workflow_context: WorkflowContext
+    ) -> NodeResult:
+        query = node_context.input_data.get("question")
+
+        # Step 1: Search the web
+        search_result = await self.call_tool(
+            tool_name="web-search:search",
+            parameters={
+                "query": query,
+                "max_results": 5,
+                "search_depth": "advanced"
+            }
+        )
+
+        if not search_result.get("success"):
+            return NodeResult(success=False, error="Search failed")
+
+        # Step 2: Build context from search results
+        context = "\n\n".join([
+            f"[{i+1}] {r['title']}\n{r['content']}"
+            for i, r in enumerate(search_result["results"])
+        ])
+
+        # Step 3: Generate answer with LLM
+        llm_result = await self.call_llm(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Answer based on the provided search results. Include source numbers."
+                },
+                {
+                    "role": "user",
+                    "content": f"Question: {query}\n\nSearch Results:\n{context}"
+                }
+            ]
+        )
+
+        return NodeResult(
+            success=True,
+            output={
+                "question": query,
+                "answer": llm_result.content,
+                "sources": [
+                    {"title": r["title"], "url": r["url"]}
+                    for r in search_result["results"]
+                ]
+            }
+        )
+```
+
+### Multi-Query Search
+
+```python
+# Search multiple topics and aggregate
+queries = [
+    "Python async programming",
+    "FastAPI tutorials",
+    "LangChain documentation"
+]
+
+all_results = []
+
+for query in queries:
+    result = tools.invoke(
+        tool_name="web-search:search",
+        parameters={
+            "query": query,
+            "max_results": 3
+        }
+    )
+
+    if result.get("success"):
+        all_results.extend(result["results"])
+
+# Now process all_results
+```
+
+## Search Depth Comparison
+
+<Tabs>
+  <Tab title="Basic Search">
+    **Best for**: Quick lookups, simple queries
+
+    **Characteristics**:
+    - Faster response time
+    - 5-10 sources checked
+    - Good for straightforward queries
+    - Lower API cost
+
+    **Use when**:
+    - You need quick results
+    - Query is simple and well-defined
+    - Budget is a concern
+  </Tab>
+
+  <Tab title="Advanced Search">
+    **Best for**: Complex research, comprehensive answers
+
+    **Characteristics**:
+    - Slower but more thorough
+    - 20+ sources checked
+    - Better for ambiguous queries
+    - Higher API cost
+
+    **Use when**:
+    - Query is complex or ambiguous
+    - You need comprehensive coverage
+    - Quality is more important than speed
+  </Tab>
+</Tabs>
+
+## Error Handling
+
+```python
+result = tools.invoke(
+    tool_name="web-search:search",
+    parameters={"query": "AI news"}
+)
+
+if result.get("success"):
+    # Process results
+    for item in result["results"]:
+        print(item["title"])
+else:
+    # Handle error
+    error = result.get("error", "Unknown error")
+    print(f"Search failed: {error}")
+
+    # Common errors:
+    # - "TAVILY_API_KEY not set"
+    # - "Invalid API key"
+    # - "Rate limit exceeded"
+    # - "Network error"
+```
+
+## Rate Limits
+
+Tavily API has rate limits based on your plan:
+
+<Note>
+**Free Tier**: 1,000 requests/month
+
+**Pro Tier**: Higher limits available
+
+Check your usage at [tavily.com/dashboard](https://tavily.com/dashboard)
+</Note>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Optimize Query Phrasing">
+    - Be specific: "Python async best practices 2024" vs "Python async"
+    - Use keywords, not full sentences
+    - Include context when needed
+  </Accordion>
+
+  <Accordion title="Choose Appropriate Depth">
+    - Use `basic` for most queries (faster, cheaper)
+    - Use `advanced` for research or ambiguous queries
+    - Monitor your API usage
+  </Accordion>
+
+  <Accordion title="Handle Results">
+    - Check `success` before processing
+    - Use `score` field to rank results
+    - Consider using top 3-5 results for context
+  </Accordion>
+
+  <Accordion title="Combine with LLM">
+    - Use RAG pattern for better answers
+    - Let LLM synthesize information from multiple sources
+    - Include source citations
+  </Accordion>
+</AccordionGroup>
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Research Assistant" icon="book-open">
+    Help users research topics with up-to-date information
+  </Card>
+
+  <Card title="News Monitoring" icon="newspaper">
+    Track latest news and trends in specific domains
+  </Card>
+
+  <Card title="Fact Checking" icon="check">
+    Verify information against current web sources
+  </Card>
+
+  <Card title="Content Discovery" icon="sparkles">
+    Find relevant articles, tutorials, and resources
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="API Key Not Found">
+    **Error**: `TAVILY_API_KEY environment variable not set`
+
+    **Solution**:
+    ```bash
+    export TAVILY_API_KEY="your-key-here"
+    ```
+  </Accordion>
+
+  <Accordion title="Invalid API Key">
+    **Error**: `Invalid API key`
+
+    **Solution**:
+    - Verify your API key at [tavily.com](https://tavily.com)
+    - Ensure no extra spaces or quotes
+    - Check if key is active
+  </Accordion>
+
+  <Accordion title="Rate Limit Exceeded">
+    **Error**: `Rate limit exceeded`
+
+    **Solution**:
+    - Wait before retrying
+    - Upgrade your Tavily plan
+    - Implement caching to reduce calls
+  </Accordion>
+
+  <Accordion title="No Results">
+    **Error**: Empty results array
+
+    **Solution**:
+    - Try different query phrasing
+    - Use more general terms
+    - Check if topic is too niche
+  </Accordion>
+</AccordionGroup>
+
+## Contributing
+
+Want to improve this plugin? Contributions welcome!
+
+1. Fork [official-plugins](https://github.com/nadoo-ai/official-plugins)
+2. Make your changes to `web-search/main.py`
+3. Test with your Tavily API key
+4. Submit a pull request
+
+## License
+
+MIT License - Nadoo Team
+
+## Support
+
+<CardGroup cols={2}>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/nadoo-ai/official-plugins/issues">
+    Report bugs or request features
+  </Card>
+
+  <Card title="Source Code" icon="code" href="https://github.com/nadoo-ai/official-plugins/tree/main/web-search">
+    View plugin source code
+  </Card>
+
+  <Card title="Tavily Docs" icon="book" href="https://docs.tavily.com">
+    Tavily API documentation
+  </Card>
+
+  <Card title="Get API Key" icon="key" href="https://tavily.com">
+    Sign up for Tavily API
+  </Card>
+</CardGroup>
