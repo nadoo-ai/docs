@@ -1,0 +1,203 @@
+---
+title: 'Storage API'
+description: 'Persistent plugin storage'
+sidebarTitle: 'storage'
+icon: 'hard-drive'
+---
+
+## Overview
+
+The Storage API provides persistent key-value storage scoped to your plugin.
+
+**Permission Required:** `storage`
+
+## Methods
+
+### set
+
+Store a value.
+
+```python
+def set(key: str, value: Any, ttl: int | None = None) -> bool
+```
+
+**Parameters:**
+- `key` - Storage key (1-255 chars, scoped to plugin)
+- `value` - Value (must be JSON-serializable)
+- `ttl` - Time-to-live in seconds (optional)
+
+**Returns:** `True` if successful
+
+### get
+
+Retrieve a value.
+
+```python
+def get(key: str, default: Any = None) -> Any
+```
+
+**Parameters:**
+- `key` - Storage key
+- `default` - Default value if key doesn't exist
+
+**Returns:** Stored value or default
+
+### delete
+
+Delete a value.
+
+```python
+def delete(key: str) -> bool
+```
+
+**Returns:** `True` if successful
+
+### list_keys
+
+List all keys (optionally filtered).
+
+```python
+def list_keys(prefix: str | None = None) -> list[str]
+```
+
+**Parameters:**
+- `prefix` - Key prefix filter (optional)
+
+**Returns:** List of keys
+
+---
+
+## Usage Examples
+
+### Basic Usage
+
+```python
+from nadoo_plugin import NadooPlugin, tool
+
+class MyPlugin(NadooPlugin):
+    @tool(name="increment_counter")
+    def increment_counter(self) -> dict:
+        # Get current count
+        count = self.api.storage.get("counter", default=0)
+
+        # Increment
+        count += 1
+
+        # Save
+        self.api.storage.set("counter", count)
+
+        return {"count": count}
+```
+
+### With TTL
+
+```python
+@tool(name="cache_result")
+def cache_result(self, key: str, data: dict) -> dict:
+    # Cache for 1 hour
+    self.api.storage.set(
+        key=f"cache:{key}",
+        value=data,
+        ttl=3600
+    )
+
+    return {"cached": True}
+```
+
+### Using Prefixes
+
+```python
+@tool(name="save_user_data")
+def save_user_data(self, user_id: str, data: dict) -> dict:
+    # Use prefix for organization
+    self.api.storage.set(f"user:{user_id}", data)
+    return {"saved": True}
+
+@tool(name="list_users")
+def list_users(self) -> dict:
+    # List all user keys
+    user_keys = self.api.storage.list_keys(prefix="user:")
+    user_ids = [k.replace("user:", "") for k in user_keys]
+    return {"users": user_ids}
+```
+
+### Session Management
+
+```python
+class SessionPlugin(NadooPlugin):
+    @tool(name="create_session")
+    def create_session(self, session_id: str, user_id: str) -> dict:
+        session_data = {
+            "user_id": user_id,
+            "created_at": time.time()
+        }
+
+        # Session expires in 24 hours
+        self.api.storage.set(
+            key=f"session:{session_id}",
+            value=session_data,
+            ttl=86400
+        )
+
+        return {"session_id": session_id}
+
+    @tool(name="get_session")
+    def get_session(self, session_id: str) -> dict:
+        session = self.api.storage.get(
+            key=f"session:{session_id}",
+            default=None
+        )
+
+        if session is None:
+            return {"error": "Session not found or expired"}
+
+        return {"session": session}
+```
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Prefixes for Organization">
+    ```python
+    # Good: Organized with prefixes
+    self.api.storage.set("user:123", data)
+    self.api.storage.set("session:abc", session)
+    self.api.storage.set("cache:key", value)
+
+    # Bad: Flat namespace
+    self.api.storage.set("user123", data)
+    ```
+  </Accordion>
+
+  <Accordion title="Set TTL for Temporary Data">
+    ```python
+    # Temporary data
+    self.api.storage.set("temp", data, ttl=3600)
+
+    # Permanent data
+    self.api.storage.set("config", settings)  # No TTL
+    ```
+  </Accordion>
+
+  <Accordion title="Handle Missing Keys">
+    ```python
+    # Always provide default
+    count = self.api.storage.get("counter", default=0)
+
+    # Or check for None
+    value = self.api.storage.get("key")
+    if value is None:
+        # Handle missing key
+        pass
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## See Also
+
+- [Plugin SDK Overview](/plugin-sdk/overview)
+- [LLM API](/api/plugin-sdk/llm)

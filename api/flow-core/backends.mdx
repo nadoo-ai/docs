@@ -1,0 +1,666 @@
+---
+title: 'backends'
+description: 'API reference for multi-backend workflow orchestration'
+sidebarTitle: 'backends'
+'og:title': 'Backends Module - Nadoo Flow Core API'
+icon: 'layer-group'
+---
+
+## Overview
+
+The `backends` module provides a multi-backend architecture for workflow execution. It defines a protocol that enables integration with different workflow engines (currently includes Nadoo Native backend, extensible for LangGraph, CrewAI, etc.) while maintaining a consistent API.
+
+**Key Concepts:**
+- **Protocol**: `IWorkflowBackend` defines the interface all backends must implement
+- **Registry**: Factory pattern for creating and managing backend instances
+- **Native Backend**: Nadoo's default implementation using `WorkflowExecutor`
+
+## Protocols
+
+### IWorkflowBackend
+
+Protocol defining the interface for workflow execution backends.
+
+```python
+from typing import Protocol
+from nadoo_flow import WorkflowContext
+
+@runtime_checkable
+class IWorkflowBackend(Protocol):
+    async def execute(
+        self,
+        workflow_context: WorkflowContext,
+        initial_input: dict[str, Any] | None = None
+    ) -> WorkflowContext:
+        """Execute the workflow"""
+        ...
+
+    async def validate() -> bool:
+        """Validate workflow configuration"""
+        ...
+```
+
+#### Methods
+
+##### execute
+
+Execute the workflow with given context and input.
+
+```python
+async def execute(
+    workflow_context: WorkflowContext,
+    initial_input: dict[str, Any] | None = None
+) -> WorkflowContext
+```
+
+**Parameters:**
+- `workflow_context` - Workflow execution context
+- `initial_input` - Optional initial input data
+
+**Returns:**
+- `WorkflowContext` - Updated context with execution results
+
+##### validate
+
+Validate the workflow configuration.
+
+```python
+async def validate() -> bool
+```
+
+**Returns:**
+- `bool` - True if valid, False otherwise
+
+#### Implementing IWorkflowBackend
+
+```python
+from nadoo_flow.backends import IWorkflowBackend
+from nadoo_flow import WorkflowContext
+
+class CustomBackend:
+    """Custom workflow backend implementation"""
+
+    def __init__(self, config: dict):
+        self.config = config
+        self.nodes = []
+
+    async def execute(
+        self,
+        workflow_context: WorkflowContext,
+        initial_input: dict | None = None
+    ) -> WorkflowContext:
+        # Your execution logic
+        for node in self.nodes:
+            result = await node.execute(...)
+            workflow_context.add_result(result)
+
+        return workflow_context
+
+    async def validate(self) -> bool:
+        # Validation logic
+        if not self.nodes:
+            return False
+
+        return all(hasattr(node, 'execute') for node in self.nodes)
+```
+
+---
+
+## Classes
+
+### BackendRegistry
+
+Factory for creating and managing workflow backend instances.
+
+```python
+from nadoo_flow import BackendRegistry
+
+# List available backends
+backends = BackendRegistry.list_backends()  # ["native"]
+
+# Create native backend
+backend = BackendRegistry.create("native")
+
+# Register custom backend
+BackendRegistry.register("custom", CustomBackend)
+
+# Create custom backend
+custom = BackendRegistry.create("custom")
+
+# Set default
+BackendRegistry.set_default("custom")
+```
+
+#### Class Methods
+
+##### register
+
+Register a new backend.
+
+```python
+@classmethod
+def register(
+    name: str,
+    backend_class: Type[IWorkflowBackend] | Callable[[], IWorkflowBackend]
+)
+```
+
+**Parameters:**
+- `name` - Name to register the backend under
+- `backend_class` - Backend class or factory function
+
+**Example:**
+```python
+# Register class
+BackendRegistry.register("langchain", LangChainBackend)
+
+# Register factory function
+def create_crewai_backend():
+    return CrewAIBackend(config={...})
+
+BackendRegistry.register("crewai", create_crewai_backend)
+```
+
+##### unregister
+
+Unregister a backend.
+
+```python
+@classmethod
+def unregister(name: str)
+```
+
+**Parameters:**
+- `name` - Backend name to unregister
+
+**Raises:**
+- `ValueError` - If trying to unregister 'native' backend
+
+**Example:**
+```python
+BackendRegistry.unregister("custom")
+```
+
+##### create
+
+Create a backend instance.
+
+```python
+@classmethod
+def create(name: str | None = None) -> IWorkflowBackend
+```
+
+**Parameters:**
+- `name` - Backend name (if None, uses default)
+
+**Returns:**
+- `IWorkflowBackend` - Backend instance
+
+**Raises:**
+- `ValueError` - If backend not registered
+
+**Example:**
+```python
+# Create native backend
+native = BackendRegistry.create("native")
+
+# Create default backend
+default = BackendRegistry.create()  # Uses default
+```
+
+##### set_default
+
+Set the default backend.
+
+```python
+@classmethod
+def set_default(name: str)
+```
+
+**Parameters:**
+- `name` - Backend name
+
+**Raises:**
+- `ValueError` - If backend not registered
+
+##### get_default
+
+Get the default backend name.
+
+```python
+@classmethod
+def get_default() -> str
+```
+
+**Returns:**
+- `str` - Default backend name
+
+##### list_backends
+
+List all registered backends.
+
+```python
+@classmethod
+def list_backends() -> list[str]
+```
+
+**Returns:**
+- `list[str]` - List of backend names
+
+---
+
+### NadooBackend
+
+Nadoo's native workflow execution backend.
+
+```python
+from nadoo_flow import NadooBackend, WorkflowContext
+
+# Create backend
+backend = NadooBackend()
+
+# Add nodes
+backend.add_node(node1)
+backend.add_node(node2)
+
+# Execute
+context = WorkflowContext()
+result = await backend.execute(context)
+```
+
+#### Constructor
+
+```python
+NadooBackend()
+```
+
+Creates a new instance with an embedded `WorkflowExecutor`.
+
+#### Methods
+
+##### add_node
+
+Add a node to the workflow.
+
+```python
+def add_node(node: IStepNode)
+```
+
+**Parameters:**
+- `node` - Node to add
+
+**Example:**
+```python
+from nadoo_flow import BaseNode
+
+backend.add_node(my_node)
+backend.add_node(another_node)
+```
+
+##### get_node
+
+Get a node by ID.
+
+```python
+def get_node(node_id: str) -> IStepNode | None
+```
+
+**Parameters:**
+- `node_id` - Node identifier
+
+**Returns:**
+- `IStepNode | None` - Node if found, None otherwise
+
+##### execute
+
+Execute the workflow.
+
+```python
+async def execute(
+    workflow_context: WorkflowContext,
+    initial_input: dict[str, Any] | None = None
+) -> WorkflowContext
+```
+
+**Parameters:**
+- `workflow_context` - Execution context
+- `initial_input` - Initial input data
+
+**Returns:**
+- `WorkflowContext` - Updated context
+
+##### validate
+
+Validate the workflow.
+
+```python
+async def validate() -> bool
+```
+
+**Returns:**
+- `bool` - Validation result
+
+#### Properties
+
+##### start_node_id
+
+Get the start node ID.
+
+```python
+@property
+def start_node_id() -> str | None
+```
+
+**Returns:**
+- `str | None` - Start node ID or None
+
+---
+
+## Usage Patterns
+
+### Using Native Backend
+
+```python
+from nadoo_flow import NadooBackend, WorkflowContext, BaseNode, NodeResult
+
+# Create backend
+backend = NadooBackend()
+
+# Define nodes
+class Step1(BaseNode):
+    async def execute(self, node_context, workflow_context):
+        return NodeResult(success=True, output={"step": 1})
+
+class Step2(BaseNode):
+    async def execute(self, node_context, workflow_context):
+        return NodeResult(success=True, output={"step": 2})
+
+# Add nodes
+backend.add_node(Step1(node_id="step1", node_type="process", name="Step 1", config={}))
+backend.add_node(Step2(node_id="step2", node_type="process", name="Step 2", config={}))
+
+# Execute
+context = WorkflowContext()
+result = await backend.execute(context, initial_input={"start": True})
+```
+
+### Registering Custom Backend
+
+```python
+from nadoo_flow import BackendRegistry, IWorkflowBackend
+
+class LangGraphBackend:
+    """LangGraph integration"""
+
+    def __init__(self):
+        from langgraph.graph import StateGraph
+        self.graph = StateGraph()
+
+    async def execute(self, workflow_context, initial_input=None):
+        # Execute using LangGraph
+        result = await self.graph.invoke(initial_input)
+
+        # Update Nadoo context
+        workflow_context.set_global_variable("result", result)
+        return workflow_context
+
+    async def validate(self):
+        return self.graph is not None
+
+# Register
+BackendRegistry.register("langgraph", LangGraphBackend)
+
+# Use
+backend = BackendRegistry.create("langgraph")
+```
+
+### Switching Backends
+
+```python
+from nadoo_flow import BackendRegistry
+
+# List available backends (after registering custom ones)
+print(BackendRegistry.list_backends())  # ["native"] by default
+# After registering: ["native", "langgraph", "crewai"]
+
+# Use different backends for different workflows
+native_backend = BackendRegistry.create("native")
+
+# After registering custom backends:
+# langgraph_backend = BackendRegistry.create("langgraph")
+# crewai_backend = BackendRegistry.create("crewai")
+
+# Set default for new instances (after registering)
+# BackendRegistry.set_default("langgraph")
+
+# Now create() uses the default backend
+backend = BackendRegistry.create()  # Uses "native" by default
+```
+
+### Factory Pattern
+
+```python
+def create_optimized_backend(use_gpu: bool = False):
+    """Factory for creating optimized backends"""
+
+    if use_gpu:
+        class GPUBackend:
+            # GPU-accelerated implementation
+            async def execute(self, context, input):
+                # Use GPU for execution
+                return context
+
+            async def validate(self):
+                import torch
+                return torch.cuda.is_available()
+
+        return GPUBackend()
+    else:
+        return NadooBackend()
+
+# Register factory
+BackendRegistry.register("optimized", create_optimized_backend)
+
+# Create with GPU if available
+backend = BackendRegistry.create("optimized")
+```
+
+### Multi-Backend Workflow
+
+```python
+from nadoo_flow import BackendRegistry, WorkflowContext
+
+class MultiBackendOrchestrator:
+    """Run different workflow stages on different backends"""
+
+    def __init__(self):
+        self.prep_backend = BackendRegistry.create("native")
+        self.main_backend = BackendRegistry.create("langgraph")
+        self.post_backend = BackendRegistry.create("native")
+
+    async def execute(self, input_data):
+        context = WorkflowContext()
+
+        # Stage 1: Preparation (native)
+        context = await self.prep_backend.execute(context, input_data)
+
+        # Stage 2: Main processing (LangGraph)
+        main_input = context.get_global_variable("prep_result")
+        context = await self.main_backend.execute(context, main_input)
+
+        # Stage 3: Post-processing (native)
+        context = await self.post_backend.execute(context)
+
+        return context
+```
+
+### Backend Validation
+
+```python
+async def validate_all_backends():
+    """Validate all registered backends"""
+
+    backends = BackendRegistry.list_backends()
+
+    for name in backends:
+        backend = BackendRegistry.create(name)
+        is_valid = await backend.validate()
+
+        if is_valid:
+            print(f"✅ {name} backend is valid")
+        else:
+            print(f"❌ {name} backend validation failed")
+
+await validate_all_backends()
+```
+
+### Custom Backend with Configuration
+
+```python
+class ConfigurableBackend:
+    """Backend with custom configuration"""
+
+    def __init__(self, max_workers: int = 10, timeout: float = 30.0):
+        self.max_workers = max_workers
+        self.timeout = timeout
+        self.executor = ThreadPoolExecutor(max_workers=max_workers)
+
+    async def execute(self, workflow_context, initial_input=None):
+        # Use configuration
+        future = self.executor.submit(self._run_workflow, workflow_context, initial_input)
+
+        try:
+            result = future.result(timeout=self.timeout)
+            return result
+        except TimeoutError:
+            workflow_context.set_global_variable("error", "Execution timeout")
+            return workflow_context
+
+    async def validate(self):
+        return self.max_workers > 0 and self.timeout > 0
+
+# Register with factory
+def create_fast_backend():
+    return ConfigurableBackend(max_workers=50, timeout=10.0)
+
+def create_slow_backend():
+    return ConfigurableBackend(max_workers=1, timeout=120.0)
+
+BackendRegistry.register("fast", create_fast_backend)
+BackendRegistry.register("slow", create_slow_backend)
+```
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Native Backend for Most Cases">
+    The native backend is optimized and has no overhead:
+    ```python
+    # Good: Use native for most workflows
+    backend = BackendRegistry.create("native")
+
+    # Only use custom backends when you need specific features
+    # (e.g., LangGraph's state management, CrewAI's agent collaboration)
+    ```
+  </Accordion>
+
+  <Accordion title="Implement Protocol Methods">
+    Always implement both execute() and validate():
+    ```python
+    class MyBackend:
+        async def execute(self, context, input):
+            # Required
+            return context
+
+        async def validate(self):
+            # Required - validate configuration
+            return True
+    ```
+  </Accordion>
+
+  <Accordion title="Register Once at Startup">
+    Register custom backends during app initialization:
+    ```python
+    # app/startup.py
+    def setup_backends():
+        BackendRegistry.register("custom1", CustomBackend1)
+        BackendRegistry.register("custom2", CustomBackend2)
+        BackendRegistry.set_default("native")
+
+    # Call once at app start
+    setup_backends()
+    ```
+  </Accordion>
+
+  <Accordion title="Validate Before Execution">
+    Always validate backends before running workflows:
+    ```python
+    backend = BackendRegistry.create("custom")
+
+    if not await backend.validate():
+        raise ValueError("Backend validation failed")
+
+    # Safe to execute
+    result = await backend.execute(context)
+    ```
+  </Accordion>
+
+  <Accordion title="Handle Backend Errors Gracefully">
+    Wrap backend execution in try/except:
+    ```python
+    try:
+        backend = BackendRegistry.create(backend_name)
+        result = await backend.execute(context, input_data)
+    except ValueError as e:
+        # Backend not found
+        logger.error(f"Backend error: {e}")
+        # Fallback to native
+        backend = BackendRegistry.create("native")
+        result = await backend.execute(context, input_data)
+    ```
+  </Accordion>
+
+  <Accordion title="Document Custom Backends">
+    Provide clear documentation for custom backends:
+    ```python
+    class MyBackend:
+        """Custom backend for X integration
+
+        Features:
+        - Feature 1
+        - Feature 2
+
+        Requirements:
+        - Package Y must be installed
+        - Environment variable Z must be set
+
+        Example:
+            backend = MyBackend()
+            result = await backend.execute(context)
+        """
+        ...
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Backend Comparison
+
+| Feature | Native | Custom | Notes |
+|---------|--------|--------|-------|
+| Performance | ⚡ Fastest | Varies | Native has zero overhead |
+| Flexibility | ✅ Full | ✅ Full | Both fully customizable |
+| Integration | ❌ None | ✅ Yes | Custom can integrate external frameworks |
+| Learning Curve | ⭐ Easy | ⭐⭐ Medium | Native is simpler |
+| Maintenance | ✅ Maintained | ❌ Your responsibility | Native updated by Nadoo team |
+
+---
+
+## See Also
+
+- [Base](/api/flow-core/base) - Core workflow execution
+- [Chain](/api/flow-core/chain) - Chaining API
+- [Callbacks](/api/flow-core/callbacks) - Event monitoring

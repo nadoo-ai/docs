@@ -1,0 +1,31 @@
+---
+title: 'Python'
+description: 'Execute Python code in Sandbox'
+icon: 'python'
+---
+
+## Python 3.11
+
+Python code is executed using CPython 3.11 in isolated containers.
+
+## Example
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "import math\nprint(math.pi)",
+    "language": "python"
+  }'
+```
+
+## Available Libraries
+
+Standard library modules are available. Popular packages can be pre-installed in custom Docker images.
+
+## Resource Limits
+
+- CPU: 1 core
+- Memory: 512 MB
+- Timeout: 30 seconds (configurable)

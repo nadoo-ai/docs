@@ -1,0 +1,95 @@
+---
+title: 'Quickstart'
+description: 'Execute your first code in Sandbox'
+icon: 'rocket'
+---
+
+## Execute Python Code
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "print(\"Hello, World!\")\nprint(2 + 2)",
+    "language": "python"
+  }'
+```
+
+**Response:**
+```json
+{
+  "execution_id": "exec-123",
+  "stdout": "Hello, World!\n4\n",
+  "stderr": "",
+  "exit_code": 0,
+  "execution_time": 0.123,
+  "language": "python"
+}
+```
+
+## Execute JavaScript
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "console.log(\"Hello from Node.js\");",
+    "language": "javascript"
+  }'
+```
+
+## With Standard Input
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "name = input(\"Enter name: \")\nprint(f\"Hello, {name}!\")",
+    "language": "python",
+    "stdin": "Nadoo"
+  }'
+```
+
+## With Custom Timeout
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "import time\ntime.sleep(5)\nprint(\"Done!\")",
+    "language": "python",
+    "timeout": 10
+  }'
+```
+
+## Async Execution
+
+```bash
+# Submit code
+curl -X POST http://localhost:8002/api/v1/execute/async \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "print(\"Async execution\")",
+    "language": "python"
+  }'
+
+# Get status
+curl http://localhost:8002/api/v1/execute/status/exec-123 \
+  -H "X-API-Key: your-api-key"
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="code" href="/api/sandbox/execute">
+    Explore all API endpoints
+  </Card>
+  <Card title="Supported Languages" icon="file-code" href="/sandbox/languages/overview">
+    View language-specific details
+  </Card>
+</CardGroup>

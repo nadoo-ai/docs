@@ -1,0 +1,30 @@
+---
+title: 'Resource Limits'
+description: 'Configure CPU, memory, and timeout limits'
+icon: 'gauge'
+---
+
+## Default Limits
+
+| Resource | Default | Max |
+|----------|---------|-----|
+| CPU | 1 core | 2 cores |
+| Memory | 512 MB | 2 GB |
+| Timeout | 30 seconds | 300 seconds |
+| Disk | 100 MB | 1 GB |
+
+## Configuration
+
+Set limits in environment variables or per-request:
+
+```bash
+# Per-request timeout
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "print(42)",
+    "language": "python",
+    "timeout": 60
+  }'
+```

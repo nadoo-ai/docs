@@ -1,0 +1,79 @@
+---
+title: 'Installation'
+description: 'Install and set up Nadoo Sandbox'
+icon: 'download'
+---
+
+## Prerequisites
+
+- Docker 20.10+
+- Python 3.11+
+- Redis (optional, for production)
+
+## Using Docker Compose (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/nadoo-ai/sandbox.git
+cd sandbox
+
+# Copy environment file
+cp .env.example .env
+
+# Edit .env and set your API key
+nano .env
+
+# Start services
+docker-compose up -d
+```
+
+Access the service:
+- **API**: http://localhost:8002
+- **Swagger UI**: http://localhost:8002/docs
+- **Health Check**: http://localhost:8002/health
+
+## Using Python Directly
+
+```bash
+# Install Poetry
+curl -sSL https://install.python-poetry.org | python3 -
+
+# Install dependencies
+poetry install
+
+# Set environment variables
+export NADOO_SANDBOX_API_KEY="your-secure-api-key"
+export NADOO_SANDBOX_REDIS_URL="redis://localhost:6379/2"
+
+# Run the service
+poetry run python -m src.main
+```
+
+## Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `NADOO_SANDBOX_API_KEY` | Yes | - | API authentication key |
+| `NADOO_SANDBOX_SECRET_KEY` | Yes | - | Secret key for encryption |
+| `NADOO_SANDBOX_REDIS_URL` | No | - | Redis connection URL |
+| `NADOO_SANDBOX_PORT` | No | `8002` | Service port |
+| `NADOO_SANDBOX_HOST` | No | `0.0.0.0` | Service host |
+
+## Verify Installation
+
+```bash
+# Check health
+curl http://localhost:8002/health
+
+# Execute test code
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"code": "print(42)", "language": "python"}'
+```
+
+## Next Steps
+
+<Card title="Quickstart" icon="rocket" href="/sandbox/quickstart">
+  Run your first code execution
+</Card>

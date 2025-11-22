@@ -1,0 +1,238 @@
+---
+title: 'Synchronous Execution'
+description: 'Execute code and wait for results'
+icon: 'play'
+---
+
+## Execute Code
+
+Execute code in a sandboxed Docker container and wait for the result.
+
+```http
+POST /api/v1/execute
+```
+
+### Headers
+
+| Header | Type | Required | Description |
+|--------|------|----------|-------------|
+| X-API-Key | string | Yes | Your Sandbox API key |
+| Content-Type | string | Yes | Must be `application/json` |
+
+### Request Body
+
+```json
+{
+  "code": "print('Hello, World!')",
+  "language": "python",
+  "stdin": "optional input",
+  "environment": {
+    "MY_VAR": "value"
+  },
+  "timeout": 30,
+  "session_id": "optional-session-id"
+}
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| code | string | Yes | The code to execute |
+| language | string | Yes | Programming language (see [supported languages](/sandbox/languages/overview)) |
+| stdin | string | No | Standard input to provide to the program |
+| environment | object | No | Environment variables as key-value pairs |
+| timeout | integer | No | Execution timeout in seconds (default: 30, max: 300) |
+| session_id | string | No | Optional session ID for tracking related executions |
+
+### Response
+
+```json
+{
+  "execution_id": "550e8400-e29b-41d4-a716-446655440000",
+  "stdout": "Hello, World!\n",
+  "stderr": "",
+  "exit_code": 0,
+  "execution_time": 0.123,
+  "language": "python",
+  "session_id": null
+}
+```
+
+#### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| execution_id | string | Unique identifier for this execution |
+| stdout | string | Standard output from the program |
+| stderr | string | Standard error output from the program |
+| exit_code | integer | Process exit code (0 = success) |
+| execution_time | float | Execution time in seconds |
+| language | string | The language that was executed |
+| session_id | string \| null | Session ID if provided |
+
+### Error Responses
+
+#### 400 Bad Request
+
+```json
+{
+  "detail": "Unsupported language: invalid. Supported languages: python, javascript, ..."
+}
+```
+
+Returned when:
+- Invalid or unsupported language
+- Invalid code syntax
+- Invalid parameters
+
+#### 429 Too Many Requests
+
+```json
+{
+  "detail": "Rate limit exceeded. Please try again later."
+}
+```
+
+Returned when rate limit for your API key is exceeded.
+
+#### 500 Internal Server Error
+
+```json
+{
+  "detail": "Execution failed: container timeout"
+}
+```
+
+Returned when execution fails due to internal error or timeout.
+
+## Examples
+
+### Python
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "print(\"Hello, World!\")\nprint(2 + 2)",
+    "language": "python"
+  }'
+```
+
+Response:
+```json
+{
+  "execution_id": "550e8400-e29b-41d4-a716-446655440000",
+  "stdout": "Hello, World!\n4\n",
+  "stderr": "",
+  "exit_code": 0,
+  "execution_time": 0.08,
+  "language": "python",
+  "session_id": null
+}
+```
+
+### JavaScript
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "console.log(\"Hello from Node.js\");",
+    "language": "javascript"
+  }'
+```
+
+### With Standard Input
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "name = input(\"Enter your name: \")\nprint(f\"Hello, {name}!\")",
+    "language": "python",
+    "stdin": "Nadoo"
+  }'
+```
+
+Response:
+```json
+{
+  "execution_id": "550e8400-e29b-41d4-a716-446655440000",
+  "stdout": "Enter your name: Hello, Nadoo!\n",
+  "stderr": "",
+  "exit_code": 0,
+  "execution_time": 0.05,
+  "language": "python",
+  "session_id": null
+}
+```
+
+### With Environment Variables
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "import os\nprint(os.environ[\"API_URL\"])",
+    "language": "python",
+    "environment": {
+      "API_URL": "https://api.example.com"
+    }
+  }'
+```
+
+### With Custom Timeout
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "import time\ntime.sleep(5)\nprint(\"Done!\")",
+    "language": "python",
+    "timeout": 10
+  }'
+```
+
+## Resource Limits
+
+All executions are subject to the following resource limits:
+
+| Resource | Default | Maximum |
+|----------|---------|---------|
+| CPU | 1 core | 2 cores |
+| Memory | 512 MB | 2 GB |
+| Timeout | 30 seconds | 300 seconds |
+| Disk | 100 MB | 1 GB |
+
+See [Resource Limits](/sandbox/config/resource-limits) for more information.
+
+## Security
+
+All code executions run in isolated Docker containers with:
+
+- **No network access** by default
+- **Read-only filesystem** except for temporary execution directory
+- **Resource limits** enforced by Docker
+- **Automatic cleanup** after execution
+
+See [Security](/sandbox/config/security) for more information.
+
+## Rate Limiting
+
+API requests are rate-limited by API key to prevent abuse. The default limit is 100 requests per minute.
+
+If you exceed the rate limit, you'll receive a `429 Too Many Requests` error. Wait before making additional requests.
+
+## Best Practices
+
+1. **Set appropriate timeouts**: Use shorter timeouts for simple operations to free up resources faster
+2. **Handle errors gracefully**: Check `exit_code` and `stderr` for execution errors
+3. **Use session IDs**: Group related executions with `session_id` for better tracking
+4. **Clean up sessions**: Call the session cleanup endpoint when done
+5. **Monitor execution time**: Track `execution_time` to optimize your code

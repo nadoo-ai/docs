@@ -1,0 +1,41 @@
+---
+title: 'Compiled Languages'
+description: 'Java, Go, Rust, C++, C#'
+icon: 'gears'
+---
+
+## Java (OpenJDK 17)
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "public class Main { public static void main(String[] args) { System.out.println(\"Hello\"); } }",
+    "language": "java"
+  }'
+```
+
+## Go (1.21)
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "package main\nimport \"fmt\"\nfunc main() { fmt.Println(\"Hello\") }",
+    "language": "go"
+  }'
+```
+
+## Rust (1.74)
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "fn main() { println!(\"Hello\"); }",
+    "language": "rust"
+  }'
+```

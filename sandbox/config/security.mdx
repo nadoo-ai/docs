@@ -1,0 +1,20 @@
+---
+title: 'Security'
+description: 'Security controls and isolation'
+icon: 'shield'
+---
+
+## Security Features
+
+- **Container Isolation**: Each execution runs in a separate Docker container
+- **Network Isolation**: No outbound network access by default
+- **Resource Limits**: CPU, memory, and time limits enforced
+- **Read-only Filesystem**: Code cannot persist changes
+- **API Key Authentication**: All requests require valid API key
+
+## Best Practices
+
+1. Always use strong API keys
+2. Set appropriate resource limits
+3. Monitor execution logs
+4. Rotate API keys regularly

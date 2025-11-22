@@ -1,0 +1,430 @@
+---
+title: 'Batch Execution'
+description: 'Execute multiple code snippets in one request'
+icon: 'layer-group'
+---
+
+## Batch Execution
+
+Execute multiple code snippets in different languages in a single API request.
+
+This is useful when you need to run multiple independent code executions and want to minimize HTTP overhead.
+
+```http
+POST /api/v1/execute/batch
+```
+
+### Headers
+
+| Header | Type | Required | Description |
+|--------|------|----------|-------------|
+| X-API-Key | string | Yes | Your Sandbox API key |
+| Content-Type | string | Yes | Must be `application/json` |
+
+### Request Body
+
+Array of execution requests (maximum 10):
+
+```json
+[
+  {
+    "code": "print('Hello from Python')",
+    "language": "python"
+  },
+  {
+    "code": "console.log('Hello from Node.js')",
+    "language": "javascript"
+  },
+  {
+    "code": "package main\nimport \"fmt\"\nfunc main() { fmt.Println(\"Hello from Go\") }",
+    "language": "go"
+  }
+]
+```
+
+Each item in the array accepts the same parameters as [synchronous execution](/api/sandbox/execute):
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| code | string | Yes | The code to execute |
+| language | string | Yes | Programming language |
+| stdin | string | No | Standard input |
+| environment | object | No | Environment variables |
+| timeout | integer | No | Execution timeout in seconds |
+| session_id | string | No | Optional session ID |
+
+### Response
+
+Array of execution results in the same order as requests:
+
+```json
+[
+  {
+    "execution_id": "550e8400-e29b-41d4-a716-446655440000",
+    "stdout": "Hello from Python\n",
+    "stderr": "",
+    "exit_code": 0,
+    "execution_time": 0.08,
+    "language": "python",
+    "session_id": null
+  },
+  {
+    "execution_id": "550e8400-e29b-41d4-a716-446655440001",
+    "stdout": "Hello from Node.js\n",
+    "stderr": "",
+    "exit_code": 0,
+    "execution_time": 0.12,
+    "language": "javascript",
+    "session_id": null
+  },
+  {
+    "execution_id": "550e8400-e29b-41d4-a716-446655440002",
+    "stdout": "Hello from Go\n",
+    "stderr": "",
+    "exit_code": 0,
+    "execution_time": 0.35,
+    "language": "go",
+    "session_id": null
+  }
+]
+```
+
+### Error Handling
+
+If an individual execution fails, it returns an error result with `exit_code: -1` instead of failing the entire batch:
+
+```json
+[
+  {
+    "execution_id": "550e8400-e29b-41d4-a716-446655440000",
+    "stdout": "Success\n",
+    "stderr": "",
+    "exit_code": 0,
+    "execution_time": 0.08,
+    "language": "python",
+    "session_id": null
+  },
+  {
+    "execution_id": "550e8400-e29b-41d4-a716-446655440001",
+    "stdout": "",
+    "stderr": "SyntaxError: Unexpected token",
+    "exit_code": -1,
+    "execution_time": 0.0,
+    "language": "javascript",
+    "session_id": null
+  }
+]
+```
+
+### Limitations
+
+#### 400 Bad Request
+
+```json
+{
+  "detail": "Maximum 10 executions allowed in a batch"
+}
+```
+
+Returned when more than 10 executions are requested in a single batch.
+
+## Examples
+
+### Multi-Language Batch
+
+Execute code in Python, JavaScript, and Go:
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute/batch \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {
+      "code": "print(2 + 2)",
+      "language": "python"
+    },
+    {
+      "code": "console.log(3 + 3)",
+      "language": "javascript"
+    },
+    {
+      "code": "package main\nimport \"fmt\"\nfunc main() { fmt.Println(4 + 4) }",
+      "language": "go"
+    }
+  ]'
+```
+
+Response:
+```json
+[
+  {
+    "execution_id": "550e8400-e29b-41d4-a716-446655440000",
+    "stdout": "4\n",
+    "stderr": "",
+    "exit_code": 0,
+    "execution_time": 0.08,
+    "language": "python",
+    "session_id": null
+  },
+  {
+    "execution_id": "550e8400-e29b-41d4-a716-446655440001",
+    "stdout": "6\n",
+    "stderr": "",
+    "exit_code": 0,
+    "execution_time": 0.12,
+    "language": "javascript",
+    "session_id": null
+  },
+  {
+    "execution_id": "550e8400-e29b-41d4-a716-446655440002",
+    "stdout": "8\n",
+    "stderr": "",
+    "exit_code": 0,
+    "execution_time": 0.35,
+    "language": "go",
+    "session_id": null
+  }
+]
+```
+
+### Test Cases Batch
+
+Run multiple test cases for the same code:
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute/batch \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {
+      "code": "def add(a, b):\n    return a + b\nprint(add(2, 3))",
+      "language": "python",
+      "session_id": "test-session-1"
+    },
+    {
+      "code": "def add(a, b):\n    return a + b\nprint(add(-1, 1))",
+      "language": "python",
+      "session_id": "test-session-1"
+    },
+    {
+      "code": "def add(a, b):\n    return a + b\nprint(add(0, 0))",
+      "language": "python",
+      "session_id": "test-session-1"
+    }
+  ]'
+```
+
+### With Different Configurations
+
+Different timeout and environment per execution:
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute/batch \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {
+      "code": "import os\nprint(os.environ[\"ENV\"])",
+      "language": "python",
+      "environment": {"ENV": "development"},
+      "timeout": 10
+    },
+    {
+      "code": "import os\nprint(os.environ[\"ENV\"])",
+      "language": "python",
+      "environment": {"ENV": "production"},
+      "timeout": 5
+    }
+  ]'
+```
+
+### Python Client Example
+
+```python
+import requests
+
+API_URL = "http://localhost:8002/api/v1"
+API_KEY = "your-api-key"
+
+# Prepare batch of executions
+batch = [
+    {
+        "code": "print('Python')",
+        "language": "python"
+    },
+    {
+        "code": "console.log('JavaScript')",
+        "language": "javascript"
+    },
+    {
+        "code": "puts 'Ruby'",
+        "language": "ruby"
+    }
+]
+
+# Execute batch
+response = requests.post(
+    f"{API_URL}/execute/batch",
+    headers={
+        "X-API-Key": API_KEY,
+        "Content-Type": "application/json"
+    },
+    json=batch
+)
+
+# Process results
+results = response.json()
+for i, result in enumerate(results):
+    print(f"\nExecution {i+1} ({result['language']}):")
+    print(f"  Output: {result['stdout'].strip()}")
+    print(f"  Time: {result['execution_time']}s")
+    print(f"  Exit Code: {result['exit_code']}")
+```
+
+### JavaScript Client Example
+
+```javascript
+const axios = require('axios');
+
+const API_URL = 'http://localhost:8002/api/v1';
+const API_KEY = 'your-api-key';
+
+async function executeBatch() {
+  const batch = [
+    {
+      code: "print('Python')",
+      language: 'python'
+    },
+    {
+      code: "console.log('JavaScript')",
+      language: 'javascript'
+    },
+    {
+      code: "puts 'Ruby'",
+      language: 'ruby'
+    }
+  ];
+
+  const { data: results } = await axios.post(
+    `${API_URL}/execute/batch`,
+    batch,
+    {
+      headers: {
+        'X-API-Key': API_KEY,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  results.forEach((result, i) => {
+    console.log(`\nExecution ${i+1} (${result.language}):`);
+    console.log(`  Output: ${result.stdout.trim()}`);
+    console.log(`  Time: ${result.execution_time}s`);
+    console.log(`  Exit Code: ${result.exit_code}`);
+  });
+}
+
+executeBatch().catch(console.error);
+```
+
+## Execution Order
+
+**Important**: Executions in a batch are run **sequentially**, not in parallel. This ensures:
+
+1. Consistent resource usage
+2. Predictable execution order
+3. Easier debugging and troubleshooting
+
+If you need parallel execution, submit multiple [async executions](/api/sandbox/async-execute) instead.
+
+## Performance Considerations
+
+### Sequential Execution Time
+
+Total execution time is the sum of individual execution times:
+
+```
+Total Time ≈ execution_time_1 + execution_time_2 + ... + execution_time_n
+```
+
+For example, if you have 3 executions that each take 5 seconds:
+- **Batch**: ~15 seconds total (sequential)
+- **3 Async calls**: ~5 seconds total (parallel)
+
+### When to Use Batch
+
+Batch execution is ideal for:
+
+✅ **Code comparison**: Testing same code in different languages
+✅ **Test suites**: Running multiple test cases sequentially
+✅ **Reducing HTTP overhead**: Many quick executions (< 1s each)
+✅ **Order matters**: When executions must run in specific order
+✅ **Atomic operations**: All executions succeed or you track which failed
+
+### When NOT to Use Batch
+
+Avoid batch execution for:
+
+❌ **Long-running code**: Use [async execution](/api/sandbox/async-execute) instead
+❌ **Parallel processing**: Submit separate async requests
+❌ **Independent operations**: Better to run separately for better error isolation
+
+## Best Practices
+
+1. **Limit batch size**: Keep batches small (3-5 executions) for faster response times
+2. **Use consistent timeouts**: Set appropriate timeouts for each execution
+3. **Handle partial failures**: Check `exit_code` for each result
+4. **Group related executions**: Use `session_id` to track related executions
+5. **Monitor total time**: Sum of execution times should be well under HTTP timeout
+6. **Consider alternatives**: For > 5 executions, consider async execution or multiple batches
+
+## Rate Limiting
+
+Batch requests count as multiple requests for rate limiting purposes. A batch of 10 executions counts as 10 requests against your rate limit.
+
+If you're near your rate limit, batch execution can help reduce HTTP overhead while staying within limits.
+
+## Error Scenarios
+
+### Individual Execution Failure
+
+One execution fails, others continue:
+
+```json
+[
+  {"stdout": "Success", "exit_code": 0, ...},
+  {"stderr": "Error", "exit_code": -1, ...},  // Failed
+  {"stdout": "Success", "exit_code": 0, ...}
+]
+```
+
+### Invalid Language
+
+```json
+{
+  "detail": "Unsupported language: invalid"
+}
+```
+
+The entire batch fails if any execution has an invalid language.
+
+### Batch Size Exceeded
+
+```json
+{
+  "detail": "Maximum 10 executions allowed in a batch"
+}
+```
+
+Reduce your batch size to 10 or fewer executions.
+
+## Comparison with Other Methods
+
+| Feature | Batch | Synchronous | Asynchronous |
+|---------|-------|-------------|--------------|
+| Multiple executions | ✅ Yes | ❌ No | ✅ Yes (multiple calls) |
+| Execution order | Sequential | N/A | Parallel |
+| HTTP calls | 1 | Multiple | Multiple |
+| Wait for results | ✅ Yes | ✅ Yes | ❌ No (polling) |
+| Max executions | 10 per batch | 1 | Unlimited |
+| Best for | Quick multi-language tests | Single execution | Long-running tasks |

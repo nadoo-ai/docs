@@ -1,0 +1,29 @@
+---
+title: 'JavaScript & TypeScript'
+description: 'Execute JavaScript and TypeScript code'
+icon: 'js'
+---
+
+## JavaScript (Node.js 20)
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "console.log(\"Hello from Node.js\");",
+    "language": "javascript"
+  }'
+```
+
+## TypeScript
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "const greeting: string = \"Hello\";\nconsole.log(greeting);",
+    "language": "typescript"
+  }'
+```

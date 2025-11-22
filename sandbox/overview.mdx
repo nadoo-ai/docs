@@ -1,0 +1,91 @@
+---
+title: 'Sandbox Overview'
+description: 'Secure code execution service'
+icon: 'shield'
+---
+
+## Overview
+
+Nadoo Sandbox is a secure code execution service that runs user code in isolated Docker containers. It supports 12+ programming languages with built-in resource limits and security controls.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Multi-Language Support" icon="code">
+    Execute code in Python, JavaScript, TypeScript, Java, Go, Rust, C++, C#, Ruby, PHP, SQL, and Bash
+  </Card>
+  <Card title="Secure Isolation" icon="shield">
+    All code runs in isolated Docker containers with resource limits
+  </Card>
+  <Card title="Async Execution" icon="clock">
+    Support for both synchronous and asynchronous code execution
+  </Card>
+  <Card title="Rate Limiting" icon="gauge">
+    Built-in rate limiting to prevent abuse
+  </Card>
+</CardGroup>
+
+## Architecture
+
+```
+┌─────────────────┐
+│   API Gateway   │
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│  FastAPI App    │
+├─────────────────┤
+│ - Execute API   │
+│ - Health Check  │
+│ - Metrics       │
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│ Docker Manager  │
+├─────────────────┤
+│ - Container     │
+│   Creation      │
+│ - Code Exec     │
+│ - Cleanup       │
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│ Docker Daemon   │
+└─────────────────┘
+```
+
+## Use Cases
+
+- **Online Code Editors**: Run user code safely
+- **Automated Testing**: Execute test suites in isolated environments
+- **Educational Platforms**: Provide safe coding environments for students
+- **AI Coding Assistants**: Execute AI-generated code securely
+
+## Quick Example
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "print(\"Hello, Sandbox!\")",
+    "language": "python"
+  }'
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/sandbox/installation">
+    Install and set up Sandbox
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/sandbox/quickstart">
+    Execute your first code
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/sandbox/execute">
+    Explore API endpoints
+  </Card>
+  <Card title="Supported Languages" icon="file-code" href="/sandbox/languages/overview">
+    View all supported languages
+  </Card>
+</CardGroup>

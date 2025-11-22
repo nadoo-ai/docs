@@ -1,0 +1,115 @@
+---
+title: 'Tools API'
+description: 'Invoke other tools from plugins'
+sidebarTitle: 'tools'
+icon: 'wrench'
+---
+
+## Overview
+
+The Tools API allows plugins to invoke other tools (built-in or custom).
+
+**Permission Required:** `tool_invocation`
+
+## Methods
+
+### invoke
+
+Invoke a tool by UUID or name.
+
+```python
+def invoke(
+    tool_uuid: str | None = None,
+    tool_name: str | None = None,
+    parameters: dict[str, Any] | None = None
+) -> dict[str, Any]
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tool_uuid` | `str \| None` | Tool UUID (for custom tools) |
+| `tool_name` | `str \| None` | Tool name (for built-in tools) |
+| `parameters` | `dict \| None` | Tool parameters |
+
+**Note:** Must provide either `tool_uuid` or `tool_name`.
+
+#### Returns
+
+`dict[str, Any]` - Tool execution result
+
+#### Raises
+
+- `PluginPermissionError` - If permission not granted
+- `ToolInvocationError` - If invocation fails
+
+---
+
+## Usage Examples
+
+### Invoke Built-in Tool
+
+```python
+from nadoo_plugin import NadooPlugin, tool
+
+class MyPlugin(NadooPlugin):
+    @tool(name="search_web")
+    def search_web(self, query: str) -> dict:
+        result = self.api.tools.invoke(
+            tool_name="web_search",
+            parameters={"query": query}
+        )
+
+        return result
+```
+
+### Invoke Custom Tool
+
+```python
+def on_initialize(self):
+    # Get tool UUID from config
+    self.custom_tool_uuid = self.config.get("custom_tool_uuid")
+
+@tool(name="use_custom")
+def use_custom(self, input_data: str) -> dict:
+    result = self.api.tools.invoke(
+        tool_uuid=self.custom_tool_uuid,
+        parameters={"input": input_data}
+    )
+
+    return result
+```
+
+### Chain Tools
+
+```python
+@tool(name="process_pipeline")
+def process_pipeline(self, data: str) -> dict:
+    # Step 1: Preprocess
+    preprocessed = self.api.tools.invoke(
+        tool_name="preprocessor",
+        parameters={"data": data}
+    )
+
+    # Step 2: Analyze
+    analyzed = self.api.tools.invoke(
+        tool_name="analyzer",
+        parameters=preprocessed
+    )
+
+    # Step 3: Summarize
+    summary = self.api.tools.invoke(
+        tool_name="summarizer",
+        parameters=analyzed
+    )
+
+    return summary
+```
+
+---
+
+## See Also
+
+- [Plugin SDK Overview](/plugin-sdk/overview)
+- [LLM API](/api/plugin-sdk/llm)

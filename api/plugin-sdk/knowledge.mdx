@@ -1,0 +1,149 @@
+---
+title: 'Knowledge API'
+description: 'Search knowledge bases from plugins'
+sidebarTitle: 'knowledge'
+icon: 'book'
+---
+
+## Overview
+
+The Knowledge API allows plugins to search knowledge bases in the workspace.
+
+**Permission Required:** `knowledge_access`
+
+## Classes
+
+### KnowledgeSearchResult
+
+Search result from knowledge base.
+
+```python
+result = self.api.knowledge.search(...)
+
+print(result.content)         # Text chunk
+print(result.score)          # Similarity score (0-1)
+print(result.metadata)       # Document metadata
+```
+
+#### Attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `chunk_id` | `str` | Chunk identifier |
+| `content` | `str` | Text content |
+| `score` | `float` | Similarity score (0-1, higher is better) |
+| `metadata` | `dict` | Chunk metadata (filename, page, etc.) |
+
+---
+
+## Methods
+
+### search
+
+Search a knowledge base.
+
+```python
+def search(
+    knowledge_base_uuid: str,
+    query: str,
+    top_k: int = 5,
+    score_threshold: float = 0.0
+) -> list[KnowledgeSearchResult]
+```
+
+#### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `knowledge_base_uuid` | `str` | Required | Knowledge base UUID |
+| `query` | `str` | Required | Search query |
+| `top_k` | `int` | `5` | Number of results (1-20) |
+| `score_threshold` | `float` | `0.0` | Minimum score (0-1) |
+
+#### Returns
+
+`list[KnowledgeSearchResult]` - Search results sorted by relevance
+
+#### Raises
+
+- `PluginPermissionError` - If permission not granted or KB not allowed
+- `KnowledgeSearchError` - If search fails
+
+---
+
+## Usage Examples
+
+### Basic Search
+
+```python
+from nadoo_plugin import NadooPlugin, tool
+
+class MyPlugin(NadooPlugin):
+    @tool(name="search_docs")
+    def search_docs(self, question: str) -> dict:
+        results = self.api.knowledge.search(
+            knowledge_base_uuid="kb-uuid-123",
+            query=question,
+            top_k=3
+        )
+
+        # Format results
+        answers = [
+            {"content": r.content, "score": r.score}
+            for r in results
+        ]
+
+        return {"results": answers}
+```
+
+### With Score Threshold
+
+```python
+@tool(name="find_relevant")
+def find_relevant(self, query: str) -> dict:
+    # Only return highly relevant results
+    results = self.api.knowledge.search(
+        knowledge_base_uuid=self.kb_uuid,
+        query=query,
+        top_k=10,
+        score_threshold=0.7  # Min 70% relevance
+    )
+
+    return {"count": len(results), "results": [r.content for r in results]}
+```
+
+### RAG Pattern
+
+```python
+@tool(name="answer_with_context")
+def answer_with_context(self, question: str) -> dict:
+    # 1. Search knowledge base
+    search_results = self.api.knowledge.search(
+        knowledge_base_uuid=self.kb_uuid,
+        query=question,
+        top_k=3
+    )
+
+    # 2. Build context from results
+    context = "\n\n".join([r.content for r in search_results])
+
+    # 3. Ask LLM with context
+    response = self.api.llm.invoke(
+        messages=[
+            {"role": "system", "content": f"Answer based on this context:\n{context}"},
+            {"role": "user", "content": question}
+        ]
+    )
+
+    return {
+        "answer": response.content,
+        "sources": [r.metadata for r in search_results]
+    }
+```
+
+---
+
+## See Also
+
+- [LLM API](/api/plugin-sdk/llm)
+- [Plugin SDK Overview](/plugin-sdk/overview)

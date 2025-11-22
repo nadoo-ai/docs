@@ -1,0 +1,314 @@
+---
+title: 'LLM API'
+description: 'Invoke AI models from plugins'
+sidebarTitle: 'llm'
+icon: 'brain'
+---
+
+## Overview
+
+The LLM API allows plugins to invoke AI models configured in the Nadoo workspace. Plugins can call LLMs without managing API keys or configurations.
+
+**Permission Required:** `llm_access`
+
+## Classes
+
+### LLMResponse
+
+Response object from LLM invocation.
+
+```python
+from nadoo_plugin import LLMResponse
+
+response = self.api.llm.invoke(messages=[...])
+
+print(response.content)           # Generated text
+print(response.model_name)        # "gpt-4"
+print(response.provider)          # "openai"
+print(response.usage)             # {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30}
+```
+
+#### Attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `content` | `str` | Generated text response |
+| `model_uuid` | `str` | Model UUID |
+| `model_name` | `str` | Model name (e.g., "gpt-4") |
+| `model_id` | `str` | Model identifier |
+| `provider` | `str` | Provider (e.g., "openai", "anthropic") |
+| `usage` | `dict[str, int]` | Token usage: `prompt_tokens`, `completion_tokens`, `total_tokens` |
+| `finish_reason` | `str \| None` | Why generation stopped ("stop", "length", etc.) |
+| `tool_calls` | `list[dict] \| None` | Tool/function calls (if applicable) |
+
+---
+
+## Methods
+
+### invoke
+
+Invoke an LLM model with messages.
+
+```python
+def invoke(
+    messages: list[dict[str, str]],
+    model_uuid: str | None = None,
+    temperature: float = 0.7,
+    max_tokens: int | None = None,
+    top_p: float | None = None,
+    stop: list[str] | None = None
+) -> LLMResponse
+```
+
+#### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `messages` | `list[dict]` | Required | List of message dicts with `role` and `content` |
+| `model_uuid` | `str \| None` | `None` | Model UUID (None = workspace default) |
+| `temperature` | `float` | `0.7` | Sampling temperature (0.0-2.0) |
+| `max_tokens` | `int \| None` | `None` | Maximum tokens to generate |
+| `top_p` | `float \| None` | `None` | Nucleus sampling parameter (0.0-1.0) |
+| `stop` | `list[str] \| None` | `None` | Stop sequences |
+
+#### Message Format
+
+```python
+messages = [
+    {"role": "system", "content": "You are a helpful assistant"},
+    {"role": "user", "content": "What is AI?"},
+    {"role": "assistant", "content": "AI stands for..."},
+    {"role": "user", "content": "Tell me more"}
+]
+```
+
+**Roles:**
+- `system` - System instructions
+- `user` - User messages
+- `assistant` - AI responses (for conversation history)
+
+#### Returns
+
+`LLMResponse` object with generated content and metadata.
+
+#### Raises
+
+- `PluginPermissionError` - If `llm_access` permission not granted
+- `LLMInvocationError` - If invocation fails
+
+---
+
+## Usage Examples
+
+### Basic Invocation
+
+```python
+from nadoo_plugin import NadooPlugin, tool
+
+class MyPlugin(NadooPlugin):
+    @tool(name="ask_ai")
+    def ask_ai(self, question: str) -> dict:
+        response = self.api.llm.invoke(
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant"},
+                {"role": "user", "content": question}
+            ]
+        )
+
+        return {
+            "answer": response.content,
+            "tokens_used": response.usage["total_tokens"]
+        }
+```
+
+### With Conversation History
+
+```python
+@tool(name="chat")
+def chat(self, message: str, history: list[dict]) -> dict:
+    # Build messages from history
+    messages = history + [
+        {"role": "user", "content": message}
+    ]
+
+    response = self.api.llm.invoke(
+        messages=messages,
+        temperature=0.7
+    )
+
+    # Return new message for history
+    return {
+        "content": response.content,
+        "role": "assistant"
+    }
+```
+
+### Custom Temperature
+
+```python
+@tool(name="creative_write")
+def creative_write(self, prompt: str) -> dict:
+    # High temperature for creativity
+    response = self.api.llm.invoke(
+        messages=[
+            {"role": "system", "content": "You are a creative writer"},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=1.2  # More creative
+    )
+
+    return {"story": response.content}
+
+@tool(name="extract_data")
+def extract_data(self, text: str) -> dict:
+    # Low temperature for accuracy
+    response = self.api.llm.invoke(
+        messages=[
+            {"role": "system", "content": "Extract structured data"},
+            {"role": "user", "content": text}
+        ],
+        temperature=0.0  # Deterministic
+    )
+
+    return {"data": response.content}
+```
+
+### With Max Tokens
+
+```python
+@tool(name="summarize")
+def summarize(self, text: str) -> dict:
+    response = self.api.llm.invoke(
+        messages=[
+            {"role": "system", "content": "Summarize concisely"},
+            {"role": "user", "content": text}
+        ],
+        max_tokens=100  # Limit to 100 tokens
+    )
+
+    return {"summary": response.content}
+```
+
+### Using Specific Model
+
+```python
+def on_initialize(self):
+    # Get model UUID from config
+    self.gpt4_uuid = self.config.get("gpt4_model_uuid")
+
+@tool(name="advanced_analysis")
+def advanced_analysis(self, data: str) -> dict:
+    response = self.api.llm.invoke(
+        messages=[
+            {"role": "user", "content": f"Analyze: {data}"}
+        ],
+        model_uuid=self.gpt4_uuid  # Use specific model
+    )
+
+    return {"analysis": response.content}
+```
+
+### With Stop Sequences
+
+```python
+@tool(name="generate_code")
+def generate_code(self, description: str) -> dict:
+    response = self.api.llm.invoke(
+        messages=[
+            {"role": "system", "content": "Generate Python code"},
+            {"role": "user", "content": description}
+        ],
+        stop=["```"]  # Stop at code fence
+    )
+
+    return {"code": response.content}
+```
+
+### Token Usage Tracking
+
+```python
+class TokenTrackingPlugin(NadooPlugin):
+    def on_initialize(self):
+        self.total_tokens = 0
+
+    @tool(name="ask")
+    def ask(self, question: str) -> dict:
+        response = self.api.llm.invoke(
+            messages=[{"role": "user", "content": question}]
+        )
+
+        # Track usage
+        self.total_tokens += response.usage["total_tokens"]
+        self.context.log(f"Total tokens used: {self.total_tokens}")
+
+        return {"answer": response.content}
+```
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use System Messages">
+    Always include a system message for better results:
+    ```python
+    # Good
+    messages = [
+        {"role": "system", "content": "You are an expert in X"},
+        {"role": "user", "content": "Question about X"}
+    ]
+
+    # Bad - no system message
+    messages = [
+        {"role": "user", "content": "Question about X"}
+    ]
+    ```
+  </Accordion>
+
+  <Accordion title="Set Appropriate Temperature">
+    - **Creative tasks**: 0.8-1.5
+    - **Balanced**: 0.7 (default)
+    - **Factual/deterministic**: 0.0-0.3
+  </Accordion>
+
+  <Accordion title="Limit Max Tokens">
+    Prevent excessive token usage:
+    ```python
+    response = self.api.llm.invoke(
+        messages=messages,
+        max_tokens=500  # Reasonable limit
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="Handle Errors">
+    Wrap in try/except:
+    ```python
+    try:
+        response = self.api.llm.invoke(messages)
+        return {"result": response.content}
+    except LLMInvocationError as e:
+        self.context.error(f"LLM failed: {e}")
+        return {"error": str(e)}
+    ```
+  </Accordion>
+
+  <Accordion title="Track Token Usage">
+    Monitor costs:
+    ```python
+    response = self.api.llm.invoke(messages)
+    tokens = response.usage["total_tokens"]
+
+    if tokens > 1000:
+        self.context.warn(f"High token usage: {tokens}")
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## See Also
+
+- [Plugin SDK Overview](/plugin-sdk/overview)
+- [Tools API](/api/plugin-sdk/tools)
+- [Knowledge API](/api/plugin-sdk/knowledge)

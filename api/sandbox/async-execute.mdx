@@ -1,0 +1,349 @@
+---
+title: 'Asynchronous Execution'
+description: 'Execute code without waiting for results'
+icon: 'clock'
+---
+
+## Async Execution
+
+Execute code asynchronously in a background task and poll for results later.
+
+This is useful for long-running executions where you don't want to keep the HTTP connection open.
+
+## Submit Async Execution
+
+```http
+POST /api/v1/execute/async
+```
+
+### Headers
+
+| Header | Type | Required | Description |
+|--------|------|----------|-------------|
+| X-API-Key | string | Yes | Your Sandbox API key |
+| Content-Type | string | Yes | Must be `application/json` |
+
+### Request Body
+
+Same as synchronous execution:
+
+```json
+{
+  "code": "import time\ntime.sleep(10)\nprint('Done!')",
+  "language": "python",
+  "stdin": "optional input",
+  "environment": {
+    "MY_VAR": "value"
+  },
+  "timeout": 60,
+  "session_id": "optional-session-id"
+}
+```
+
+### Response
+
+```json
+{
+  "execution_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "created_at": "2025-01-15T10:30:00.000Z",
+  "started_at": null,
+  "completed_at": null,
+  "result": null
+}
+```
+
+#### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| execution_id | string | Unique identifier for this execution |
+| status | string | Execution status: `pending`, `running`, `completed`, or `failed` |
+| created_at | string | ISO 8601 timestamp when execution was created |
+| started_at | string \| null | ISO 8601 timestamp when execution started |
+| completed_at | string \| null | ISO 8601 timestamp when execution completed |
+| result | object \| null | Execution result (same as synchronous response) when completed |
+
+## Get Execution Status
+
+Poll for the status and result of an async execution.
+
+```http
+GET /api/v1/execute/status/{execution_id}
+```
+
+### Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| execution_id | string | Yes | The execution ID returned from async execution |
+
+### Response
+
+#### Pending Status
+
+```json
+{
+  "execution_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "created_at": "2025-01-15T10:30:00.000Z",
+  "started_at": null,
+  "completed_at": null,
+  "result": null
+}
+```
+
+#### Running Status
+
+```json
+{
+  "execution_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "running",
+  "created_at": "2025-01-15T10:30:00.000Z",
+  "started_at": "2025-01-15T10:30:01.000Z",
+  "completed_at": null,
+  "result": null
+}
+```
+
+#### Completed Status
+
+```json
+{
+  "execution_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "completed",
+  "created_at": "2025-01-15T10:30:00.000Z",
+  "started_at": "2025-01-15T10:30:01.000Z",
+  "completed_at": "2025-01-15T10:30:11.000Z",
+  "result": {
+    "execution_id": "550e8400-e29b-41d4-a716-446655440000",
+    "stdout": "Done!\n",
+    "stderr": "",
+    "exit_code": 0,
+    "execution_time": 10.05,
+    "language": "python",
+    "session_id": null
+  }
+}
+```
+
+#### Failed Status
+
+```json
+{
+  "execution_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "failed",
+  "created_at": "2025-01-15T10:30:00.000Z",
+  "started_at": "2025-01-15T10:30:01.000Z",
+  "completed_at": "2025-01-15T10:35:01.000Z",
+  "result": {
+    "execution_id": "550e8400-e29b-41d4-a716-446655440000",
+    "stdout": "",
+    "stderr": "Execution timeout exceeded",
+    "exit_code": -1,
+    "execution_time": 300.0,
+    "language": "python",
+    "session_id": null
+  }
+}
+```
+
+### Error Responses
+
+#### 404 Not Found
+
+```json
+{
+  "detail": "Execution 550e8400-e29b-41d4-a716-446655440000 not found"
+}
+```
+
+Returned when the execution ID doesn't exist or has been cleaned up.
+
+## Examples
+
+### Submit Async Execution
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute/async \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "import time\nfor i in range(5):\n    print(f\"Step {i+1}\")\n    time.sleep(2)",
+    "language": "python",
+    "timeout": 60
+  }'
+```
+
+Response:
+```json
+{
+  "execution_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "created_at": "2025-01-15T10:30:00.000Z",
+  "started_at": null,
+  "completed_at": null,
+  "result": null
+}
+```
+
+### Poll for Status
+
+```bash
+curl -X GET http://localhost:8002/api/v1/execute/status/550e8400-e29b-41d4-a716-446655440000 \
+  -H "X-API-Key: your-api-key"
+```
+
+### Python Example
+
+Complete example using Python:
+
+```python
+import requests
+import time
+
+API_URL = "http://localhost:8002/api/v1"
+API_KEY = "your-api-key"
+
+# Submit async execution
+response = requests.post(
+    f"{API_URL}/execute/async",
+    headers={
+        "X-API-Key": API_KEY,
+        "Content-Type": "application/json"
+    },
+    json={
+        "code": """
+import time
+for i in range(5):
+    print(f"Step {i+1}")
+    time.sleep(2)
+print("Completed!")
+        """,
+        "language": "python",
+        "timeout": 60
+    }
+)
+
+execution_id = response.json()["execution_id"]
+print(f"Execution ID: {execution_id}")
+
+# Poll for completion
+while True:
+    status_response = requests.get(
+        f"{API_URL}/execute/status/{execution_id}",
+        headers={"X-API-Key": API_KEY}
+    )
+
+    status_data = status_response.json()
+    status = status_data["status"]
+
+    print(f"Status: {status}")
+
+    if status in ["completed", "failed"]:
+        result = status_data["result"]
+        print(f"Output: {result['stdout']}")
+        print(f"Execution time: {result['execution_time']}s")
+        break
+
+    time.sleep(1)  # Poll every second
+```
+
+### JavaScript Example
+
+Complete example using JavaScript (Node.js):
+
+```javascript
+const axios = require('axios');
+
+const API_URL = 'http://localhost:8002/api/v1';
+const API_KEY = 'your-api-key';
+
+async function runAsyncExecution() {
+  // Submit async execution
+  const { data: submission } = await axios.post(
+    `${API_URL}/execute/async`,
+    {
+      code: `
+import time
+for i in range(5):
+    print(f"Step {i+1}")
+    time.sleep(2)
+print("Completed!")
+      `,
+      language: 'python',
+      timeout: 60
+    },
+    {
+      headers: {
+        'X-API-Key': API_KEY,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  const executionId = submission.execution_id;
+  console.log(`Execution ID: ${executionId}`);
+
+  // Poll for completion
+  while (true) {
+    const { data: status } = await axios.get(
+      `${API_URL}/execute/status/${executionId}`,
+      {
+        headers: { 'X-API-Key': API_KEY }
+      }
+    );
+
+    console.log(`Status: ${status.status}`);
+
+    if (status.status === 'completed' || status.status === 'failed') {
+      const result = status.result;
+      console.log(`Output: ${result.stdout}`);
+      console.log(`Execution time: ${result.execution_time}s`);
+      break;
+    }
+
+    // Wait 1 second before polling again
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+}
+
+runAsyncExecution().catch(console.error);
+```
+
+## Status Lifecycle
+
+The execution goes through the following states:
+
+1. **pending**: Execution has been queued but not started yet
+2. **running**: Execution is currently in progress
+3. **completed**: Execution finished successfully (exit code may still indicate error)
+4. **failed**: Execution failed due to timeout or system error
+
+## Best Practices
+
+1. **Implement exponential backoff**: Don't poll too frequently. Start with 1-2 second intervals and increase if execution takes longer
+2. **Set reasonable timeouts**: Use longer timeouts for async executions since they run in the background
+3. **Handle all statuses**: Check for both `completed` and `failed` states
+4. **Store execution IDs**: Save the execution ID if you need to check results later
+5. **Clean up completed executions**: Results are stored temporarily and cleaned up after a period
+
+## Use Cases
+
+Async execution is ideal for:
+
+- **Long-running computations**: Calculations that take more than a few seconds
+- **Batch processing**: Processing multiple items sequentially
+- **Scheduled tasks**: Fire-and-forget operations where immediate results aren't needed
+- **User-submitted code**: Allow users to submit code and check back later
+- **Load balancing**: Distribute execution across time to manage system load
+
+## Comparison with Synchronous Execution
+
+| Feature | Synchronous | Asynchronous |
+|---------|-------------|--------------|
+| Response | Immediate with result | Immediate with execution ID |
+| Connection | Keeps HTTP connection open | Returns immediately |
+| Best for | Quick operations (< 30s) | Long operations (> 30s) |
+| Polling | Not needed | Required to get results |
+| Timeout | Client timeout risk | No client timeout |

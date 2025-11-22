@@ -1,0 +1,37 @@
+---
+title: 'Environment Configuration'
+description: 'Configure environment variables'
+icon: 'gear'
+---
+
+## Environment Variables
+
+### Required
+
+```bash
+NADOO_SANDBOX_API_KEY=your-secure-api-key
+NADOO_SANDBOX_SECRET_KEY=your-secret-key
+```
+
+### Optional
+
+```bash
+NADOO_SANDBOX_PORT=8002
+NADOO_SANDBOX_HOST=0.0.0.0
+NADOO_SANDBOX_REDIS_URL=redis://localhost:6379/2
+```
+
+## Per-Request Environment
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "import os\nprint(os.environ[\"MY_VAR\"])",
+    "language": "python",
+    "environment": {
+      "MY_VAR": "value"
+    }
+  }'
+```

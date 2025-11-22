@@ -73,6 +73,10 @@
       "url": "plugins"
     },
     {
+      "name": "Sandbox",
+      "url": "sandbox"
+    },
+    {
       "name": "Builder",
       "url": "builder"
     },
@@ -200,6 +204,36 @@
       ]
     },
     {
+      "group": "Sandbox",
+      "pages": [
+        {
+          "group": "Getting Started",
+          "pages": [
+            "sandbox/overview",
+            "sandbox/installation",
+            "sandbox/quickstart"
+          ]
+        },
+        {
+          "group": "Supported Languages",
+          "pages": [
+            "sandbox/languages/overview",
+            "sandbox/languages/python",
+            "sandbox/languages/javascript",
+            "sandbox/languages/compiled"
+          ]
+        },
+        {
+          "group": "Configuration",
+          "pages": [
+            "sandbox/config/resource-limits",
+            "sandbox/config/security",
+            "sandbox/config/environment"
+          ]
+        }
+      ]
+    },
+    {
       "group": "Builder Platform",
       "pages": [
         "builder/overview",
@@ -217,14 +251,35 @@
           "pages": [
             "api/flow-core/base",
             "api/flow-core/chain",
-            "api/flow-core/parallel",
             "api/flow-core/batch",
             "api/flow-core/memory",
+            "api/flow-core/memory_db",
             "api/flow-core/streaming",
             "api/flow-core/callbacks",
             "api/flow-core/tools",
             "api/flow-core/parsers",
-            "api/flow-core/prompts"
+            "api/flow-core/prompts",
+            "api/flow-core/resilience",
+            "api/flow-core/caching",
+            "api/flow-core/rate_limiting",
+            "api/flow-core/backends"
+          ]
+        },
+        {
+          "group": "Plugin SDK APIs",
+          "pages": [
+            "api/plugin-sdk/llm",
+            "api/plugin-sdk/knowledge",
+            "api/plugin-sdk/tools",
+            "api/plugin-sdk/storage"
+          ]
+        },
+        {
+          "group": "Sandbox APIs",
+          "pages": [
+            "api/sandbox/execute",
+            "api/sandbox/async-execute",
+            "api/sandbox/batch"
           ]
         },
         {

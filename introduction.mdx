@@ -22,35 +22,44 @@ sidebarTitle: 'Introduction'
 
 ## The Complete AI Agent Platform
 
-**Nadoo AI** is an open-source platform that empowers developers and enterprises to build, deploy, and manage intelligent AI agents. From low-level workflow orchestration to visual no-code builders, we provide the complete stack for AI automation.
+**Nadoo AI** is an open-source platform that empowers developers and enterprises to build, deploy, and manage intelligent AI agents. From low-level workflow orchestration to secure code execution and visual no-code builders, we provide the complete stack for AI automation.
 
-<CardGroup cols={3}>
+<CardGroup cols={2}>
   <Card
     title="Flow Core"
-    icon="code"
+    icon="cube"
     href="/flow-core/overview"
   >
-    **For Developers**
+    **Python Framework**
 
-    Type-safe workflow orchestration framework with minimal dependencies
+    Type-safe workflow orchestration with resilience, caching, and multi-backend support
+  </Card>
+  <Card
+    title="Plugin SDK"
+    icon="puzzle-piece"
+    href="/plugin-sdk/overview"
+  >
+    **Extend & Customize**
+
+    Build custom tools with access to LLMs, knowledge bases, and storage
+  </Card>
+  <Card
+    title="Sandbox"
+    icon="shield"
+    href="/sandbox/overview"
+  >
+    **Secure Execution**
+
+    Execute code in 12+ languages within isolated Docker containers
   </Card>
   <Card
     title="Builder Platform"
     icon="palette"
     href="/builder/overview"
   >
-    **For Everyone**
+    **Visual Interface**
 
-    Visual no-code interface for creating AI workflows and agents
-  </Card>
-  <Card
-    title="Enterprise Ready"
-    icon="building"
-    href="/architecture"
-  >
-    **For Organizations**
-
-    Production-grade infrastructure with security, scalability, and compliance
+    No-code workflow designer for creating AI agents without coding
   </Card>
 </CardGroup>
 
@@ -76,8 +85,8 @@ sidebarTitle: 'Introduction'
   <Accordion title="Extensible Architecture" icon="puzzle-piece">
     **Adapt to Your Needs**
 
-    - Multi-backend support (Native, LangGraph, CrewAI, AutoGen)
-    - Plugin system for custom components
+    - Protocol-based backend system (extensible for LangGraph, CrewAI, etc.)
+    - Plugin SDK for custom tools and integrations
     - Integration with 100+ external services
     - Custom node and agent development
   </Accordion>
@@ -94,20 +103,54 @@ sidebarTitle: 'Introduction'
 ## Platform Components
 
 ### Flow Core
-The foundation - a flexible workflow orchestration framework designed for developers.
+Production-ready Python workflow orchestration framework with enterprise features.
 
 <Info>
   **Perfect for:** Python developers, ML engineers, and teams building custom AI solutions
 </Info>
 
 Key Features:
-- Type-safe with Pydantic v2
-- Async-first architecture
-- Minimal dependencies (only 2!)
-- Multi-backend support
-- Production-ready patterns
+- **Type-safe** with Pydantic v2
+- **Async-first** architecture for high performance
+- **Resilience**: Retry policies with exponential backoff, fallback strategies
+- **Caching**: Response caching with Redis support
+- **Rate Limiting**: Token bucket algorithm for API protection
+- **Memory Management**: Dual-layer storage (Redis + Database)
+- **Multi-backend**: Protocol-based architecture for extensibility
 
 [Explore Flow Core →](/flow-core/overview)
+
+### Plugin SDK
+Build custom tools and extend Nadoo AI with your own functionality.
+
+<Info>
+  **Perfect for:** Developers creating custom integrations and domain-specific tools
+</Info>
+
+Key Features:
+- **LLM Client**: Invoke language models directly
+- **Knowledge Client**: Search knowledge bases with semantic search
+- **Tools Client**: Call other tools and chain functionality
+- **Storage Client**: Persist data with TTL support
+- Simple decorator-based API
+
+[Explore Plugin SDK →](/plugin-sdk/overview)
+
+### Sandbox
+Secure code execution service supporting 12+ programming languages.
+
+<Info>
+  **Perfect for:** Code playgrounds, automated testing, AI coding assistants, educational platforms
+</Info>
+
+Key Features:
+- **Multi-language**: Python, JavaScript, TypeScript, Java, Go, Rust, C++, C#, Ruby, PHP, SQL, Bash
+- **Container Isolation**: Each execution in separate Docker container
+- **Resource Limits**: CPU, memory, timeout controls
+- **Async Execution**: Background tasks with status polling
+- **Batch API**: Execute multiple snippets in one request
+
+[Explore Sandbox →](/sandbox/overview)
 
 ### Builder Platform (Coming Soon)
 Visual workflow designer for creating AI agents without code.
@@ -159,10 +202,22 @@ Connect with your existing tools and services.
     Build intelligent chatbots that understand context, access knowledge bases, and escalate to humans when needed.
   </Card>
   <Card
+    title="AI Code Execution"
+    icon="code"
+  >
+    Power AI coding assistants, online code editors, and automated testing platforms with secure multi-language execution.
+  </Card>
+  <Card
     title="Document Processing"
     icon="file-alt"
   >
     Extract, analyze, and process documents with AI-powered workflows that handle PDFs, emails, and forms.
+  </Card>
+  <Card
+    title="Custom Tool Development"
+    icon="screwdriver-wrench"
+  >
+    Create domain-specific tools with Plugin SDK that integrate with your existing systems and workflows.
   </Card>
   <Card
     title="Data Analysis & Reporting"
@@ -183,7 +238,7 @@ Connect with your existing tools and services.
 Choose your journey based on your role and needs:
 
 <Tabs>
-  <Tab title="Developer">
+  <Tab title="Workflow Developer">
     <Steps>
       <Step title="Install Flow Core">
         ```bash
@@ -193,8 +248,38 @@ Choose your journey based on your role and needs:
       <Step title="Build First Workflow">
         Follow our [quickstart guide](/flow-core/quickstart)
       </Step>
-      <Step title="Deploy to Production">
-        Learn about [deployment options](/deployment)
+      <Step title="Add Production Features">
+        Learn about [resilience](/api/flow-core/resilience), [caching](/api/flow-core/caching), and [rate limiting](/api/flow-core/rate_limiting)
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Plugin Developer">
+    <Steps>
+      <Step title="Install Plugin SDK">
+        ```bash
+        pip install nadoo-plugin-sdk
+        ```
+      </Step>
+      <Step title="Create Your First Plugin">
+        Follow our [Plugin SDK guide](/plugin-sdk/overview)
+      </Step>
+      <Step title="Publish to Registry">
+        Share your plugin with the community
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Code Execution">
+    <Steps>
+      <Step title="Start Sandbox Service">
+        ```bash
+        docker-compose up -d
+        ```
+      </Step>
+      <Step title="Execute Your First Code">
+        Follow our [Sandbox quickstart](/sandbox/quickstart)
+      </Step>
+      <Step title="Integrate with Your App">
+        Use the [Sandbox API](/api/sandbox/execute) in your application
       </Step>
     </Steps>
   </Tab>
@@ -219,47 +304,61 @@ Choose your journey based on your role and needs:
 graph TB
     subgraph "User Interfaces"
         A[Visual Builder]
-        B[CLI Tools]
-        C[REST APIs]
-        D[SDKs]
+        B[REST APIs]
+        C[Python SDK]
+        D[Plugin SDK]
     end
 
-    subgraph "Nadoo AI Platform"
-        E[Orchestration Engine]
-        F[Agent Runtime]
-        G[Plugin System]
-        H[Security Layer]
+    subgraph "Core Services"
+        E[Flow Core Engine]
+        F[Sandbox Service]
+        G[Plugin Registry]
+        H[Agent Runtime]
+    end
+
+    subgraph "Execution Layer"
+        I[Workflow Orchestration]
+        J[Docker Containers]
+        K[Custom Tools]
+        L[LLM Integration]
     end
 
     subgraph "Infrastructure"
-        I[Compute Resources]
-        J[Storage Systems]
-        K[Message Queues]
-        L[Monitoring]
+        M[Redis Cache]
+        N[PostgreSQL DB]
+        O[Message Queue]
+        P[Monitoring]
     end
 
     A --> E
     B --> E
+    B --> F
     C --> E
-    D --> E
+    D --> G
 
-    E --> F
-    F --> G
-    G --> H
+    E --> I
+    F --> J
+    G --> K
+    E --> L
 
-    H --> I
-    H --> J
-    H --> K
-    H --> L
+    I --> M
+    I --> N
+    I --> O
+    J --> P
+    K --> L
 
     style A fill:#e1f5fe
     style B fill:#e1f5fe
     style C fill:#e1f5fe
     style D fill:#e1f5fe
     style E fill:#4fc3f7
-    style F fill:#29b6f6
-    style G fill:#039be5
-    style H fill:#0277bd
+    style F fill:#4fc3f7
+    style G fill:#4fc3f7
+    style H fill:#4fc3f7
+    style I fill:#29b6f6
+    style J fill:#29b6f6
+    style K fill:#29b6f6
+    style L fill:#29b6f6
 ```
 
 
@@ -278,23 +377,37 @@ graph TB
 
 <CardGroup cols={2}>
   <Card
-    title="Start with Flow Core"
-    icon="terminal"
+    title="Build Workflows"
+    icon="cube"
     href="/flow-core/overview"
   >
-    Build custom workflows with our Python framework
+    Start with Flow Core Python framework
   </Card>
   <Card
-    title="Try the Builder"
-    icon="magic-wand-sparkles"
-    href="/builder/getting-started"
+    title="Create Plugins"
+    icon="puzzle-piece"
+    href="/plugin-sdk/overview"
   >
-    Create AI agents visually without code
+    Extend Nadoo with custom tools using Plugin SDK
+  </Card>
+  <Card
+    title="Execute Code Securely"
+    icon="shield"
+    href="/sandbox/overview"
+  >
+    Run multi-language code in isolated containers
+  </Card>
+  <Card
+    title="Visual Builder"
+    icon="palette"
+    href="/builder/overview"
+  >
+    Design AI agents without coding (Coming Soon)
   </Card>
 </CardGroup>
 
 <Note>
-  **Coming Soon:** Version 1.0 with multi-backend support, visual builder, and enterprise features is currently in development.
+  **Latest Update:** v0.1.0 (beta) includes Flow Core with resilience patterns, Plugin SDK, and Sandbox service. Visual Builder coming in v1.0.
 </Note>
 
 ---
