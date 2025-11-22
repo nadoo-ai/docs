@@ -46,10 +46,6 @@
   "seo": {
     "indexHiddenPages": false
   },
-  "versions": [
-    "Flow Core v0.1.0 (beta)",
-    "Builder (coming soon)"
-  ],
   "topbarLinks": [
     {
       "name": "GitHub",
