@@ -1,0 +1,441 @@
+---
+title: 'Storage API'
+description: 'Persistent key-value storage for your plugin'
+sidebarTitle: 'Storage'
+'og:title': 'Storage API - Nadoo Plugin SDK'
+icon: 'hard-drive'
+---
+
+## Overview
+
+The Storage API provides persistent key-value storage scoped to your plugin. Data persists across executions and is isolated from other plugins.
+
+**Requires permission:** `storage`
+
+## Basic Usage
+
+```python
+from nadoo_plugin import NadooPlugin, tool, permission_required
+
+class MyPlugin(NadooPlugin):
+    @tool(name="save_data", description="Save data to storage")
+    @permission_required("storage")
+    def save_data(self, key: str, value: str) -> dict:
+        # Store data
+        self.api.storage.set(key, value)
+
+        return {"success": True, "key": key}
+
+    @tool(name="get_data", description="Retrieve data from storage")
+    @permission_required("storage")
+    def get_data(self, key: str) -> dict:
+        # Retrieve data
+        value = self.api.storage.get(key)
+
+        if value is None:
+            return {"success": False, "error": "Key not found"}
+
+        return {"success": True, "value": value}
+```
+
+## set()
+
+Store a value:
+
+```python
+self.api.storage.set(
+    key="user_count",
+    value=42,
+    ttl=3600  # Optional: expire after 1 hour
+)
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `key` | str | Yes | Storage key (1-255 chars) |
+| `value` | any | Yes | Value (must be JSON-serializable) |
+| `ttl` | int | No | Time-to-live in seconds |
+
+### Supported Value Types
+
+```python
+# Primitives
+self.api.storage.set("string", "hello")
+self.api.storage.set("number", 42)
+self.api.storage.set("boolean", True)
+self.api.storage.set("null", None)
+
+# Collections
+self.api.storage.set("list", [1, 2, 3])
+self.api.storage.set("dict", {"key": "value"})
+
+# Complex objects (must be JSON-serializable)
+self.api.storage.set("data", {
+    "users": ["alice", "bob"],
+    "count": 2,
+    "active": True
+})
+```
+
+## get()
+
+Retrieve a value:
+
+```python
+value = self.api.storage.get(
+    key="user_count",
+    default=0  # Return if key doesn't exist
+)
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `key` | str | Yes | Storage key |
+| `default` | any | No | Default value if key not found |
+
+### Return Value
+
+Returns the stored value, or `default` if key doesn't exist.
+
+## delete()
+
+Delete a key:
+
+```python
+self.api.storage.delete(key="user_count")
+```
+
+## Examples
+
+### Counter
+
+```python
+@tool(name="increment_counter", description="Increment a counter")
+@permission_required("storage")
+def increment_counter(self, counter_name: str) -> dict:
+    # Get current value
+    current = self.api.storage.get(counter_name, default=0)
+
+    # Increment
+    new_value = current + 1
+
+    # Save
+    self.api.storage.set(counter_name, new_value)
+
+    return {
+        "success": True,
+        "counter": counter_name,
+        "value": new_value
+    }
+```
+
+### Cache
+
+```python
+@tool(name="get_with_cache", description="Get data with caching")
+@permission_required("storage")
+def get_with_cache(self, key: str) -> dict:
+    # Check cache first
+    cache_key = f"cache:{key}"
+    cached = self.api.storage.get(cache_key)
+
+    if cached:
+        self.context.info("Cache hit")
+        return {
+            "success": True,
+            "data": cached,
+            "cached": True
+        }
+
+    # Fetch data (simulate expensive operation)
+    self.context.info("Cache miss, fetching...")
+    data = self._fetch_data(key)  # Your fetch logic
+
+    # Cache for 1 hour
+    self.api.storage.set(cache_key, data, ttl=3600)
+
+    return {
+        "success": True,
+        "data": data,
+        "cached": False
+    }
+
+def _fetch_data(self, key: str):
+    """Simulate expensive data fetch"""
+    import time
+    time.sleep(1)
+    return {"key": key, "value": "expensive data"}
+```
+
+### User Preferences
+
+```python
+@tool(name="save_preferences", description="Save user preferences")
+@permission_required("storage")
+def save_preferences(self, user_id: str, preferences: dict) -> dict:
+    key = f"prefs:{user_id}"
+    self.api.storage.set(key, preferences)
+
+    return {
+        "success": True,
+        "user_id": user_id,
+        "preferences": preferences
+    }
+
+@tool(name="get_preferences", description="Get user preferences")
+@permission_required("storage")
+def get_preferences(self, user_id: str) -> dict:
+    key = f"prefs:{user_id}"
+    prefs = self.api.storage.get(key, default={
+        "theme": "light",
+        "language": "en"
+    })
+
+    return {
+        "success": True,
+        "user_id": user_id,
+        "preferences": prefs
+    }
+```
+
+### Session Storage
+
+```python
+@tool(name="create_session", description="Create user session")
+@permission_required("storage")
+def create_session(self, user_id: str) -> dict:
+    import uuid
+    from datetime import datetime
+
+    session_id = str(uuid.uuid4())
+    session_data = {
+        "user_id": user_id,
+        "created_at": datetime.utcnow().isoformat(),
+        "active": True
+    }
+
+    # Store session with 24 hour TTL
+    self.api.storage.set(f"session:{session_id}", session_data, ttl=86400)
+
+    return {
+        "success": True,
+        "session_id": session_id,
+        "expires_in": 86400
+    }
+
+@tool(name="get_session", description="Get session data")
+@permission_required("storage")
+def get_session(self, session_id: str) -> dict:
+    session = self.api.storage.get(f"session:{session_id}")
+
+    if not session:
+        return {
+            "success": False,
+            "error": "Session not found or expired"
+        }
+
+    return {
+        "success": True,
+        "session": session
+    }
+```
+
+### Rate Limiting
+
+```python
+@tool(name="rate_limited_action", description="Action with rate limiting")
+@permission_required("storage")
+def rate_limited_action(self, user_id: str, action: str) -> dict:
+    import time
+
+    # Check rate limit
+    limit_key = f"ratelimit:{user_id}:{action}"
+    attempts = self.api.storage.get(limit_key, default=0)
+
+    max_attempts = 10
+    window = 60  # 1 minute
+
+    if attempts >= max_attempts:
+        return {
+            "success": False,
+            "error": f"Rate limit exceeded. Max {max_attempts} per {window}s"
+        }
+
+    # Increment counter with TTL
+    self.api.storage.set(limit_key, attempts + 1, ttl=window)
+
+    # Perform action
+    result = self._perform_action(action)
+
+    return {
+        "success": True,
+        "result": result,
+        "attempts_remaining": max_attempts - attempts - 1
+    }
+
+def _perform_action(self, action: str):
+    """Simulate action"""
+    return f"Action '{action}' performed"
+```
+
+### Configuration Storage
+
+```python
+@tool(name="update_config", description="Update plugin configuration")
+@permission_required("storage")
+def update_config(self, config_key: str, config_value: any) -> dict:
+    # Get current config
+    config = self.api.storage.get("plugin_config", default={})
+
+    # Update
+    config[config_key] = config_value
+
+    # Save (no TTL - permanent)
+    self.api.storage.set("plugin_config", config)
+
+    self.context.info(f"Config updated: {config_key}")
+
+    return {
+        "success": True,
+        "config": config
+    }
+
+@tool(name="get_config", description="Get configuration")
+@permission_required("storage")
+def get_config(self) -> dict:
+    config = self.api.storage.get("plugin_config", default={})
+
+    return {
+        "success": True,
+        "config": config
+    }
+```
+
+### List Storage (Append Pattern)
+
+```python
+@tool(name="add_to_list", description="Add item to stored list")
+@permission_required("storage")
+def add_to_list(self, list_name: str, item: any) -> dict:
+    # Get current list
+    items = self.api.storage.get(list_name, default=[])
+
+    # Append item
+    items.append(item)
+
+    # Save updated list
+    self.api.storage.set(list_name, items)
+
+    return {
+        "success": True,
+        "list_name": list_name,
+        "count": len(items)
+    }
+
+@tool(name="get_list", description="Get stored list")
+@permission_required("storage")
+def get_list(self, list_name: str) -> dict:
+    items = self.api.storage.get(list_name, default=[])
+
+    return {
+        "success": True,
+        "list_name": list_name,
+        "items": items,
+        "count": len(items)
+    }
+```
+
+### Expiring Data
+
+```python
+@tool(name="set_temporary", description="Store data with expiration")
+@permission_required("storage")
+def set_temporary(self, key: str, value: any, minutes: int) -> dict:
+    ttl = minutes * 60
+
+    self.api.storage.set(key, value, ttl=ttl)
+
+    return {
+        "success": True,
+        "key": key,
+        "expires_in_seconds": ttl
+    }
+```
+
+## Error Handling
+
+```python
+from nadoo_plugin.exceptions import StorageError, PluginPermissionError
+
+@tool(name="safe_storage", description="Safe storage operation")
+def safe_storage(self, key: str, value: any) -> dict:
+    try:
+        self.api.storage.set(key, value)
+
+        return {"success": True}
+
+    except PluginPermissionError:
+        return {
+            "success": False,
+            "error": "Storage permission not granted"
+        }
+
+    except StorageError as e:
+        self.context.error(f"Storage failed: {str(e)}")
+        return {
+            "success": False,
+            "error": f"Storage operation failed: {str(e)}"
+        }
+
+    except ValueError as e:
+        return {
+            "success": False,
+            "error": f"Invalid key or value: {str(e)}"
+        }
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Namespaced Keys">
+    Prefix keys with category: `prefs:user_123`, `cache:query_xyz`
+  </Accordion>
+
+  <Accordion title="Set TTL for Temporary Data">
+    Always set TTL for cache, sessions, and temporary data
+  </Accordion>
+
+  <Accordion title="Check for Existence">
+    Use `default` parameter in `get()` to handle missing keys gracefully
+  </Accordion>
+
+  <Accordion title="JSON-Serializable Only">
+    Ensure values can be converted to JSON (no functions, classes, etc.)
+  </Accordion>
+
+  <Accordion title="Limit Storage Size">
+    Don't store large files - storage is for metadata and state
+  </Accordion>
+</AccordionGroup>
+
+## Limitations
+
+- **Key length**: 1-255 characters
+- **Value size**: Must be JSON-serializable
+- **Scope**: Data is isolated per plugin
+- **Persistence**: Data persists until deleted or expired (TTL)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="LLM API" icon="brain" href="/plugin-sdk/api/llm">
+    Cache LLM responses
+  </Card>
+  <Card title="Knowledge API" icon="database" href="/plugin-sdk/api/knowledge">
+    Cache knowledge search results
+  </Card>
+</CardGroup>

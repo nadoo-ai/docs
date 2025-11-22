@@ -1,0 +1,357 @@
+---
+title: 'Quick Start'
+description: 'Build your first Nadoo plugin in 5 minutes'
+sidebarTitle: 'Quick Start'
+'og:title': 'Quick Start - Nadoo Plugin SDK'
+icon: 'rocket'
+---
+
+## Create Your First Plugin
+
+### Step 1: Create Plugin Project
+
+```bash
+nadoo-plugin create weather-plugin
+cd weather-plugin
+```
+
+This creates a new directory with the following structure:
+
+```
+weather-plugin/
+├── main.py          # Plugin implementation
+├── test_plugin.py   # Tests
+├── requirements.txt # Dependencies
+└── plugin.yaml      # Plugin metadata
+```
+
+### Step 2: Implement Your Plugin
+
+Open `main.py` and implement your first tool:
+
+```python
+from nadoo_plugin import NadooPlugin, tool, parameter, validator
+
+class WeatherPlugin(NadooPlugin):
+    """Get weather information"""
+
+    def on_initialize(self):
+        """Initialize plugin (called once)"""
+        self.api_key = self.require_env("WEATHER_API_KEY")
+        self.context.info("Weather plugin initialized")
+
+    @tool(
+        name="get_weather",
+        description="Get current weather for a city"
+    )
+    @parameter(
+        "city",
+        type="string",
+        required=True,
+        description="City name (e.g., 'Seoul', 'New York')"
+    )
+    @parameter(
+        "units",
+        type="string",
+        required=False,
+        default="celsius",
+        description="Temperature units"
+    )
+    @validator("units", allowed_values=["celsius", "fahrenheit"])
+    def get_weather(self, city: str, units: str = "celsius") -> dict:
+        """Get weather for a city"""
+
+        # Log execution
+        self.context.info(f"Getting weather for {city}")
+        self.context.start_step("fetch_weather")
+
+        # Simulate API call
+        import random
+        temp = random.randint(15, 30)
+
+        if units == "fahrenheit":
+            temp = int(temp * 9/5 + 32)
+
+        # Record variables for debugging
+        self.context.watch_variable("temperature", temp)
+        self.context.watch_variable("units", units)
+
+        # End step (auto-records duration)
+        self.context.end_step()
+
+        # Trace event
+        self.context.trace("weather_fetched", {
+            "city": city,
+            "temperature": temp
+        })
+
+        return {
+            "success": True,
+            "city": city,
+            "temperature": temp,
+            "units": units,
+            "condition": "Sunny"
+        }
+
+# Export plugin instance
+plugin = WeatherPlugin()
+```
+
+### Step 3: Test Your Plugin
+
+Create `test_plugin.py`:
+
+```python
+import pytest
+from nadoo_plugin.testing import PluginTestCase
+from main import WeatherPlugin
+
+class TestWeatherPlugin(PluginTestCase):
+    """Test weather plugin"""
+
+    def get_plugin(self):
+        """Return plugin instance"""
+        return WeatherPlugin()
+
+    def test_get_weather_celsius(self):
+        """Test weather in celsius"""
+        result = self.execute_tool(
+            "get_weather",
+            {"city": "Seoul", "units": "celsius"}
+        )
+
+        assert result["success"] is True
+        assert result["city"] == "Seoul"
+        assert result["units"] == "celsius"
+        assert "temperature" in result
+
+    def test_get_weather_fahrenheit(self):
+        """Test weather in fahrenheit"""
+        result = self.execute_tool(
+            "get_weather",
+            {"city": "New York", "units": "fahrenheit"}
+        )
+
+        assert result["success"] is True
+        assert result["units"] == "fahrenheit"
+
+    def test_invalid_units(self):
+        """Test invalid units"""
+        with pytest.raises(ValueError):
+            self.execute_tool(
+                "get_weather",
+                {"city": "Seoul", "units": "kelvin"}
+            )
+```
+
+Run tests:
+
+```bash
+nadoo-plugin test
+```
+
+### Step 4: Add Plugin Metadata
+
+Update `plugin.yaml`:
+
+```yaml
+name: weather-plugin
+version: 1.0.0
+description: Get current weather information for any city
+author: Your Name
+license: MIT
+
+# Required permissions
+permissions:
+  - network_access
+
+# Environment variables needed
+env_vars:
+  - name: WEATHER_API_KEY
+    description: API key for weather service
+    required: true
+
+# Tools provided
+tools:
+  - name: get_weather
+    description: Get current weather for a city
+```
+
+### Step 5: Build & Deploy
+
+```bash
+# Build plugin package
+nadoo-plugin build
+
+# Install to workspace (requires Nadoo credentials)
+nadoo-plugin install
+```
+
+## Using Your Plugin in Workflows
+
+Once installed, your plugin can be used in Nadoo workflows:
+
+### In AI Agent Workflows
+
+```python
+from nadoo_flow import BaseNode, NodeResult
+
+class WeatherAgentNode(BaseNode):
+    async def execute(self, node_context, workflow_context):
+        # The plugin is available as a tool
+        # AI Agent can invoke it automatically based on user query
+        return NodeResult(success=True, output={})
+```
+
+### Direct Tool Invocation
+
+```python
+# Via Tools API
+from nadoo_plugin.api import ToolsClient
+
+tools = ToolsClient(base_url, token, context)
+result = tools.invoke(
+    tool_id="weather-plugin:get_weather",
+    parameters={"city": "Seoul", "units": "celsius"}
+)
+
+print(f"Temperature: {result['temperature']}°C")
+```
+
+## Adding More Features
+
+### Using LLM API
+
+```python
+@tool(name="weather_summary", description="Get AI-generated weather summary")
+@parameter("city", type="string", required=True)
+def weather_summary(self, city: str) -> dict:
+    """Generate weather summary using LLM"""
+
+    # Get weather data
+    weather = self.get_weather(city)
+
+    # Use LLM to generate summary
+    response = self.api.llm.invoke(
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a friendly weather reporter."
+            },
+            {
+                "role": "user",
+                "content": f"Write a brief weather summary for {city}. "
+                          f"Temperature is {weather['temperature']}°{weather['units']}."
+            }
+        ],
+        temperature=0.7
+    )
+
+    return {
+        "success": True,
+        "summary": response.content,
+        "weather": weather
+    }
+```
+
+### Using Knowledge Base
+
+```python
+@tool(name="weather_with_context", description="Weather with historical context")
+@parameter("city", type="string", required=True)
+def weather_with_context(self, city: str) -> dict:
+    """Get weather with historical context from knowledge base"""
+
+    # Search historical weather data
+    kb_results = self.api.knowledge.search(
+        query=f"historical weather patterns {city}",
+        top_k=3
+    )
+
+    # Get current weather
+    current = self.get_weather(city)
+
+    return {
+        "success": True,
+        "current_weather": current,
+        "historical_context": kb_results.documents
+    }
+```
+
+### Using Storage
+
+```python
+@tool(name="save_weather", description="Save weather to storage")
+@parameter("city", type="string", required=True)
+def save_weather(self, city: str) -> dict:
+    """Save weather data for later retrieval"""
+
+    weather = self.get_weather(city)
+
+    # Store with timestamp
+    key = f"weather:{city}"
+    self.api.storage.set(key, weather, ttl=3600)  # 1 hour TTL
+
+    return {
+        "success": True,
+        "saved": True,
+        "data": weather
+    }
+
+@tool(name="get_saved_weather", description="Retrieve saved weather")
+@parameter("city", type="string", required=True)
+def get_saved_weather(self, city: str) -> dict:
+    """Retrieve previously saved weather"""
+
+    key = f"weather:{city}"
+    weather = self.api.storage.get(key)
+
+    if weather is None:
+        return {"success": False, "error": "No saved weather found"}
+
+    return {
+        "success": True,
+        "data": weather
+    }
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always Validate Inputs">
+    Use `@validator` and `@parameter` to validate all inputs
+  </Accordion>
+
+  <Accordion title="Log Important Events">
+    Use `self.context.info()` for important events, helps with debugging
+  </Accordion>
+
+  <Accordion title="Handle Errors Gracefully">
+    Return `{"success": False, "error": "..."}` instead of raising exceptions
+  </Accordion>
+
+  <Accordion title="Use Environment Variables for Secrets">
+    Never hardcode API keys, use `self.require_env("KEY_NAME")`
+  </Accordion>
+
+  <Accordion title="Write Tests">
+    Test all tools with `PluginTestCase`
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Plugin Class" icon="code" href="/plugin-sdk/core/plugin-class">
+    Deep dive into NadooPlugin
+  </Card>
+  <Card title="Decorators" icon="at" href="/plugin-sdk/core/decorators">
+    Master all decorators
+  </Card>
+  <Card title="Context" icon="layer-group" href="/plugin-sdk/core/context">
+    Learn about PluginContext
+  </Card>
+  <Card title="LLM API" icon="brain" href="/plugin-sdk/api/llm">
+    Integrate with AI models
+  </Card>
+</CardGroup>

@@ -1,0 +1,404 @@
+---
+title: 'Plugin Class'
+description: 'NadooPlugin base class - the foundation of every plugin'
+sidebarTitle: 'Plugin Class'
+'og:title': 'Plugin Class - Nadoo Plugin SDK'
+icon: 'code'
+---
+
+## NadooPlugin Base Class
+
+All plugins must inherit from `NadooPlugin`:
+
+```python
+from nadoo_plugin import NadooPlugin
+
+class MyPlugin(NadooPlugin):
+    def __init__(self):
+        super().__init__()
+```
+
+## Lifecycle Hooks
+
+### on_initialize()
+
+Called once when plugin is first loaded. Use for setup, loading config, connecting to services:
+
+```python
+def on_initialize(self):
+    """Initialize plugin (called once)"""
+    # Load environment variables
+    self.api_key = self.require_env("API_KEY")
+    self.endpoint = self.get_env("API_ENDPOINT", "https://default.com")
+
+    # Setup connections
+    self.db = connect_to_database(self.endpoint)
+
+    # Log initialization
+    self.context.info("Plugin initialized successfully")
+```
+
+**Important:**
+- DO NOT override `initialize()` - use `on_initialize()` instead
+- Raised exceptions will prevent plugin from loading
+- Use `self.context.info()` for logging
+
+### on_finalize()
+
+Called when plugin is being shut down. Use for cleanup:
+
+```python
+def on_finalize(self):
+    """Cleanup before shutdown"""
+    # Close connections
+    if hasattr(self, 'db'):
+        self.db.close()
+
+    # Save state
+    self.context.info("Plugin finalized")
+```
+
+**Important:**
+- DO NOT override `finalize()` - use `on_finalize()` instead
+- Should not raise exceptions
+- API connections are automatically closed
+
+## Defining Tools
+
+Tools are methods decorated with `@tool`:
+
+```python
+from nadoo_plugin import tool, parameter
+
+class MyPlugin(NadooPlugin):
+    @tool(
+        name="my_tool",
+        description="Brief description of what this tool does"
+    )
+    @parameter("input", type="string", required=True, description="Input text")
+    @parameter("mode", type="string", required=False, default="normal")
+    def my_tool(self, input: str, mode: str = "normal") -> dict:
+        """
+        Detailed docstring for developers.
+
+        Args:
+            input: Input parameter
+            mode: Processing mode
+
+        Returns:
+            dict with results
+        """
+        self.context.info(f"Executing my_tool with mode={mode}")
+
+        # Your logic here
+        result = process(input, mode)
+
+        # Always return a dict
+        return {
+            "success": True,
+            "result": result,
+            "mode": mode
+        }
+```
+
+**Return Value Requirements:**
+- **MUST** return a `dict`
+- Common keys: `success` (bool), `result`, `error`
+- Example: `{"success": True, "result": "data"}`
+
+## Context Access
+
+Every plugin has access to `self.context` (PluginContext):
+
+```python
+def my_tool(self, input: str) -> dict:
+    # Logging
+    self.context.info("Processing started")
+    self.context.warn("This might take a while")
+    self.context.error("Something went wrong")
+    self.context.debug("Debug info (only in debug mode)")
+
+    # Tracing
+    self.context.trace("event_name", {"data": "value"})
+
+    # Step timing
+    self.context.start_step("data_processing")
+    # ... processing ...
+    self.context.end_step()
+
+    # Variable watching
+    self.context.watch_variable("result", result)
+
+    return {"success": True}
+```
+
+## API Access
+
+Every plugin has access to `self.api` (InternalAPIClient):
+
+```python
+def my_tool(self, input: str) -> dict:
+    # Invoke LLM
+    response = self.api.llm.invoke(
+        messages=[{"role": "user", "content": input}]
+    )
+
+    # Search knowledge base
+    kb_results = self.api.knowledge.search(query=input)
+
+    # Call another tool
+    result = self.api.tools.invoke(tool_id="other-tool", parameters={})
+
+    # Store data
+    self.api.storage.set("key", "value")
+
+    return {"success": True, "llm_response": response.content}
+```
+
+## Convenience Methods
+
+### Environment Variables
+
+```python
+# Get with default
+endpoint = self.get_env("API_ENDPOINT", "https://default.com")
+
+# Require (raises error if not set)
+api_key = self.require_env("API_KEY")
+```
+
+### Logging
+
+```python
+# Info level
+self.log("Processing complete")
+
+# Custom level
+self.log("Warning message", level="warn")
+self.log("Error occurred", level="error")
+```
+
+### Variable Watching
+
+```python
+# Watch variable (for debugging)
+self.watch("input_length", len(input))
+self.watch("api_response", response)
+```
+
+## Complete Example
+
+```python
+from nadoo_plugin import (
+    NadooPlugin,
+    tool,
+    parameter,
+    validator,
+    permission_required,
+    retry
+)
+
+class DataProcessorPlugin(NadooPlugin):
+    """Process and analyze data using AI"""
+
+    def on_initialize(self):
+        """Initialize plugin"""
+        # Load configuration
+        self.api_key = self.require_env("PROCESSOR_API_KEY")
+        self.max_retries = int(self.get_env("MAX_RETRIES", "3"))
+
+        # Setup client
+        self.client = APIClient(self.api_key)
+
+        self.context.info("Data processor initialized")
+
+    def on_finalize(self):
+        """Cleanup"""
+        if hasattr(self, 'client'):
+            self.client.close()
+        self.context.info("Data processor finalized")
+
+    @tool(
+        name="analyze_data",
+        description="Analyze data using AI and return insights"
+    )
+    @parameter(
+        "data",
+        type="string",
+        required=True,
+        description="Data to analyze (JSON string)"
+    )
+    @parameter(
+        "analysis_type",
+        type="string",
+        required=False,
+        default="summary",
+        description="Type of analysis to perform"
+    )
+    @validator("analysis_type", allowed_values=["summary", "detailed", "trends"])
+    @permission_required("llm_access")
+    @retry(max_attempts=3, delay=1.0)
+    def analyze_data(self, data: str, analysis_type: str = "summary") -> dict:
+        """
+        Analyze data using AI
+
+        Args:
+            data: JSON string containing data to analyze
+            analysis_type: Type of analysis (summary, detailed, trends)
+
+        Returns:
+            Analysis results
+        """
+        # Log execution
+        self.context.info(f"Analyzing data: type={analysis_type}")
+        self.context.start_step("parse_data")
+
+        # Parse data
+        import json
+        try:
+            parsed_data = json.loads(data)
+        except json.JSONDecodeError as e:
+            return {"success": False, "error": f"Invalid JSON: {str(e)}"}
+
+        self.context.watch_variable("parsed_data", parsed_data)
+        self.context.end_step()
+
+        # Prepare prompt
+        self.context.start_step("llm_analysis")
+        prompt = f"Analyze this data and provide a {analysis_type} analysis:\n{data}"
+
+        # Call LLM
+        response = self.api.llm.invoke(
+            messages=[
+                {"role": "system", "content": "You are a data analyst."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3
+        )
+
+        self.context.end_step()
+
+        # Trace result
+        self.context.trace("analysis_completed", {
+            "analysis_type": analysis_type,
+            "tokens_used": response.usage["total_tokens"]
+        })
+
+        return {
+            "success": True,
+            "analysis": response.content,
+            "analysis_type": analysis_type,
+            "tokens_used": response.usage["total_tokens"]
+        }
+
+    @tool(name="summarize", description="Summarize text using AI")
+    @parameter("text", type="string", required=True)
+    @parameter("max_length", type="number", default=100)
+    @validator("max_length", min_value=50, max_value=500)
+    def summarize(self, text: str, max_length: int = 100) -> dict:
+        """Summarize text"""
+
+        self.context.info(f"Summarizing text (max_length={max_length})")
+
+        # Use LLM for summarization
+        response = self.api.llm.invoke(
+            messages=[
+                {"role": "system", "content": f"Summarize in {max_length} words or less."},
+                {"role": "user", "content": text}
+            ],
+            temperature=0.5,
+            max_tokens=max_length * 2
+        )
+
+        return {
+            "success": True,
+            "summary": response.content,
+            "original_length": len(text),
+            "summary_length": len(response.content)
+        }
+
+# Export plugin instance
+plugin = DataProcessorPlugin()
+```
+
+## Tool Discovery
+
+Tools are automatically discovered at initialization:
+
+1. Framework scans for methods with `@tool` decorator
+2. Metadata is extracted (name, description, parameters)
+3. Tools are registered and made available
+
+**Access tool metadata:**
+
+```python
+tools = plugin.get_tools()
+for tool in tools:
+    print(f"Tool: {tool['name']}")
+    print(f"Description: {tool['description']}")
+    print(f"Parameters: {tool['parameters']}")
+```
+
+## Error Handling
+
+### Return errors instead of raising
+
+```python
+def my_tool(self, input: str) -> dict:
+    try:
+        result = risky_operation(input)
+        return {"success": True, "result": result}
+    except Exception as e:
+        self.context.error(f"Operation failed: {str(e)}")
+        return {"success": False, "error": str(e)}
+```
+
+### Use validators for input validation
+
+```python
+@tool(name="process", description="Process data")
+@parameter("count", type="number", required=True)
+@validator("count", min_value=1, max_value=1000)
+def process(self, count: int) -> dict:
+    # count is already validated
+    return {"success": True}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Initialize in on_initialize()">
+    Load configuration, setup connections in `on_initialize()`, not in `__init__()`
+  </Accordion>
+
+  <Accordion title="Always Return Dicts">
+    All tool methods must return `dict`, typically with `success` key
+  </Accordion>
+
+  <Accordion title="Use Environment Variables">
+    Never hardcode secrets - use `self.require_env("KEY")`
+  </Accordion>
+
+  <Accordion title="Log Important Events">
+    Use `self.context.info()` for important events to aid debugging
+  </Accordion>
+
+  <Accordion title="Handle Errors Gracefully">
+    Return error dicts instead of raising exceptions for better UX
+  </Accordion>
+
+  <Accordion title="Document Your Tools">
+    Provide clear descriptions in decorators and docstrings
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Decorators" icon="at" href="/plugin-sdk/core/decorators">
+    Master @tool, @parameter, and more
+  </Card>
+  <Card title="Context" icon="layer-group" href="/plugin-sdk/core/context">
+    Deep dive into PluginContext
+  </Card>
+</CardGroup>

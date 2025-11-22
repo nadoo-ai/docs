@@ -1,0 +1,349 @@
+---
+title: 'LLM API'
+description: 'Invoke AI models configured in your workspace'
+sidebarTitle: 'LLM'
+'og:title': 'LLM API - Nadoo Plugin SDK'
+icon: 'brain'
+---
+
+## Overview
+
+The LLM API allows plugins to invoke AI models (GPT-4, Claude, Gemini, etc.) configured in your Nadoo workspace.
+
+**Requires permission:** `llm_access`
+
+## Basic Usage
+
+```python
+from nadoo_plugin import NadooPlugin, tool, permission_required
+
+class MyPlugin(NadooPlugin):
+    @tool(name="ask_ai", description="Ask AI a question")
+    @permission_required("llm_access")
+    def ask_ai(self, question: str) -> dict:
+        response = self.api.llm.invoke(
+            messages=[
+                {"role": "user", "content": question}
+            ]
+        )
+
+        return {
+            "success": True,
+            "answer": response.content,
+            "model": response.model_name,
+            "tokens": response.usage["total_tokens"]
+        }
+```
+
+## invoke()
+
+Invoke an LLM model:
+
+```python
+response = self.api.llm.invoke(
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello!"}
+    ],
+    model_uuid=None,       # Use application's default model
+    temperature=0.7,       # Sampling temperature (0-2)
+    max_tokens=None,       # Maximum tokens to generate
+    top_p=None,           # Nucleus sampling
+    stop=None             # Stop sequences
+)
+```
+
+### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `messages` | List[Dict] | Yes | - | Chat messages |
+| `model_uuid` | str | No | None | Specific model UUID (None = app default) |
+| `temperature` | float | No | 0.7 | Sampling temperature (0-2) |
+| `max_tokens` | int | No | None | Max tokens to generate |
+| `top_p` | float | No | None | Nucleus sampling (0-1) |
+| `stop` | List[str] | No | None | Stop sequences |
+
+### Message Format
+
+```python
+messages = [
+    {
+        "role": "system",  # system, user, or assistant
+        "content": "You are a helpful assistant."
+    },
+    {
+        "role": "user",
+        "content": "What's the weather?"
+    }
+]
+```
+
+### LLMResponse
+
+```python
+class LLMResponse:
+    content: str                    # Generated text
+    model_uuid: str                 # Model UUID
+    model_name: str                 # Model name (e.g., "gpt-4")
+    model_id: str                   # Model ID
+    provider: str                   # Provider (openai, anthropic, etc.)
+    usage: Dict[str, int]           # Token usage
+    finish_reason: Optional[str]    # Why generation stopped
+    tool_calls: Optional[List]      # Tool calls (if using function calling)
+```
+
+### Usage Object
+
+```python
+response.usage = {
+    "prompt_tokens": 10,
+    "completion_tokens": 20,
+    "total_tokens": 30
+}
+```
+
+## Examples
+
+### Simple Question Answering
+
+```python
+@tool(name="answer_question", description="Answer a question")
+@permission_required("llm_access")
+def answer_question(self, question: str) -> dict:
+    response = self.api.llm.invoke(
+        messages=[{"role": "user", "content": question}],
+        temperature=0.5
+    )
+
+    return {
+        "success": True,
+        "answer": response.content
+    }
+```
+
+### With System Message
+
+```python
+@tool(name="summarize", description="Summarize text")
+@permission_required("llm_access")
+def summarize(self, text: str) -> dict:
+    response = self.api.llm.invoke(
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a concise summarizer. Summarize in 2-3 sentences."
+            },
+            {
+                "role": "user",
+                "content": f"Summarize this:\n\n{text}"
+            }
+        ],
+        temperature=0.3,
+        max_tokens=150
+    )
+
+    return {
+        "success": True,
+        "summary": response.content,
+        "original_length": len(text),
+        "summary_length": len(response.content)
+    }
+```
+
+### Multi-turn Conversation
+
+```python
+@tool(name="chat", description="Multi-turn chat")
+@permission_required("llm_access")
+def chat(self, user_message: str, conversation_history: list = None) -> dict:
+    # Build messages from history
+    messages = []
+
+    if conversation_history:
+        messages.extend(conversation_history)
+
+    messages.append({"role": "user", "content": user_message})
+
+    # Invoke LLM
+    response = self.api.llm.invoke(
+        messages=messages,
+        temperature=0.7
+    )
+
+    # Update history
+    new_history = messages + [
+        {"role": "assistant", "content": response.content}
+    ]
+
+    return {
+        "success": True,
+        "response": response.content,
+        "conversation_history": new_history
+    }
+```
+
+### Structured Output
+
+```python
+@tool(name="extract_info", description="Extract information")
+@permission_required("llm_access")
+def extract_info(self, text: str) -> dict:
+    response = self.api.llm.invoke(
+        messages=[
+            {
+                "role": "system",
+                "content": "Extract entities from text. Return JSON with: {\"people\": [], \"places\": [], \"dates\": []}"
+            },
+            {
+                "role": "user",
+                "content": text
+            }
+        ],
+        temperature=0.0  # Deterministic for structured output
+    )
+
+    # Parse JSON response
+    import json
+    try:
+        entities = json.loads(response.content)
+        return {
+            "success": True,
+            "entities": entities
+        }
+    except json.JSONDecodeError:
+        return {
+            "success": False,
+            "error": "Failed to parse LLM response as JSON"
+        }
+```
+
+### With Temperature Control
+
+```python
+@tool(name="creative_writing", description="Generate creative text")
+@permission_required("llm_access")
+def creative_writing(self, prompt: str, creativity: str = "medium") -> dict:
+    # Map creativity to temperature
+    temp_map = {
+        "low": 0.3,
+        "medium": 0.7,
+        "high": 1.2
+    }
+
+    temperature = temp_map.get(creativity, 0.7)
+
+    response = self.api.llm.invoke(
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a creative writer."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        temperature=temperature,
+        max_tokens=500
+    )
+
+    return {
+        "success": True,
+        "text": response.content,
+        "creativity": creativity,
+        "temperature": temperature
+    }
+```
+
+### Token-limited Responses
+
+```python
+@tool(name="brief_answer", description="Brief answer")
+@permission_required("llm_access")
+def brief_answer(self, question: str) -> dict:
+    response = self.api.llm.invoke(
+        messages=[
+            {
+                "role": "system",
+                "content": "Answer in 1-2 sentences maximum."
+            },
+            {
+                "role": "user",
+                "content": question
+            }
+        ],
+        max_tokens=100,  # Limit response length
+        temperature=0.5
+    )
+
+    return {
+        "success": True,
+        "answer": response.content,
+        "tokens_used": response.usage["total_tokens"]
+    }
+```
+
+## Error Handling
+
+```python
+from nadoo_plugin.exceptions import LLMInvocationError, PluginPermissionError
+
+@tool(name="safe_llm_call", description="Safe LLM call")
+def safe_llm_call(self, prompt: str) -> dict:
+    try:
+        response = self.api.llm.invoke(
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return {"success": True, "response": response.content}
+
+    except PluginPermissionError:
+        return {
+            "success": False,
+            "error": "LLM access permission not granted"
+        }
+
+    except LLMInvocationError as e:
+        self.context.error(f"LLM call failed: {str(e)}")
+        return {
+            "success": False,
+            "error": f"LLM invocation failed: {str(e)}"
+        }
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Appropriate Temperature">
+    - 0.0-0.3: Factual, deterministic tasks
+    - 0.5-0.8: Balanced responses
+    - 0.9-1.5: Creative writing
+  </Accordion>
+
+  <Accordion title="Limit Token Usage">
+    Set `max_tokens` to prevent excessive costs and long responses
+  </Accordion>
+
+  <Accordion title="Clear System Messages">
+    Provide clear instructions in system messages for better results
+  </Accordion>
+
+  <Accordion title="Handle Errors Gracefully">
+    Always catch `LLMInvocationError` and return user-friendly error messages
+  </Accordion>
+
+  <Accordion title="Log Token Usage">
+    Track token usage via `response.usage` for monitoring costs
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Knowledge API" icon="database" href="/plugin-sdk/api/knowledge">
+    Combine LLM with knowledge base search
+  </Card>
+  <Card title="Tools API" icon="wrench" href="/plugin-sdk/api/tools">
+    Chain LLM with other tools
+  </Card>
+</CardGroup>

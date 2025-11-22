@@ -1,0 +1,333 @@
+---
+title: 'Tools API'
+description: 'Invoke other tools from your plugin'
+sidebarTitle: 'Tools'
+'og:title': 'Tools API - Nadoo Plugin SDK'
+icon: 'wrench'
+---
+
+## Overview
+
+The Tools API allows plugins to invoke other tools (built-in or custom), enabling tool composition and chaining.
+
+**Requires permission:** `tool_invocation`
+
+## Basic Usage
+
+```python
+from nadoo_plugin import NadooPlugin, tool, permission_required
+
+class MyPlugin(NadooPlugin):
+    @tool(name="enhanced_search", description="Search with web results")
+    @permission_required("tool_invocation")
+    def enhanced_search(self, query: str) -> dict:
+        # Invoke built-in web search tool
+        result = self.api.tools.invoke(
+            tool_name="web_search",
+            parameters={"query": query}
+        )
+
+        return {
+            "success": True,
+            "results": result.get("results", [])
+        }
+```
+
+## invoke()
+
+Invoke a tool:
+
+```python
+# By tool name (built-in tools)
+result = self.api.tools.invoke(
+    tool_name="web_search",
+    parameters={"query": "AI news"}
+)
+
+# By tool UUID (custom tools)
+result = self.api.tools.invoke(
+    tool_uuid="tool-uuid-123",
+    parameters={"input": "data"}
+)
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `tool_name` | str | No* | Tool name (for built-in tools) |
+| `tool_uuid` | str | No* | Tool UUID (for custom tools) |
+| `parameters` | dict | No | Tool parameters |
+
+\* Either `tool_name` or `tool_uuid` must be provided
+
+### Return Value
+
+Returns the tool's output (typically a `dict`):
+
+```python
+{
+    "success": True,
+    "result": "...",
+    # ... other tool-specific fields
+}
+```
+
+## Examples
+
+### Invoke Built-in Tool
+
+```python
+@tool(name="web_search_summary", description="Search web and summarize")
+@permission_required("tool_invocation", "llm_access")
+def web_search_summary(self, query: str) -> dict:
+    # Step 1: Web search
+    search_result = self.api.tools.invoke(
+        tool_name="web_search",
+        parameters={"query": query, "num_results": 5}
+    )
+
+    if not search_result.get("success"):
+        return {"success": False, "error": "Web search failed"}
+
+    # Step 2: Summarize results with LLM
+    results_text = "\n".join([
+        f"- {r['title']}: {r['snippet']}"
+        for r in search_result.get("results", [])
+    ])
+
+    summary = self.api.llm.invoke(
+        messages=[
+            {
+                "role": "user",
+                "content": f"Summarize these search results:\n\n{results_text}"
+            }
+        ]
+    )
+
+    return {
+        "success": True,
+        "summary": summary.content,
+        "sources": search_result.get("results", [])
+    }
+```
+
+### Invoke Custom Tool
+
+```python
+@tool(name="process_data", description="Process using custom tool")
+@permission_required("tool_invocation")
+def process_data(self, data: str, processor_uuid: str) -> dict:
+    result = self.api.tools.invoke(
+        tool_uuid=processor_uuid,
+        parameters={"input": data}
+    )
+
+    return {
+        "success": True,
+        "processed": result
+    }
+```
+
+### Tool Chaining
+
+```python
+@tool(name="multi_step", description="Chain multiple tools")
+@permission_required("tool_invocation")
+def multi_step(self, input_data: str) -> dict:
+    # Step 1: Parse data
+    parsed = self.api.tools.invoke(
+        tool_name="data_parser",
+        parameters={"data": input_data}
+    )
+
+    if not parsed.get("success"):
+        return {"success": False, "error": "Parsing failed"}
+
+    # Step 2: Transform
+    transformed = self.api.tools.invoke(
+        tool_name="transformer",
+        parameters={"data": parsed.get("result")}
+    )
+
+    # Step 3: Validate
+    validated = self.api.tools.invoke(
+        tool_name="validator",
+        parameters={"data": transformed.get("result")}
+    )
+
+    return {
+        "success": True,
+        "result": validated.get("result"),
+        "steps": ["parse", "transform", "validate"]
+    }
+```
+
+### Parallel Tool Execution
+
+```python
+import asyncio
+
+@tool(name="parallel_search", description="Search multiple sources")
+@permission_required("tool_invocation")
+def parallel_search(self, query: str) -> dict:
+    # Note: tools.invoke is synchronous, but you can use async patterns
+    # to parallelize external operations
+
+    results = {
+        "web": None,
+        "news": None,
+        "academic": None
+    }
+
+    # Search web
+    try:
+        results["web"] = self.api.tools.invoke(
+            tool_name="web_search",
+            parameters={"query": query}
+        )
+    except Exception as e:
+        self.context.warn(f"Web search failed: {str(e)}")
+
+    # Search news
+    try:
+        results["news"] = self.api.tools.invoke(
+            tool_name="news_search",
+            parameters={"query": query}
+        )
+    except Exception as e:
+        self.context.warn(f"News search failed: {str(e)}")
+
+    return {
+        "success": True,
+        "results": {k: v for k, v in results.items() if v}
+    }
+```
+
+### Conditional Tool Invocation
+
+```python
+@tool(name="smart_processor", description="Choose tool based on input")
+@permission_required("tool_invocation")
+def smart_processor(self, input_data: str, input_type: str) -> dict:
+    # Choose tool based on type
+    tool_map = {
+        "text": "text_processor",
+        "image": "image_processor",
+        "audio": "audio_processor"
+    }
+
+    tool_name = tool_map.get(input_type)
+
+    if not tool_name:
+        return {
+            "success": False,
+            "error": f"Unknown input type: {input_type}"
+        }
+
+    # Invoke appropriate tool
+    result = self.api.tools.invoke(
+        tool_name=tool_name,
+        parameters={"input": input_data}
+    )
+
+    return {
+        "success": True,
+        "processor": tool_name,
+        "result": result
+    }
+```
+
+### Error Handling
+
+```python
+from nadoo_plugin.exceptions import ToolInvocationError, PluginPermissionError
+
+@tool(name="safe_tool_call", description="Safe tool invocation")
+def safe_tool_call(self, tool_name: str, params: dict) -> dict:
+    try:
+        result = self.api.tools.invoke(
+            tool_name=tool_name,
+            parameters=params
+        )
+
+        return {
+            "success": True,
+            "result": result
+        }
+
+    except PluginPermissionError:
+        return {
+            "success": False,
+            "error": "Tool invocation permission not granted"
+        }
+
+    except ToolInvocationError as e:
+        self.context.error(f"Tool invocation failed: {str(e)}")
+        return {
+            "success": False,
+            "error": f"Tool '{tool_name}' failed: {str(e)}"
+        }
+
+    except ValueError as e:
+        return {
+            "success": False,
+            "error": f"Invalid parameters: {str(e)}"
+        }
+```
+
+### Retry Failed Tool Calls
+
+```python
+from nadoo_plugin import retry
+
+@tool(name="resilient_call", description="Call tool with retry")
+@permission_required("tool_invocation")
+@retry(max_attempts=3, delay=1.0)
+def resilient_call(self, tool_name: str, params: dict) -> dict:
+    result = self.api.tools.invoke(
+        tool_name=tool_name,
+        parameters=params
+    )
+
+    # Will retry up to 3 times if invocation fails
+    if not result.get("success"):
+        raise ToolInvocationError("Tool returned failure")
+
+    return result
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Check Tool Availability">
+    Verify tools exist before invoking, handle tool not found errors
+  </Accordion>
+
+  <Accordion title="Handle Failures Gracefully">
+    Always check `success` in results, don't assume tools succeed
+  </Accordion>
+
+  <Accordion title="Log Tool Chains">
+    Use context logging to track tool execution chains for debugging
+  </Accordion>
+
+  <Accordion title="Validate Parameters">
+    Ensure parameters match what the target tool expects
+  </Accordion>
+
+  <Accordion title="Use Retries for Network Tools">
+    Apply `@retry` for tools that make external calls
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="LLM API" icon="brain" href="/plugin-sdk/api/llm">
+    Combine tools with LLM
+  </Card>
+  <Card title="Knowledge API" icon="database" href="/plugin-sdk/api/knowledge">
+    Search knowledge bases
+  </Card>
+</CardGroup>

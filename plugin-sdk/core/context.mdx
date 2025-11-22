@@ -1,0 +1,416 @@
+---
+title: 'Plugin Context'
+description: 'PluginContext - logging, tracing, and debugging your plugins'
+sidebarTitle: 'Context'
+'og:title': 'Plugin Context - Nadoo Plugin SDK'
+icon: 'layer-group'
+---
+
+## Overview
+
+Every plugin has access to `self.context` (PluginContext), which provides:
+- Logging and debugging
+- Execution tracing
+- Variable watching
+- Step timing
+- Permission checks
+- Environment variables
+
+## Logging
+
+### Basic Logging
+
+```python
+def my_tool(self, input: str) -> dict:
+    # Log levels
+    self.context.info("Processing started")
+    self.context.warn("This might take a while")
+    self.context.error("Something went wrong")
+    self.context.debug("Debug info (only in debug mode)")
+
+    # Generic log
+    self.context.log("Custom message", level="info")
+
+    return {"success": True}
+```
+
+### Log Levels
+
+| Level | Method | Use Case |
+|-------|--------|----------|
+| `info` | `info()` | Normal execution flow |
+| `warn` | `warn()` | Warnings, non-critical issues |
+| `error` | `error()` | Errors and failures |
+| `debug` | `debug()` | Detailed debugging (only in debug mode) |
+
+## Tracing
+
+Track execution events for debugging and monitoring:
+
+```python
+def analyze_data(self, data: str) -> dict:
+    # Trace data loading
+    self.context.trace("data_loaded", {
+        "size": len(data),
+        "format": "json"
+    })
+
+    # Process data
+    result = process(data)
+
+    # Trace processing complete
+    self.context.trace("processing_complete", {
+        "result_count": len(result),
+        "duration": elapsed
+    }, source="processor")
+
+    return {"success": True, "result": result}
+```
+
+### Trace Entry Structure
+
+```python
+{
+    "timestamp": "2024-01-15T10:30:00Z",
+    "event": "data_loaded",
+    "data": {"size": 1024, "format": "json"},
+    "metadata": {"source": "processor"},
+    "step": "current_step_name",
+    "execution_time": 1.234
+}
+```
+
+## Step Timing
+
+Measure execution time for specific steps:
+
+```python
+def complex_operation(self, input: str) -> dict:
+    # Start step
+    self.context.start_step("data_parsing")
+    data = parse_data(input)
+    self.context.end_step()  # Auto-records duration
+
+    # Next step
+    self.context.start_step("llm_processing")
+    result = self.api.llm.invoke(...)
+    self.context.end_step()
+
+    # Steps are automatically tracked
+    timings = self.context.get_step_timings()
+    # {"data_parsing": 0.123, "llm_processing": 2.456}
+
+    return {"success": True, "timings": timings}
+```
+
+**Auto-end behavior:**
+- Starting a new step automatically ends the previous one
+- Always call `end_step()` when done
+
+## Variable Watching
+
+Capture variable snapshots for debugging:
+
+```python
+def process_data(self, data: str) -> dict:
+    # Parse data
+    parsed = json.loads(data)
+    self.context.watch_variable("parsed_data", parsed)
+
+    # Process
+    result = transform(parsed)
+    self.context.watch_variable("result", result, type="dict", count=len(result))
+
+    # Watch with metadata
+    self.context.watch_variable(
+        "final_result",
+        result,
+        metadata={"type": "processed", "version": "1.0"}
+    )
+
+    return {"success": True}
+```
+
+### Retrieving Variables
+
+```python
+# Get watched variable
+result = self.context.get_variable("result", default={})
+
+# Get all variables
+all_vars = self.context.get_variables()
+# {
+#   "parsed_data": {...},
+#   "result": {...},
+#   "final_result": {...}
+# }
+```
+
+## API Call Tracking
+
+API calls are automatically tracked:
+
+```python
+def my_tool(self, query: str) -> dict:
+    # LLM call (auto-tracked)
+    response = self.api.llm.invoke(...)
+
+    # Knowledge search (auto-tracked)
+    results = self.api.knowledge.search(query)
+
+    # Get all API calls
+    api_calls = self.context.get_api_calls()
+    # [
+    #   {
+    #     "api_type": "llm",
+    #     "endpoint": "/internal-api/plugin/invoke/llm",
+    #     "duration": 1.23,
+    #     "success": true
+    #   }
+    # ]
+
+    return {"success": True}
+```
+
+## Permissions
+
+### Check Permissions
+
+```python
+def my_tool(self, input: str) -> dict:
+    # Check if has permission
+    if self.context.has_permission("llm_access"):
+        response = self.api.llm.invoke(...)
+
+    # Require permission (raises error if not granted)
+    self.context.require_permission("knowledge_access")
+    results = self.api.knowledge.search(query)
+
+    return {"success": True}
+```
+
+### Available Permissions
+
+- `llm_access` - Invoke LLM models
+- `knowledge_access` - Search knowledge bases
+- `storage_access` - Persistent storage
+- `tools_access` - Invoke other tools
+- `network_access` - External API calls
+
+## Environment Variables
+
+### Get Environment Variable
+
+```python
+def on_initialize(self):
+    # Get with default
+    endpoint = self.context.get_env("API_ENDPOINT", "https://default.com")
+
+    # Require (raises error if not set)
+    api_key = self.context.require_env("API_KEY")
+
+    self.client = APIClient(endpoint, api_key)
+```
+
+## Context Properties
+
+Access execution metadata:
+
+```python
+def my_tool(self, input: str) -> dict:
+    # Execution metadata
+    exec_id = self.context.execution_id
+    plugin_id = self.context.plugin_id
+    workspace_id = self.context.workspace_id
+    user_id = self.context.user_id
+
+    # Workflow context (if running in workflow)
+    workflow_id = self.context.workflow_id
+    node_id = self.context.node_id
+
+    # Version info
+    sdk_version = self.context.sdk_version
+    plugin_version = self.context.plugin_version
+
+    # Debug mode
+    if self.context.debug_mode:
+        self.context.debug(f"Running in debug mode")
+
+    return {"success": True}
+```
+
+## Debug Information
+
+Get comprehensive debug data:
+
+```python
+def my_tool(self, input: str) -> dict:
+    # ... tool execution ...
+
+    # Get all debug info
+    debug_info = self.context.get_debug_info()
+    # {
+    #   "execution_id": "...",
+    #   "logs": [...],
+    #   "trace": [...],
+    #   "steps": [...],
+    #   "variables": {...},
+    #   "api_calls": [...],
+    #   "step_timings": {...},
+    #   "total_execution_time": 2.5
+    # }
+
+    # Or use alias
+    debug_data = self.context.get_debug_data()
+
+    return {"success": True, "debug": debug_info}
+```
+
+### Debug Info Structure
+
+```python
+{
+    "execution_id": "uuid",
+    "plugin_id": "my-plugin",
+    "workspace_id": "workspace-123",
+
+    "logs": [
+        {"level": "info", "message": "...", "timestamp": "..."}
+    ],
+
+    "trace": [
+        {
+            "event": "data_loaded",
+            "data": {...},
+            "timestamp": "...",
+            "execution_time": 1.2
+        }
+    ],
+
+    "steps": [
+        {
+            "step_name": "data_processing",
+            "duration": 0.5,
+            "started_at": "...",
+            "ended_at": "..."
+        }
+    ],
+
+    "variables": {
+        "var_name": {
+            "value": {...},
+            "value_type": "dict",
+            "timestamp": "..."
+        }
+    },
+
+    "api_calls": [
+        {
+            "api_type": "llm",
+            "endpoint": "...",
+            "duration": 1.5,
+            "success": true
+        }
+    ],
+
+    "step_timings": {
+        "data_processing": 0.5,
+        "llm_call": 1.5
+    },
+
+    "total_execution_time": 2.0
+}
+```
+
+## Complete Example
+
+```python
+from nadoo_plugin import NadooPlugin, tool, parameter
+
+class DataAnalyzerPlugin(NadooPlugin):
+    @tool(name="analyze", description="Analyze data with tracking")
+    @parameter("data", type="string", required=True)
+    def analyze(self, data: str) -> dict:
+        # Log start
+        self.context.info("Starting data analysis")
+
+        # Step 1: Parse data
+        self.context.start_step("parse_data")
+        try:
+            import json
+            parsed = json.loads(data)
+            self.context.watch_variable("parsed_data", parsed)
+            self.context.trace("data_parsed", {"rows": len(parsed)})
+        except json.JSONDecodeError as e:
+            self.context.error(f"Parse error: {str(e)}")
+            return {"success": False, "error": "Invalid JSON"}
+        finally:
+            self.context.end_step()
+
+        # Step 2: Analyze with LLM
+        self.context.start_step("llm_analysis")
+        self.context.require_permission("llm_access")
+
+        response = self.api.llm.invoke(
+            messages=[
+                {"role": "system", "content": "Analyze this data."},
+                {"role": "user", "content": str(parsed)}
+            ]
+        )
+
+        self.context.watch_variable("llm_response", response.content)
+        self.context.trace("analysis_complete", {
+            "tokens": response.usage["total_tokens"]
+        })
+        self.context.end_step()
+
+        # Get timing info
+        timings = self.context.get_step_timings()
+        total_time = self.context.get_execution_time()
+
+        self.context.info(f"Analysis complete in {total_time:.2f}s")
+
+        return {
+            "success": True,
+            "analysis": response.content,
+            "timings": timings,
+            "total_time": total_time
+        }
+
+plugin = DataAnalyzerPlugin()
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Log Important Events">
+    Use `info()` for significant events, helps with debugging and monitoring
+  </Accordion>
+
+  <Accordion title="Trace Key Milestones">
+    Use `trace()` for important events with data (data loaded, processing complete, etc.)
+  </Accordion>
+
+  <Accordion title="Time Critical Steps">
+    Use `start_step()` and `end_step()` to measure performance of critical operations
+  </Accordion>
+
+  <Accordion title="Watch Key Variables">
+    Use `watch_variable()` for important intermediate results during debugging
+  </Accordion>
+
+  <Accordion title="Check Permissions Early">
+    Call `require_permission()` early in the method to fail fast
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Testing" icon="vial" href="/plugin-sdk/core/testing">
+    Test your plugins with context
+  </Card>
+  <Card title="LLM API" icon="brain" href="/plugin-sdk/api/llm">
+    Use LLM API with context tracking
+  </Card>
+</CardGroup>

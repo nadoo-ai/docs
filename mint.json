@@ -69,6 +69,10 @@
       "url": "flow-core"
     },
     {
+      "name": "Plugin SDK",
+      "url": "plugin-sdk"
+    },
+    {
       "name": "Builder",
       "url": "builder"
     },
@@ -145,6 +149,36 @@
             "flow-core/backends/native",
             "flow-core/backends/custom",
             "flow-core/backends/registry"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Plugin SDK",
+      "pages": [
+        {
+          "group": "Getting Started",
+          "pages": [
+            "plugin-sdk/overview",
+            "plugin-sdk/installation",
+            "plugin-sdk/quickstart"
+          ]
+        },
+        {
+          "group": "Core Concepts",
+          "pages": [
+            "plugin-sdk/core/plugin-class",
+            "plugin-sdk/core/decorators",
+            "plugin-sdk/core/context"
+          ]
+        },
+        {
+          "group": "Internal APIs",
+          "pages": [
+            "plugin-sdk/api/llm",
+            "plugin-sdk/api/knowledge",
+            "plugin-sdk/api/tools",
+            "plugin-sdk/api/storage"
           ]
         }
       ]

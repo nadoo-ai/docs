@@ -1,0 +1,448 @@
+---
+title: 'Decorators'
+description: 'Define tools, parameters, validators, and permissions with decorators'
+sidebarTitle: 'Decorators'
+'og:title': 'Decorators - Nadoo Plugin SDK'
+icon: 'at'
+---
+
+## Overview
+
+Decorators provide a clean, declarative way to define tool metadata, parameters, validators, and behavior.
+
+## @tool
+
+Mark a method as a plugin tool:
+
+```python
+from nadoo_plugin import tool
+
+@tool(
+    name="tool_name",
+    description="Brief description of what this tool does"
+)
+def my_tool(self, param1: str) -> dict:
+    return {"success": True}
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | str | Yes | Unique tool name (lowercase, underscores) |
+| `description` | str | Yes | Clear description for AI and users |
+
+### Best Practices
+
+- **name**: Use descriptive, lowercase names with underscores (`get_weather`, not `getWeather`)
+- **description**: Be specific and concise (AI uses this to decide when to call the tool)
+
+## @parameter
+
+Define tool parameters:
+
+```python
+from nadoo_plugin import parameter
+
+@tool(name="format_text", description="Format text")
+@parameter(
+    "text",
+    type="string",
+    required=True,
+    description="Text to format"
+)
+@parameter(
+    "style",
+    type="string",
+    required=False,
+    default="uppercase",
+    description="Formatting style"
+)
+def format_text(self, text: str, style: str = "uppercase") -> dict:
+    return {"result": text.upper() if style == "uppercase" else text}
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | str | Yes | Parameter name (must match function argument) |
+| `type` | str | Yes | Data type: `string`, `number`, `boolean`, `array`, `object` |
+| `required` | bool | No | Whether parameter is required (default: True) |
+| `default` | any | No | Default value if not provided |
+| `description` | str | No | Parameter description |
+
+### Parameter Types
+
+```python
+# String parameter
+@parameter("name", type="string", required=True)
+
+# Number parameter
+@parameter("count", type="number", required=True)
+
+# Boolean parameter
+@parameter("enabled", type="boolean", default=True)
+
+# Array parameter
+@parameter("tags", type="array", default=[])
+
+# Object parameter
+@parameter("config", type="object", default={})
+```
+
+### Decorator Order
+
+**IMPORTANT**: Stack parameters in reverse order (bottom-up):
+
+```python
+@tool(name="my_tool", description="Example")
+@parameter("param1", type="string")  # Last parameter
+@parameter("param2", type="number")  # Second parameter
+@parameter("param3", type="boolean") # First parameter
+def my_tool(self, param3: bool, param2: int, param1: str) -> dict:
+    return {}
+```
+
+## @validator
+
+Validate parameter values:
+
+```python
+from nadoo_plugin import validator
+
+@tool(name="process", description="Process data")
+@parameter("mode", type="string", required=True)
+@parameter("count", type="number", required=True)
+@parameter("email", type="string", required=True)
+@validator("mode", allowed_values=["fast", "slow", "balanced"])
+@validator("count", min_value=1, max_value=100)
+@validator("email", pattern=r"^[\w\.-]+@[\w\.-]+\.\w+$")
+def process(self, mode: str, count: int, email: str) -> dict:
+    # Parameters are already validated
+    return {"success": True}
+```
+
+### Validation Options
+
+#### Allowed Values
+
+```python
+@validator("status", allowed_values=["pending", "completed", "failed"])
+```
+
+#### Numeric Range
+
+```python
+@validator("age", min_value=0, max_value=150)
+@validator("temperature", min_value=-273.15)  # Absolute zero
+```
+
+#### String Length
+
+```python
+@validator("password", min_length=8, max_length=128)
+@validator("description", max_length=1000)
+```
+
+#### Pattern Matching
+
+```python
+# Email validation
+@validator("email", pattern=r"^[\w\.-]+@[\w\.-]+\.\w+$")
+
+# Phone number
+@validator("phone", pattern=r"^\+?1?\d{9,15}$")
+
+# URL
+@validator("url", pattern=r"^https?://[\w\.-]+\.\w+")
+```
+
+### All Validator Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `param_name` | str | Parameter to validate |
+| `allowed_values` | list | List of allowed values |
+| `min_value` | float | Minimum numeric value |
+| `max_value` | float | Maximum numeric value |
+| `min_length` | int | Minimum string/array length |
+| `max_length` | int | Maximum string/array length |
+| `pattern` | str | Regex pattern (for strings) |
+
+## @validate_parameters
+
+Advanced schema-based validation:
+
+```python
+from nadoo_plugin import validate_parameters
+
+@tool(name="register_user", description="Register new user")
+@validate_parameters({
+    "email": {
+        "type": "string",
+        "pattern": r"^[\w\.-]+@[\w\.-]+\.\w+$"
+    },
+    "age": {
+        "type": "number",
+        "min": 18,
+        "max": 120
+    },
+    "password": {
+        "type": "string",
+        "min_length": 8,
+        "max_length": 128
+    },
+    "tags": {
+        "type": "array"
+    }
+})
+def register_user(self, email: str, age: int, password: str, tags: list) -> dict:
+    # All parameters validated against schema
+    return {"success": True}
+```
+
+### Schema Format
+
+```python
+{
+    "param_name": {
+        "type": "string" | "number" | "boolean" | "array" | "object",
+        "min": <number>,           # For numbers
+        "max": <number>,           # For numbers
+        "min_length": <int>,       # For strings/arrays
+        "max_length": <int>,       # For strings/arrays
+        "pattern": "<regex>"       # For strings
+    }
+}
+```
+
+## @permission_required
+
+Require specific permissions:
+
+```python
+from nadoo_plugin import permission_required
+
+@tool(name="call_llm", description="Call LLM")
+@permission_required("llm_access")
+def call_llm(self, prompt: str) -> dict:
+    # Permission checked before execution
+    response = self.api.llm.invoke([{"role": "user", "content": prompt}])
+    return {"response": response.content}
+
+@tool(name="advanced_search", description="Search with LLM and knowledge")
+@permission_required("llm_access", "knowledge_access")
+def advanced_search(self, query: str) -> dict:
+    # Both permissions required
+    return {"success": True}
+```
+
+### Available Permissions
+
+| Permission | Description |
+|------------|-------------|
+| `llm_access` | Invoke LLM models |
+| `knowledge_access` | Search knowledge bases |
+| `storage_access` | Use persistent storage |
+| `tools_access` | Invoke other tools |
+| `network_access` | Make external API calls |
+
+## @retry
+
+Automatic retry on failure:
+
+```python
+from nadoo_plugin import retry
+
+@tool(name="fetch_data", description="Fetch from external API")
+@retry(max_attempts=3, delay=1.0, backoff=2.0)
+def fetch_data(self, url: str) -> dict:
+    """
+    Retries up to 3 times with exponential backoff:
+    - Attempt 1: immediate
+    - Attempt 2: 1.0s delay
+    - Attempt 3: 2.0s delay (1.0 * 2.0)
+    """
+    import requests
+    response = requests.get(url)
+    response.raise_for_status()
+    return {"success": True, "data": response.json()}
+```
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `max_attempts` | int | 3 | Maximum retry attempts |
+| `delay` | float | 1.0 | Initial delay between retries (seconds) |
+| `backoff` | float | 2.0 | Backoff multiplier for exponential delay |
+
+## Combining Decorators
+
+Stack decorators for full functionality:
+
+```python
+from nadoo_plugin import (
+    tool,
+    parameter,
+    validator,
+    permission_required,
+    retry
+)
+
+@tool(
+    name="analyze_document",
+    description="Analyze document with AI"
+)
+@parameter(
+    "document",
+    type="string",
+    required=True,
+    description="Document content to analyze"
+)
+@parameter(
+    "analysis_type",
+    type="string",
+    required=False,
+    default="summary",
+    description="Type of analysis"
+)
+@parameter(
+    "max_length",
+    type="number",
+    required=False,
+    default=500,
+    description="Maximum result length"
+)
+@validator("analysis_type", allowed_values=["summary", "detailed", "sentiment"])
+@validator("max_length", min_value=100, max_value=2000)
+@validator("document", min_length=10, max_length=100000)
+@permission_required("llm_access")
+@retry(max_attempts=3, delay=2.0, backoff=2.0)
+def analyze_document(
+    self,
+    document: str,
+    analysis_type: str = "summary",
+    max_length: int = 500
+) -> dict:
+    """Analyze document using AI"""
+
+    # Build prompt
+    prompt = f"Provide a {analysis_type} analysis (max {max_length} words):\n{document}"
+
+    # Call LLM (with retry on failure)
+    response = self.api.llm.invoke(
+        messages=[
+            {"role": "system", "content": "You are a document analyst."},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=max_length * 2
+    )
+
+    return {
+        "success": True,
+        "analysis": response.content,
+        "type": analysis_type,
+        "tokens_used": response.usage["total_tokens"]
+    }
+```
+
+## Decorator Order
+
+**Correct order (top to bottom):**
+
+1. `@tool` - Always first
+2. `@parameter` - Define parameters (reverse order)
+3. `@validator` - Validate parameters
+4. `@permission_required` - Check permissions
+5. `@retry` - Retry logic (if needed)
+
+```python
+@tool(...)                    # 1. Tool definition
+@parameter(...)               # 2. Parameters
+@parameter(...)
+@validator(...)               # 3. Validators
+@permission_required(...)     # 4. Permissions
+@retry(...)                   # 5. Retry logic
+def my_tool(self, ...) -> dict:
+    pass
+```
+
+## Common Patterns
+
+### Email + Phone Validation
+
+```python
+@tool(name="contact", description="Contact user")
+@parameter("email", type="string", required=True)
+@parameter("phone", type="string", required=False)
+@validator("email", pattern=r"^[\w\.-]+@[\w\.-]+\.\w+$")
+@validator("phone", pattern=r"^\+?1?\d{9,15}$")
+def contact(self, email: str, phone: str = None) -> dict:
+    return {"success": True}
+```
+
+### Enum-style Parameters
+
+```python
+@tool(name="process", description="Process with mode")
+@parameter("mode", type="string", default="auto")
+@validator("mode", allowed_values=["auto", "manual", "batch"])
+def process(self, mode: str = "auto") -> dict:
+    if mode == "auto":
+        return self._auto_process()
+    elif mode == "manual":
+        return self._manual_process()
+    else:
+        return self._batch_process()
+```
+
+### Pagination Parameters
+
+```python
+@tool(name="list_items", description="List items with pagination")
+@parameter("page", type="number", default=1)
+@parameter("page_size", type="number", default=20)
+@validator("page", min_value=1)
+@validator("page_size", min_value=1, max_value=100)
+def list_items(self, page: int = 1, page_size: int = 20) -> dict:
+    start = (page - 1) * page_size
+    end = start + page_size
+    return {"items": items[start:end], "page": page}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Validate Early">
+    Use `@validator` to catch invalid inputs before execution
+  </Accordion>
+
+  <Accordion title="Clear Descriptions">
+    Write clear parameter descriptions - AI uses these to understand what to pass
+  </Accordion>
+
+  <Accordion title="Sensible Defaults">
+    Provide defaults for optional parameters to improve UX
+  </Accordion>
+
+  <Accordion title="Permission Checks">
+    Always use `@permission_required` when accessing internal APIs
+  </Accordion>
+
+  <Accordion title="Retry for Network">
+    Use `@retry` for external API calls and network operations
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Context" icon="layer-group" href="/plugin-sdk/core/context">
+    Learn about PluginContext
+  </Card>
+  <Card title="Testing" icon="vial" href="/plugin-sdk/core/testing">
+    Test your decorated tools
+  </Card>
+</CardGroup>

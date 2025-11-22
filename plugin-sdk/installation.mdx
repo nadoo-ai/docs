@@ -1,0 +1,152 @@
+---
+title: 'Installation'
+description: 'Install Nadoo Plugin SDK and set up your development environment'
+sidebarTitle: 'Installation'
+'og:title': 'Install Nadoo Plugin SDK'
+icon: 'download'
+---
+
+## Requirements
+
+- Python 3.10 or higher
+- pip or poetry for package management
+- Access to a Nadoo workspace (for deployment)
+
+## Install SDK
+
+### Using pip
+
+```bash
+pip install nadoo-plugin
+```
+
+### Using poetry
+
+```bash
+poetry add nadoo-plugin
+```
+
+### From source
+
+```bash
+git clone https://github.com/nadoo-ai/nadoo-plugin-sdk
+cd nadoo-plugin-sdk
+pip install -e .
+```
+
+## Verify Installation
+
+```bash
+nadoo-plugin --version
+```
+
+You should see output like:
+
+```
+Nadoo Plugin SDK v0.1.0
+```
+
+## CLI Commands
+
+The SDK includes a CLI for plugin development:
+
+```bash
+nadoo-plugin --help
+```
+
+Available commands:
+
+| Command | Description |
+|---------|-------------|
+| `create` | Create a new plugin from template |
+| `build` | Build plugin package |
+| `install` | Install plugin to Nadoo workspace |
+| `test` | Run plugin tests |
+| `validate` | Validate plugin structure |
+
+## Development Environment Setup
+
+### 1. Create Virtual Environment
+
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+### 2. Install SDK
+
+```bash
+pip install nadoo-plugin
+```
+
+### 3. Verify CLI
+
+```bash
+nadoo-plugin --version
+```
+
+## IDE Setup
+
+### VS Code
+
+Install Python extension and add to `settings.json`:
+
+```json
+{
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": true,
+  "python.formatting.provider": "black",
+  "python.analysis.typeCheckingMode": "basic"
+}
+```
+
+### PyCharm
+
+1. Open Settings → Project → Python Interpreter
+2. Add nadoo-plugin package
+3. Enable type checking in inspections
+
+## Optional Dependencies
+
+### For LLM Integration Testing
+
+```bash
+pip install openai anthropic
+```
+
+### For Testing Utilities
+
+```bash
+pip install pytest pytest-asyncio pytest-mock
+```
+
+### For Development
+
+```bash
+pip install black pylint mypy
+```
+
+## Environment Variables
+
+For local development, create `.env` file:
+
+```bash
+# Nadoo API credentials (for testing with real APIs)
+NADOO_API_URL=https://api.nadoo.ai
+NADOO_API_TOKEN=your_token_here
+NADOO_WORKSPACE_ID=your_workspace_id
+
+# Plugin-specific env vars
+MY_API_KEY=secret_key
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/plugin-sdk/quickstart">
+    Build your first plugin
+  </Card>
+  <Card title="Plugin Class" icon="code" href="/plugin-sdk/core/plugin-class">
+    Learn the basics
+  </Card>
+</CardGroup>

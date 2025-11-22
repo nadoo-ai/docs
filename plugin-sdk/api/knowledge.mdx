@@ -1,0 +1,359 @@
+---
+title: 'Knowledge API'
+description: 'Search knowledge bases in your workspace'
+sidebarTitle: 'Knowledge'
+'og:title': 'Knowledge API - Nadoo Plugin SDK'
+icon: 'database'
+---
+
+## Overview
+
+The Knowledge API allows plugins to search knowledge bases configured in your workspace, enabling RAG (Retrieval-Augmented Generation) patterns.
+
+**Requires permission:** `knowledge_access`
+
+## Basic Usage
+
+```python
+from nadoo_plugin import NadooPlugin, tool, permission_required
+
+class MyPlugin(NadooPlugin):
+    @tool(name="search_docs", description="Search documentation")
+    @permission_required("knowledge_access")
+    def search_docs(self, query: str) -> dict:
+        results = self.api.knowledge.search(
+            knowledge_base_uuid="kb-uuid-123",
+            query=query,
+            top_k=5
+        )
+
+        return {
+            "success": True,
+            "results": [
+                {"content": r.content, "score": r.score}
+                for r in results
+            ]
+        }
+```
+
+## search()
+
+Search a knowledge base:
+
+```python
+results = self.api.knowledge.search(
+    knowledge_base_uuid="kb-uuid-123",  # KB UUID from workspace
+    query="How to use plugins?",        # Search query
+    top_k=5,                            # Number of results (1-20)
+    score_threshold=0.0                 # Minimum similarity (0-1)
+)
+```
+
+### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `knowledge_base_uuid` | str | Yes | - | Knowledge base UUID |
+| `query` | str | Yes | - | Search query |
+| `top_k` | int | No | 5 | Number of results (1-20) |
+| `score_threshold` | float | No | 0.0 | Min similarity score (0-1) |
+
+### KnowledgeSearchResult
+
+```python
+class KnowledgeSearchResult:
+    chunk_id: str           # Unique chunk identifier
+    content: str            # Text content
+    score: float            # Similarity score (0-1)
+    metadata: Dict[str, Any]  # Additional metadata
+```
+
+## Examples
+
+### Basic Search
+
+```python
+@tool(name="search_knowledge", description="Search knowledge base")
+@permission_required("knowledge_access")
+def search_knowledge(self, query: str, kb_uuid: str) -> dict:
+    results = self.api.knowledge.search(
+        knowledge_base_uuid=kb_uuid,
+        query=query,
+        top_k=3
+    )
+
+    return {
+        "success": True,
+        "query": query,
+        "count": len(results),
+        "results": [
+            {
+                "content": r.content,
+                "score": r.score,
+                "metadata": r.metadata
+            }
+            for r in results
+        ]
+    }
+```
+
+### With Score Threshold
+
+```python
+@tool(name="high_quality_search", description="Search with quality filter")
+@permission_required("knowledge_access")
+def high_quality_search(self, query: str, kb_uuid: str) -> dict:
+    # Only return results with score >= 0.7
+    results = self.api.knowledge.search(
+        knowledge_base_uuid=kb_uuid,
+        query=query,
+        top_k=10,
+        score_threshold=0.7
+    )
+
+    if not results:
+        return {
+            "success": False,
+            "error": "No high-quality matches found"
+        }
+
+    return {
+        "success": True,
+        "results": [r.content for r in results]
+    }
+```
+
+### RAG Pattern (Knowledge + LLM)
+
+```python
+@tool(name="answer_with_context", description="Answer using knowledge base")
+@permission_required("knowledge_access", "llm_access")
+def answer_with_context(self, question: str, kb_uuid: str) -> dict:
+    # Step 1: Search knowledge base
+    self.context.start_step("knowledge_search")
+    kb_results = self.api.knowledge.search(
+        knowledge_base_uuid=kb_uuid,
+        query=question,
+        top_k=5
+    )
+    self.context.end_step()
+
+    if not kb_results:
+        return {
+            "success": False,
+            "error": "No relevant knowledge found"
+        }
+
+    # Step 2: Build context from results
+    context = "\n\n".join([
+        f"[Source {i+1}] {r.content}"
+        for i, r in enumerate(kb_results)
+    ])
+
+    self.context.watch_variable("context_length", len(context))
+
+    # Step 3: Generate answer with LLM
+    self.context.start_step("llm_generation")
+    response = self.api.llm.invoke(
+        messages=[
+            {
+                "role": "system",
+                "content": "Answer the question using only the provided context. "
+                          "If the answer is not in the context, say so."
+            },
+            {
+                "role": "user",
+                "content": f"Context:\n{context}\n\nQuestion: {question}"
+            }
+        ],
+        temperature=0.3
+    )
+    self.context.end_step()
+
+    return {
+        "success": True,
+        "answer": response.content,
+        "sources": [
+            {"content": r.content[:200], "score": r.score}
+            for r in kb_results
+        ],
+        "tokens_used": response.usage["total_tokens"]
+    }
+```
+
+### Multi-KB Search
+
+```python
+@tool(name="search_all", description="Search multiple knowledge bases")
+@permission_required("knowledge_access")
+def search_all(self, query: str, kb_uuids: list) -> dict:
+    all_results = []
+
+    for kb_uuid in kb_uuids:
+        try:
+            results = self.api.knowledge.search(
+                knowledge_base_uuid=kb_uuid,
+                query=query,
+                top_k=3
+            )
+
+            all_results.extend([
+                {
+                    "kb_uuid": kb_uuid,
+                    "content": r.content,
+                    "score": r.score
+                }
+                for r in results
+            ])
+
+        except Exception as e:
+            self.context.warn(f"Search failed for {kb_uuid}: {str(e)}")
+
+    # Sort by score
+    all_results.sort(key=lambda x: x["score"], reverse=True)
+
+    return {
+        "success": True,
+        "total_results": len(all_results),
+        "results": all_results[:10]  # Top 10 across all KBs
+    }
+```
+
+### Semantic Cache
+
+```python
+@tool(name="cached_search", description="Search with caching")
+@permission_required("knowledge_access", "storage")
+def cached_search(self, query: str, kb_uuid: str) -> dict:
+    # Check cache first
+    cache_key = f"search:{kb_uuid}:{query}"
+    cached = self.api.storage.get(cache_key)
+
+    if cached:
+        self.context.info("Cache hit")
+        return {"success": True, "results": cached, "cached": True}
+
+    # Search knowledge base
+    results = self.api.knowledge.search(
+        knowledge_base_uuid=kb_uuid,
+        query=query,
+        top_k=5
+    )
+
+    # Cache results (1 hour TTL)
+    result_data = [
+        {"content": r.content, "score": r.score}
+        for r in results
+    ]
+
+    self.api.storage.set(cache_key, result_data, ttl=3600)
+
+    return {
+        "success": True,
+        "results": result_data,
+        "cached": False
+    }
+```
+
+### Format Results for Display
+
+```python
+@tool(name="formatted_search", description="Search with formatted results")
+@permission_required("knowledge_access")
+def formatted_search(self, query: str, kb_uuid: str) -> dict:
+    results = self.api.knowledge.search(
+        knowledge_base_uuid=kb_uuid,
+        query=query,
+        top_k=5
+    )
+
+    # Format for display
+    formatted = []
+    for i, result in enumerate(results, 1):
+        formatted.append({
+            "rank": i,
+            "score": f"{result.score:.2%}",
+            "preview": result.content[:200] + "...",
+            "full_content": result.content,
+            "metadata": result.metadata
+        })
+
+    return {
+        "success": True,
+        "query": query,
+        "results": formatted
+    }
+```
+
+## Error Handling
+
+```python
+from nadoo_plugin.exceptions import KnowledgeSearchError, PluginPermissionError
+
+@tool(name="safe_search", description="Safe knowledge search")
+def safe_search(self, query: str, kb_uuid: str) -> dict:
+    try:
+        results = self.api.knowledge.search(
+            knowledge_base_uuid=kb_uuid,
+            query=query
+        )
+
+        return {
+            "success": True,
+            "results": [r.content for r in results]
+        }
+
+    except PluginPermissionError:
+        return {
+            "success": False,
+            "error": "Knowledge access permission not granted"
+        }
+
+    except KnowledgeSearchError as e:
+        self.context.error(f"Search failed: {str(e)}")
+        return {
+            "success": False,
+            "error": f"Search failed: {str(e)}"
+        }
+
+    except ValueError as e:
+        return {
+            "success": False,
+            "error": f"Invalid parameters: {str(e)}"
+        }
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Score Threshold">
+    Set `score_threshold` to filter low-quality results (e.g., 0.7 for high confidence)
+  </Accordion>
+
+  <Accordion title="Limit top_k">
+    Request only what you need - smaller `top_k` = faster responses
+  </Accordion>
+
+  <Accordion title="Combine with LLM">
+    Use RAG pattern: search KB → build context → LLM generates answer
+  </Accordion>
+
+  <Accordion title="Cache Frequent Queries">
+    Use Storage API to cache search results for repeated queries
+  </Accordion>
+
+  <Accordion title="Handle Empty Results">
+    Always check if results list is empty before processing
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="LLM API" icon="brain" href="/plugin-sdk/api/llm">
+    Combine knowledge with LLM
+  </Card>
+  <Card title="Storage API" icon="hard-drive" href="/plugin-sdk/api/storage">
+    Cache search results
+  </Card>
+</CardGroup>
