@@ -83,10 +83,6 @@
     {
       "name": "API Reference",
       "url": "api"
-    },
-    {
-      "name": "Examples",
-      "url": "examples"
     }
   ],
   "anchors": [
@@ -153,6 +149,18 @@
             "flow-core/backends/native",
             "flow-core/backends/custom",
             "flow-core/backends/registry"
+          ]
+        },
+        {
+          "group": "Examples",
+          "pages": [
+            "examples/overview",
+            "examples/flow-core/basic-workflow",
+            "examples/flow-core/chaining-nodes",
+            "examples/flow-core/parallel-search",
+            "examples/flow-core/streaming-chat",
+            "examples/flow-core/rag-pipeline",
+            "examples/flow-core/human-in-loop"
           ]
         }
       ]
@@ -229,23 +237,6 @@
             "api/builder/rest-api",
             "api/builder/webhooks",
             "api/builder/sdk"
-          ]
-        }
-      ]
-    },
-    {
-      "group": "Examples",
-      "pages": [
-        "examples/overview",
-        {
-          "group": "Flow Core Examples",
-          "pages": [
-            "examples/flow-core/basic-workflow",
-            "examples/flow-core/chaining-nodes",
-            "examples/flow-core/parallel-search",
-            "examples/flow-core/streaming-chat",
-            "examples/flow-core/rag-pipeline",
-            "examples/flow-core/human-in-loop"
           ]
         }
       ]
