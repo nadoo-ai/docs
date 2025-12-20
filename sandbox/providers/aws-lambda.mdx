@@ -1,0 +1,140 @@
+---
+title: 'AWS Lambda Provider'
+description: 'Serverless code execution on AWS'
+icon: 'aws'
+---
+
+## Overview
+
+The AWS Lambda provider enables serverless code execution using AWS Lambda functions. This is ideal for scalable, pay-per-use execution without managing infrastructure.
+
+## Requirements
+
+- AWS Account with Lambda access
+- IAM credentials with Lambda permissions
+- `boto3` package installed
+
+## Installation
+
+```bash
+# Install AWS dependencies
+poetry install --extras cloud
+
+# Or install directly
+pip install boto3
+```
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# AWS Credentials
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_REGION=us-east-1
+
+# Lambda Configuration
+LAMBDA_FUNCTION_PREFIX=nadoo-sandbox-
+LAMBDA_TIMEOUT=30
+LAMBDA_MEMORY_SIZE=256
+```
+
+### IAM Policy
+
+Minimum required IAM permissions:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "lambda:InvokeFunction",
+        "lambda:CreateFunction",
+        "lambda:UpdateFunctionCode",
+        "lambda:GetFunction"
+      ],
+      "Resource": "arn:aws:lambda:*:*:function:nadoo-sandbox-*"
+    }
+  ]
+}
+```
+
+## Usage
+
+### Execute on AWS Lambda
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "def handler(event, context): return {\"result\": 42}",
+    "language": "python",
+    "provider": "aws_lambda"
+  }'
+```
+
+## Supported Languages
+
+| Language | Runtime |
+|----------|---------|
+| Python | python3.11 |
+| JavaScript | nodejs18.x |
+| TypeScript | nodejs18.x (compiled) |
+
+## Architecture
+
+```
+┌─────────────────┐     ┌─────────────────┐
+│  Sandbox API    │────▶│   AWS Lambda    │
+└─────────────────┘     │   Function      │
+                        └────────┬────────┘
+                                 │
+                        ┌────────▼────────┐
+                        │   Lambda        │
+                        │   Runtime       │
+                        └─────────────────┘
+```
+
+## Performance Considerations
+
+### Cold Starts
+
+AWS Lambda cold starts can take 1-3 seconds. To minimize:
+
+- Use provisioned concurrency for consistent latency
+- Keep functions warm with periodic invocations
+- Use smaller deployment packages
+
+### Timeouts
+
+Lambda has a maximum execution time of 15 minutes. Configure appropriately:
+
+```bash
+LAMBDA_TIMEOUT=30  # seconds
+```
+
+## Cost Optimization
+
+Lambda charges based on:
+- Number of requests
+- Duration (GB-seconds)
+
+Tips:
+- Use the minimum memory required
+- Set appropriate timeouts
+- Monitor and optimize function duration
+
+## Failover Configuration
+
+Set up AWS Lambda as a failover provider:
+
+```bash
+EXECUTOR_DEFAULT_PROVIDER=local_docker
+EXECUTOR_FALLBACK_CHAIN=local_docker,aws_lambda
+```
+
+When local Docker fails, requests automatically route to AWS Lambda.

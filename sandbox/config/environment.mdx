@@ -21,6 +21,93 @@ NADOO_SANDBOX_HOST=0.0.0.0
 NADOO_SANDBOX_REDIS_URL=redis://localhost:6379/2
 ```
 
+## Executor Configuration
+
+Configure the multi-provider executor system.
+
+### Default Provider
+
+```bash
+# Set the default execution provider
+# Options: local_docker, aws_lambda, gcp_cloud_run, azure_container
+EXECUTOR_DEFAULT_PROVIDER=local_docker
+```
+
+### Failover Chain
+
+Configure automatic failover between providers:
+
+```bash
+# Comma-separated list of providers to try in order
+EXECUTOR_FALLBACK_CHAIN=local_docker,aws_lambda,gcp_cloud_run
+```
+
+When the primary provider fails, the system automatically tries the next provider in the chain.
+
+## Warm Pool Configuration
+
+Configure the warm pool for optimized cold start times.
+
+```bash
+# Enable/disable warm pool (default: true)
+WARM_POOL_ENABLED=true
+
+# Number of pre-warmed containers per runtime (default: 3)
+WARM_POOL_SIZE_PER_RUNTIME=3
+
+# Container time-to-live in seconds (default: 3600)
+WARM_POOL_CONTAINER_TTL=3600
+
+# Health check interval in seconds (default: 30)
+WARM_POOL_HEALTH_CHECK_INTERVAL=30
+```
+
+### Per-Runtime Pool Size
+
+Override pool size for specific languages:
+
+```bash
+WARM_POOL_PYTHON_SIZE=5
+WARM_POOL_JAVASCRIPT_SIZE=3
+WARM_POOL_GO_SIZE=2
+```
+
+## Cloud Provider Configuration
+
+### AWS Lambda
+
+```bash
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_REGION=us-east-1
+LAMBDA_FUNCTION_PREFIX=nadoo-sandbox-
+LAMBDA_TIMEOUT=30
+LAMBDA_MEMORY_SIZE=256
+```
+
+### GCP Cloud Run
+
+```bash
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+GCP_PROJECT_ID=your-project-id
+GCP_REGION=us-central1
+CLOUD_RUN_SERVICE_PREFIX=nadoo-sandbox-
+CLOUD_RUN_TIMEOUT=60
+CLOUD_RUN_MEMORY=512Mi
+```
+
+### Azure Container Apps
+
+```bash
+AZURE_TENANT_ID=your-tenant-id
+AZURE_CLIENT_ID=your-client-id
+AZURE_CLIENT_SECRET=your-client-secret
+AZURE_SUBSCRIPTION_ID=your-subscription-id
+AZURE_RESOURCE_GROUP=nadoo-sandbox-rg
+AZURE_CONTAINER_APP_ENV=nadoo-sandbox-env
+AZURE_REGION=eastus
+```
+
 ## Per-Request Environment
 
 ```bash

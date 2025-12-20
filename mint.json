@@ -215,6 +215,22 @@
           ]
         },
         {
+          "group": "Execution Providers",
+          "pages": [
+            "sandbox/providers/overview",
+            "sandbox/providers/local-docker",
+            "sandbox/providers/aws-lambda",
+            "sandbox/providers/gcp-cloud-run",
+            "sandbox/providers/azure-container"
+          ]
+        },
+        {
+          "group": "Performance",
+          "pages": [
+            "sandbox/warm-pool"
+          ]
+        },
+        {
           "group": "Supported Languages",
           "pages": [
             "sandbox/languages/overview",

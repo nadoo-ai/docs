@@ -27,32 +27,43 @@ Nadoo Sandbox is a secure code execution service that runs user code in isolated
 
 ## Architecture
 
+Nadoo Sandbox features a **Multi-Provider Executor** architecture with **Warm Pool** support for optimal performance.
+
 ```
-┌─────────────────┐
-│   API Gateway   │
-└────────┬────────┘
-         │
-┌────────▼────────┐
-│  FastAPI App    │
-├─────────────────┤
-│ - Execute API   │
-│ - Health Check  │
-│ - Metrics       │
-└────────┬────────┘
-         │
-┌────────▼────────┐
-│ Docker Manager  │
-├─────────────────┤
-│ - Container     │
-│   Creation      │
-│ - Code Exec     │
-│ - Cleanup       │
-└────────┬────────┘
-         │
-┌────────▼────────┐
-│ Docker Daemon   │
-└─────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                       API Gateway                            │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────┐
+│                      FastAPI App                             │
+├─────────────────────────────────────────────────────────────┤
+│  - Execute API    - Provider API    - Health Check          │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────┐
+│                   Executor Client                            │
+├─────────────────────────────────────────────────────────────┤
+│  - Provider Registry    - Failover Chain    - Load Balance  │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+          ┌────────────────┼────────────────┐
+          │                │                │
+┌─────────▼─────────┐ ┌────▼────┐ ┌─────────▼─────────┐
+│   Warm Pool       │ │         │ │   Cloud Providers │
+├───────────────────┤ │  Local  │ ├───────────────────┤
+│ - Pre-warmed      │ │  Docker │ │ - AWS Lambda      │
+│   Containers      │ │         │ │ - GCP Cloud Run   │
+│ - Health Check    │ │         │ │ - Azure Container │
+│ - Auto Scaling    │ │         │ │   Apps            │
+└───────────────────┘ └─────────┘ └───────────────────┘
 ```
+
+### Key Components
+
+- **Executor Client**: Unified interface for all providers with automatic failover
+- **Warm Pool**: Pre-warmed containers for ~50-100ms cold start latency
+- **Provider Registry**: Pluggable architecture for adding new execution backends
+- **Failover Chain**: Automatic fallback when primary provider fails
 
 ## Use Cases
 
@@ -82,10 +93,16 @@ curl -X POST http://localhost:8002/api/v1/execute \
   <Card title="Quickstart" icon="rocket" href="/sandbox/quickstart">
     Execute your first code
   </Card>
-  <Card title="API Reference" icon="code" href="/api/sandbox/execute">
-    Explore API endpoints
+  <Card title="Execution Providers" icon="cloud" href="/sandbox/providers/overview">
+    Configure multi-cloud execution
+  </Card>
+  <Card title="Warm Pool" icon="fire" href="/sandbox/warm-pool">
+    Optimize cold start latency
   </Card>
   <Card title="Supported Languages" icon="file-code" href="/sandbox/languages/overview">
     View all supported languages
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/sandbox/execute">
+    Explore API endpoints
   </Card>
 </CardGroup>

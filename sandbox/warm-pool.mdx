@@ -1,0 +1,257 @@
+---
+title: 'Warm Pool'
+description: 'Pre-warmed containers for ultra-fast code execution'
+icon: 'fire'
+---
+
+## Overview
+
+The Warm Pool is a container management system that maintains pre-warmed, ready-to-use containers for each supported runtime. This dramatically reduces cold start latency from seconds to milliseconds.
+
+## How It Works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Warm Pool Manager                       │
+├─────────────────────────────────────────────────────────────┤
+│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐ │
+│  │  Python   │  │   Node    │  │    Go     │  │   Java    │ │
+│  │  Pool     │  │   Pool    │  │   Pool    │  │   Pool    │ │
+│  │  [3]      │  │   [3]     │  │   [3]     │  │   [3]     │ │
+│  └───────────┘  └───────────┘  └───────────┘  └───────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Health Monitor                           │
+├─────────────────────────────────────────────────────────────┤
+│  - Periodic health checks    - Auto-replacement              │
+│  - Container TTL management  - Pool size maintenance         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Performance Benefits
+
+| Metric | Without Warm Pool | With Warm Pool | Improvement |
+|--------|-------------------|----------------|-------------|
+| Cold Start | 2-5 seconds | 50-100ms | 20-50x faster |
+| First Request | ~3 seconds | ~80ms | 37x faster |
+| Container Overhead | High | Minimal | Eliminated |
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Enable warm pool (default: true)
+WARM_POOL_ENABLED=true
+
+# Containers per runtime (default: 3)
+WARM_POOL_SIZE_PER_RUNTIME=3
+
+# Container time-to-live in seconds (default: 3600)
+WARM_POOL_CONTAINER_TTL=3600
+
+# Health check interval in seconds (default: 30)
+WARM_POOL_HEALTH_CHECK_INTERVAL=30
+```
+
+### Pool Size Recommendations
+
+| Use Case | Pool Size | Notes |
+|----------|-----------|-------|
+| Development | 1-2 | Lower resource usage |
+| Production (Low Traffic) | 3-5 | Good balance |
+| Production (High Traffic) | 10+ | Scale as needed |
+
+## Container Lifecycle
+
+### 1. Container Creation
+
+Containers are pre-created and warmed during startup:
+
+```
+┌─────────────────┐
+│  Pool Manager   │
+│    Startup      │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐     ┌─────────────────┐
+│  Create         │────▶│  Initialize     │
+│  Container      │     │  Runtime        │
+└─────────────────┘     └────────┬────────┘
+                                 │
+                                 ▼
+                        ┌─────────────────┐
+                        │  Add to Pool    │
+                        │  (Ready)        │
+                        └─────────────────┘
+```
+
+### 2. Container Acquisition
+
+When a request arrives:
+
+```python
+# Pseudocode for container acquisition
+container = warm_pool.acquire(language="python")
+if container:
+    # Use pre-warmed container
+    result = container.execute(code)
+else:
+    # Fall back to creating new container
+    container = create_new_container(language)
+    result = container.execute(code)
+```
+
+### 3. Container Reset & Return
+
+After execution, containers are reset and returned to the pool:
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Execution     │────▶│   Reset State   │────▶│  Return to      │
+│   Complete      │     │   Clean Env     │     │  Pool           │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
+
+The reset process ensures:
+- **No data leakage** between executions
+- **Clean environment** variables
+- **Fresh filesystem** state
+- **Reset resource counters**
+
+## Health Monitoring
+
+The warm pool continuously monitors container health:
+
+### Health Check Types
+
+1. **Liveness Check**: Container is running
+2. **Readiness Check**: Runtime is initialized
+3. **Resource Check**: Memory/CPU within limits
+
+### Auto-Replacement
+
+Unhealthy containers are automatically replaced:
+
+```
+┌─────────────────┐     ┌─────────────────┐
+│  Health Check   │────▶│   Container     │
+│     Failed      │     │   Unhealthy     │
+└─────────────────┘     └────────┬────────┘
+                                 │
+         ┌───────────────────────┴───────────────────────┐
+         │                                               │
+         ▼                                               ▼
+┌─────────────────┐                             ┌─────────────────┐
+│   Remove from   │                             │  Create New     │
+│   Pool          │                             │  Container      │
+└─────────────────┘                             └─────────────────┘
+```
+
+## Advanced Configuration
+
+### Per-Runtime Settings
+
+Configure pool size per language:
+
+```bash
+WARM_POOL_PYTHON_SIZE=5
+WARM_POOL_JAVASCRIPT_SIZE=3
+WARM_POOL_GO_SIZE=2
+WARM_POOL_JAVA_SIZE=2
+```
+
+### TTL Management
+
+Containers are recycled after TTL expires to prevent resource drift:
+
+```bash
+# Recycle containers every hour
+WARM_POOL_CONTAINER_TTL=3600
+
+# Grace period before forced termination
+WARM_POOL_GRACEFUL_SHUTDOWN=30
+```
+
+## Monitoring
+
+### Metrics
+
+The warm pool exposes the following metrics:
+
+| Metric | Description |
+|--------|-------------|
+| `warm_pool_size` | Current pool size per runtime |
+| `warm_pool_hits` | Requests served from pool |
+| `warm_pool_misses` | Requests requiring new containers |
+| `warm_pool_health_failures` | Health check failures |
+
+### API Endpoint
+
+Check warm pool status:
+
+```bash
+curl -X GET http://localhost:8002/api/v1/warm-pool/status \
+  -H "X-API-Key: your-api-key"
+```
+
+Response:
+
+```json
+{
+  "enabled": true,
+  "pools": {
+    "python": {
+      "size": 3,
+      "available": 2,
+      "in_use": 1
+    },
+    "javascript": {
+      "size": 3,
+      "available": 3,
+      "in_use": 0
+    }
+  },
+  "total_hits": 1523,
+  "total_misses": 12,
+  "hit_rate": 0.992
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Size your pool appropriately">
+    Monitor your traffic patterns and adjust pool size. Too small causes misses; too large wastes resources.
+  </Accordion>
+  <Accordion title="Use health checks">
+    Enable health checks to ensure containers are ready for requests.
+  </Accordion>
+  <Accordion title="Set appropriate TTL">
+    Balance between container freshness and startup costs. 1-4 hours is typical.
+  </Accordion>
+  <Accordion title="Monitor hit rate">
+    Aim for 95%+ hit rate. If lower, increase pool size or investigate traffic patterns.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+### High Miss Rate
+
+If experiencing many pool misses:
+
+1. Increase `WARM_POOL_SIZE_PER_RUNTIME`
+2. Check for bursty traffic patterns
+3. Verify health checks aren't failing
+
+### Memory Issues
+
+If containers are using too much memory:
+
+1. Reduce `WARM_POOL_SIZE_PER_RUNTIME`
+2. Lower `WARM_POOL_CONTAINER_TTL`
+3. Check for memory leaks in executed code

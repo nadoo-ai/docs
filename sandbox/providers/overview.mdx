@@ -1,0 +1,128 @@
+---
+title: 'Execution Providers'
+description: 'Multi-cloud execution with automatic failover'
+icon: 'cloud'
+---
+
+## Overview
+
+Nadoo Sandbox supports multiple execution providers, allowing you to run code on local Docker, AWS Lambda, GCP Cloud Run, or Azure Container Apps. The system automatically handles failover between providers.
+
+## Supported Providers
+
+<CardGroup cols={2}>
+  <Card title="Local Docker" icon="docker" href="/sandbox/providers/local-docker">
+    Default provider using local Docker daemon
+  </Card>
+  <Card title="AWS Lambda" icon="aws" href="/sandbox/providers/aws-lambda">
+    Serverless execution on AWS
+  </Card>
+  <Card title="GCP Cloud Run" icon="google" href="/sandbox/providers/gcp-cloud-run">
+    Container execution on Google Cloud
+  </Card>
+  <Card title="Azure Container Apps" icon="microsoft" href="/sandbox/providers/azure-container">
+    Managed containers on Azure
+  </Card>
+</CardGroup>
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Executor Client                          │
+├─────────────────────────────────────────────────────────────┤
+│                    Provider Registry                         │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
+│  │   Local     │  │    AWS      │  │    GCP      │  ...     │
+│  │   Docker    │  │   Lambda    │  │  Cloud Run  │          │
+│  └─────────────┘  └─────────────┘  └─────────────┘          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Configuration
+
+### Default Provider
+
+Set the default execution provider:
+
+```bash
+EXECUTOR_DEFAULT_PROVIDER=local_docker
+```
+
+Available values:
+- `local_docker` (default)
+- `aws_lambda`
+- `gcp_cloud_run`
+- `azure_container`
+
+### Failover Chain
+
+Configure automatic failover between providers:
+
+```bash
+EXECUTOR_FALLBACK_CHAIN=local_docker,aws_lambda,gcp_cloud_run
+```
+
+When the primary provider fails, the system automatically tries the next provider in the chain.
+
+## API Usage
+
+### List Available Providers
+
+```bash
+curl -X GET http://localhost:8002/api/v1/providers \
+  -H "X-API-Key: your-api-key"
+```
+
+Response:
+
+```json
+{
+  "providers": [
+    {
+      "name": "local_docker",
+      "status": "active",
+      "is_default": true
+    },
+    {
+      "name": "aws_lambda",
+      "status": "configured",
+      "is_default": false
+    }
+  ]
+}
+```
+
+### Execute with Specific Provider
+
+```bash
+curl -X POST http://localhost:8002/api/v1/execute \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "print(\"Hello from AWS!\")",
+    "language": "python",
+    "provider": "aws_lambda"
+  }'
+```
+
+## Installation
+
+### Cloud Provider Dependencies
+
+Install optional cloud provider dependencies:
+
+```bash
+# Install all cloud providers
+poetry install --extras cloud
+
+# Or install specific providers
+pip install boto3                      # AWS Lambda
+pip install google-cloud-run           # GCP Cloud Run
+pip install azure-mgmt-appcontainers   # Azure Container Apps
+```
+
+## Backward Compatibility
+
+The multi-provider architecture is fully backward compatible. If no provider is specified, the system uses `local_docker` by default, maintaining the same behavior as previous versions.
