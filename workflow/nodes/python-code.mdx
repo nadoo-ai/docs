@@ -1,0 +1,267 @@
+---
+title: 'Python Code Node'
+description: 'Execute sandboxed Python code within workflows for data transformation, calculations, and custom logic'
+sidebarTitle: 'Python Code'
+'og:title': 'Python Code Node - Nadoo AI'
+'og:description': 'Run sandboxed Python scripts with restricted imports, resource limits, and context variable integration'
+icon: 'python'
+---
+
+## Overview
+
+The **Python Code Node** lets you execute custom Python code within a workflow. It provides a sandboxed runtime environment where you can perform data transformations, calculations, string manipulation, and any custom logic that cannot be expressed with the built-in node types.
+
+Code runs in an isolated environment with restricted imports and resource limits to ensure security and prevent runaway executions.
+
+## Configuration
+
+```json
+{
+  "type": "python-node",
+  "config": {
+    "code": "result = sum(item['price'] for item in items)\nformatted = f'Total: ${result:,.2f}'",
+    "inputs": {
+      "items": "{{order_items}}"
+    },
+    "outputs": {
+      "total": "result",
+      "display": "formatted"
+    },
+    "timeout_seconds": 10
+  }
+}
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `code` | string | -- | Python code to execute (required) |
+| `inputs` | object | `{}` | Map of variable names available in the code to workflow context references |
+| `outputs` | object | `{}` | Map of output context variable names to local variable names in the code |
+| `timeout_seconds` | number | `10` | Maximum execution time before the code is terminated |
+
+## Input and Output
+
+### Inputs
+
+The `inputs` configuration maps workflow context variables into the Python runtime as local variables. These variables are available directly in your code.
+
+```json
+{
+  "inputs": {
+    "user_name": "{{user_name}}",
+    "search_results": "{{search_results}}",
+    "score": "{{confidence_score}}"
+  }
+}
+```
+
+Inside the code, reference these as regular Python variables:
+
+```python
+# These variables are injected from the workflow context
+greeting = f"Hello, {user_name}!"
+top_result = search_results[0] if search_results else None
+is_confident = score >= 0.8
+```
+
+### Outputs
+
+The `outputs` configuration maps local variables from the code back to the workflow context. Only variables listed in `outputs` are written to the context -- all other local variables are discarded after execution.
+
+```json
+{
+  "outputs": {
+    "greeting_message": "greeting",
+    "best_match": "top_result",
+    "confident": "is_confident"
+  }
+}
+```
+
+After execution, downstream nodes can access `{{greeting_message}}`, `{{best_match}}`, and `{{confident}}`.
+
+## Sandboxed Environment
+
+The Python Code Node runs in a restricted sandbox to prevent security issues and resource abuse.
+
+### Allowed Imports
+
+The following standard library modules are available:
+
+| Category | Modules |
+|---|---|
+| Data Processing | `json`, `csv`, `re`, `collections`, `itertools` |
+| Math & Science | `math`, `statistics`, `decimal`, `fractions` |
+| Text | `string`, `textwrap`, `unicodedata` |
+| Date & Time | `datetime`, `time`, `calendar` |
+| Data Structures | `dataclasses`, `enum`, `typing` |
+| Utilities | `copy`, `functools`, `operator`, `hashlib`, `base64`, `uuid` |
+| URL Handling | `urllib.parse` |
+
+<Warning>
+  Modules not listed above are **blocked**. Attempts to import `os`, `sys`, `subprocess`, `socket`, `http`, `requests`, or any other module will raise an `ImportError`. This is intentional for security.
+</Warning>
+
+### Resource Limits
+
+| Resource | Limit | Description |
+|---|---|---|
+| Execution time | Configurable (`timeout_seconds`) | Default 10 seconds, max 60 seconds |
+| Memory | 128 MB | Maximum heap allocation |
+| Output size | 1 MB | Maximum total size of output variables |
+| Recursion depth | 100 | Maximum call stack depth |
+
+## Examples
+
+### Data Transformation
+
+Transform search results into a formatted context string for an AI Agent Node:
+
+```python
+# Inputs: search_results (list of dicts with 'content' and 'score')
+context_parts = []
+for i, result in enumerate(search_results, 1):
+    context_parts.append(f"[{i}] (score: {result['score']:.2f})\n{result['content']}")
+
+context_string = "\n\n---\n\n".join(context_parts)
+result_count = len(search_results)
+```
+
+**Outputs:** `context_string`, `result_count`
+
+### Calculation
+
+Compute statistics from query results:
+
+```python
+# Inputs: query_results (dict with 'rows' list)
+import statistics
+
+values = [row['revenue'] for row in query_results['rows']]
+
+stats = {
+    "total": sum(values),
+    "average": statistics.mean(values),
+    "median": statistics.median(values),
+    "min": min(values),
+    "max": max(values),
+    "count": len(values)
+}
+
+summary = f"Total revenue: ${stats['total']:,.2f} across {stats['count']} entries (avg: ${stats['average']:,.2f})"
+```
+
+**Outputs:** `stats`, `summary`
+
+### JSON Parsing and Restructuring
+
+Parse and restructure LLM output:
+
+```python
+# Inputs: llm_output (string that may contain JSON)
+import json
+import re
+
+# Extract JSON from LLM response (handles markdown code blocks)
+json_match = re.search(r'```(?:json)?\s*([\s\S]*?)```', llm_output)
+if json_match:
+    parsed = json.loads(json_match.group(1))
+else:
+    parsed = json.loads(llm_output)
+
+# Restructure for downstream use
+items = parsed.get("items", [])
+categorized = {}
+for item in items:
+    category = item.get("category", "uncategorized")
+    if category not in categorized:
+        categorized[category] = []
+    categorized[category].append(item)
+
+category_count = len(categorized)
+```
+
+**Outputs:** `categorized`, `category_count`
+
+### Date Calculations
+
+```python
+# Inputs: start_date_str, end_date_str (ISO format strings)
+from datetime import datetime, timedelta
+
+start = datetime.fromisoformat(start_date_str)
+end = datetime.fromisoformat(end_date_str)
+
+days_between = (end - start).days
+is_overdue = end < datetime.now()
+due_in_days = (end - datetime.now()).days if not is_overdue else 0
+
+status = "overdue" if is_overdue else f"due in {due_in_days} days"
+```
+
+**Outputs:** `days_between`, `is_overdue`, `status`
+
+## Error Handling
+
+If the Python code raises an exception, the node transitions to the `FAILED` status and emits a `node_failed` SSE event. The error message includes:
+
+- The exception type and message
+- The line number where the error occurred
+- A truncated traceback
+
+```json
+{
+  "event": "node_failed",
+  "data": {
+    "node_id": "python_1",
+    "error": "ZeroDivisionError: division by zero (line 3)"
+  }
+}
+```
+
+To handle errors gracefully, use try/except blocks within your code:
+
+```python
+try:
+    result = numerator / denominator
+    error = None
+except ZeroDivisionError:
+    result = 0
+    error = "Cannot divide by zero"
+```
+
+Then use a downstream Condition Node to check the `error` variable and branch accordingly.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep code focused and short">
+    Each Python Code Node should do one thing. If your code is longer than 30-40 lines, consider splitting it into multiple nodes or extracting logic into a Python-based plugin.
+  </Accordion>
+  <Accordion title="Always define explicit inputs and outputs">
+    Even though inputs could be accessed through other mechanisms, always declare them in the `inputs` configuration. This makes the node self-documenting and ensures the visual editor shows the data dependencies.
+  </Accordion>
+  <Accordion title="Handle missing or unexpected data">
+    Workflow variables may be `None` or have unexpected types. Always validate inputs at the top of your code and provide sensible defaults.
+  </Accordion>
+  <Accordion title="Use the timeout wisely">
+    The default 10-second timeout is generous for most data transformations. If your code needs more time, it may be doing too much work -- consider breaking it into smaller steps or moving heavy processing to a background task.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Node" icon="database" href="/workflow/nodes/database">
+    Query databases and process results with Python
+  </Card>
+  <Card title="Condition Node" icon="code-branch" href="/workflow/nodes/condition">
+    Branch based on computed values from Python code
+  </Card>
+  <Card title="Document Extract" icon="file-lines" href="/workflow/nodes/document-extract">
+    Extract document content and transform it with Python
+  </Card>
+  <Card title="AI Agent Node" icon="robot" href="/workflow/nodes/ai-agent">
+    Feed Python-computed data to LLM reasoning
+  </Card>
+</CardGroup>

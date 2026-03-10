@@ -1,0 +1,204 @@
+---
+title: 'Local Development Setup'
+description: 'Run Nadoo AI locally with Docker for Postgres and Redis'
+sidebarTitle: 'Local Dev Setup'
+'og:title': 'Local Development Setup - Nadoo AI'
+icon: 'laptop-code'
+---
+
+## Overview
+
+The local development setup runs **PostgreSQL** and **Redis** inside Docker containers while you run the backend (FastAPI) and frontend (Next.js) natively on your machine. This gives you fast hot-reload for both services and direct debugger access.
+
+## Prerequisites
+
+| Tool | Version | Install |
+|------|---------|---------|
+| **Docker** | 20.10+ | [docker.com](https://docs.docker.com/get-docker/) |
+| **Docker Compose** | v2+ | Included with Docker Desktop |
+| **Python** | 3.11+ | [python.org](https://www.python.org/downloads/) |
+| **Node.js** | 22+ | [nodejs.org](https://nodejs.org/) |
+| **Git** | 2.x | [git-scm.com](https://git-scm.com/) |
+
+## Step-by-Step Setup
+
+<Steps>
+  <Step title="Clone the Repository">
+    ```bash
+    git clone https://github.com/nadoo-ai/nadoo-ai.git
+    cd nadoo-ai
+    git submodule init
+    git submodule update
+    ```
+  </Step>
+  <Step title="Start Docker Services">
+    Launch PostgreSQL and Redis:
+
+    ```bash
+    docker-compose -f infrastructure/docker-compose.local.yml up -d
+    ```
+
+    This starts:
+    - **PostgreSQL 15** with pgvector on port `5432`
+    - **Redis 7** on port `6379`
+  </Step>
+  <Step title="Install Backend Dependencies">
+    ```bash
+    cd packages/backend
+    pip install -r requirements.txt
+    ```
+
+    <Info>
+      We recommend using a Python virtual environment (`venv` or `conda`) to avoid dependency conflicts.
+    </Info>
+  </Step>
+  <Step title="Configure Environment Variables">
+    Copy the example environment file and adjust as needed:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    The defaults work out of the box with the local Docker Compose setup. See [Environment Variables](/self-hosting/environment-variables) for the full reference.
+  </Step>
+  <Step title="Run Database Migrations">
+    ```bash
+    alembic upgrade head
+    ```
+
+    This creates all required tables in PostgreSQL.
+  </Step>
+  <Step title="Start the Backend">
+    ```bash
+    uvicorn src.main:app --reload --port 8000
+    ```
+
+    The API server starts at `http://localhost:8000` with auto-reload enabled.
+  </Step>
+  <Step title="Start the Frontend">
+    Open a new terminal:
+
+    ```bash
+    cd packages/frontend
+    npm install
+    npm run dev
+    ```
+
+    The frontend starts at `http://localhost:3000`.
+  </Step>
+</Steps>
+
+## Quick Start Script
+
+Alternatively, use the all-in-one start script that handles all of the above steps:
+
+```bash
+# From the project root
+npm run start
+```
+
+Or:
+
+```bash
+./scripts/start-local.sh
+```
+
+## Service URLs
+
+Once everything is running, access the following:
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| **Frontend** | [http://localhost:3000](http://localhost:3000) | Nadoo AI web application |
+| **Backend API** | [http://localhost:8000](http://localhost:8000) | FastAPI REST API |
+| **Swagger UI** | [http://localhost:8000/api/docs](http://localhost:8000/api/docs) | Interactive API documentation |
+| **ReDoc** | [http://localhost:8000/api/redoc](http://localhost:8000/api/redoc) | Alternative API documentation |
+
+## Database Credentials
+
+The local Docker Compose file uses the following default credentials:
+
+| Parameter | Value |
+|-----------|-------|
+| **Host** | `localhost` |
+| **Port** | `5432` |
+| **User** | `postgres` |
+| **Password** | `4432646294A404D6351` |
+| **Database** | `nadoo_db` |
+
+Connection string:
+
+```
+postgresql://postgres:4432646294A404D6351@localhost:5432/nadoo_db
+```
+
+<Warning>
+  These are default development credentials. Never use them in production. See [Environment Variables](/self-hosting/environment-variables) for guidance on setting secure credentials.
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Port 5432 or 6379 already in use" icon="plug">
+    Another service is using the port. Either stop the conflicting service or change the port mapping in `docker-compose.local.yml`:
+
+    ```yaml
+    ports:
+      - "15432:5432"  # Map to a different host port
+    ```
+
+    Then update `DATABASE_URL` in your `.env` file to use the new port.
+  </Accordion>
+  <Accordion title="Docker containers won't start" icon="docker">
+    Check that Docker is running:
+
+    ```bash
+    docker info
+    ```
+
+    If using Docker Desktop, ensure it is started. On Linux, verify the Docker daemon:
+
+    ```bash
+    sudo systemctl status docker
+    ```
+  </Accordion>
+  <Accordion title="Alembic migration fails" icon="database">
+    Ensure PostgreSQL is fully started before running migrations. You can check:
+
+    ```bash
+    docker-compose -f infrastructure/docker-compose.local.yml logs postgres
+    ```
+
+    Wait for the message `database system is ready to accept connections` before running `alembic upgrade head`.
+  </Accordion>
+  <Accordion title="Frontend can't connect to backend" icon="circle-xmark">
+    Verify the backend is running on port 8000 and that your frontend `.env` file has the correct API URL:
+
+    ```
+    NEXT_PUBLIC_API_URL=http://localhost:8000
+    ```
+  </Accordion>
+  <Accordion title="Python dependency errors" icon="python">
+    Ensure you are using Python 3.11 or later:
+
+    ```bash
+    python --version
+    ```
+
+    If you have multiple Python versions, use `python3.11` explicitly or create a virtual environment with the correct version.
+  </Accordion>
+</AccordionGroup>
+
+## Stopping Services
+
+```bash
+# Stop Docker containers
+docker-compose -f infrastructure/docker-compose.local.yml down
+
+# Stop with volume cleanup (removes database data)
+docker-compose -f infrastructure/docker-compose.local.yml down -v
+```
+
+<Note>
+  Using `down -v` will delete all data in PostgreSQL and Redis. Only use this when you want a clean slate.
+</Note>

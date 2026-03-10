@@ -1,0 +1,154 @@
+---
+title: 'OpenRouter'
+description: 'Access 200+ AI models through a unified OpenRouter API'
+sidebarTitle: 'OpenRouter'
+'og:title': 'OpenRouter Provider - Nadoo AI'
+icon: 'route'
+---
+
+## Overview
+
+[OpenRouter](https://openrouter.ai/) provides access to **200+ AI models** from multiple providers through a single, unified OpenAI-compatible API. This makes it an excellent choice for teams that want to experiment with different models without managing multiple provider credentials.
+
+<Info>
+  OpenRouter uses the same API format as OpenAI, so switching between OpenAI and OpenRouter models requires minimal configuration changes.
+</Info>
+
+---
+
+## Supported Capabilities
+
+| Capability | Supported |
+|-----------|-----------|
+| **LLM (Chat Completion)** | Yes |
+| **Embedding** | No |
+| **Image Generation** | No |
+| **Reranking** | No |
+
+---
+
+## Configuration
+
+<Steps>
+  <Step title="Get an API Key">
+    Sign up at [openrouter.ai](https://openrouter.ai/) and generate an API key from the dashboard.
+  </Step>
+  <Step title="Configure in Nadoo AI">
+    Navigate to **Workspace Settings > AI Model Providers** and add OpenRouter:
+
+    | Field | Value |
+    |-------|-------|
+    | **Provider** | OpenRouter |
+    | **API Key** | `sk-or-...` (your OpenRouter API key) |
+    | **Site URL** | *(optional)* Your site URL for request attribution |
+    | **Site Name** | *(optional)* Your site name for OpenRouter dashboard |
+  </Step>
+  <Step title="Select Models">
+    Once configured, OpenRouter models become available in the AI Agent node's model selector. Popular models include:
+
+    - `openai/gpt-4o`
+    - `anthropic/claude-3.5-sonnet`
+    - `google/gemini-pro-1.5`
+    - `meta-llama/llama-3.1-405b-instruct`
+    - `mistralai/mistral-large`
+  </Step>
+</Steps>
+
+---
+
+## Environment Variables
+
+If configuring via environment variables:
+
+```env
+OPENROUTER_API_KEY=sk-or-your-api-key
+OPENROUTER_SITE_URL=https://your-site.com      # optional
+OPENROUTER_SITE_NAME=YourAppName                # optional
+```
+
+---
+
+## How It Works
+
+The OpenRouter provider uses the **OpenAI-compatible API** format, connecting to `https://openrouter.ai/api/v1`:
+
+```python
+from openai import AsyncOpenAI
+
+client = AsyncOpenAI(
+    api_key="sk-or-your-api-key",
+    base_url="https://openrouter.ai/api/v1",
+    default_headers={
+        "HTTP-Referer": "https://your-site.com",
+        "X-Title": "YourAppName"
+    }
+)
+```
+
+This means all standard OpenAI chat completion parameters are supported: `temperature`, `max_tokens`, `top_p`, `stop`, `stream`, `tools`, and more.
+
+---
+
+## Model Selection
+
+OpenRouter provides access to models across many providers. The model ID format is `provider/model-name`:
+
+<Tabs>
+  <Tab title="Popular Models">
+    | Model ID | Provider | Context |
+    |----------|----------|---------|
+    | `openai/gpt-4o` | OpenAI | 128K |
+    | `anthropic/claude-3.5-sonnet` | Anthropic | 200K |
+    | `google/gemini-pro-1.5` | Google | 1M |
+    | `meta-llama/llama-3.1-70b-instruct` | Meta | 128K |
+    | `mistralai/mistral-large` | Mistral | 128K |
+  </Tab>
+  <Tab title="Cost-Effective">
+    | Model ID | Provider | Context |
+    |----------|----------|---------|
+    | `openai/gpt-4o-mini` | OpenAI | 128K |
+    | `anthropic/claude-3-haiku` | Anthropic | 200K |
+    | `google/gemini-flash-1.5` | Google | 1M |
+    | `meta-llama/llama-3.1-8b-instruct` | Meta | 128K |
+  </Tab>
+</Tabs>
+
+<Tip>
+  OpenRouter's [model comparison page](https://openrouter.ai/models) shows real-time pricing, latency, and availability for all models.
+</Tip>
+
+---
+
+## Request Attribution
+
+The `HTTP-Referer` and `X-Title` headers are sent with every request to OpenRouter. These are used for:
+
+- Attribution in the OpenRouter dashboard (so you can track usage by site)
+- Ranking on the OpenRouter leaderboard
+- Some model providers offer discounts for attributed requests
+
+---
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Model Comparison" icon="scale-balanced">
+    Test the same workflow against GPT-4o, Claude, and Gemini to find the best model for your use case -- without configuring three separate providers.
+  </Card>
+  <Card title="Fallback Routing" icon="arrows-split-up-and-left">
+    OpenRouter automatically falls back to alternative providers if the primary is unavailable, improving reliability for production deployments.
+  </Card>
+</CardGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="AI Models Overview" icon="microchip-ai" href="/models/overview">
+    Compare all supported AI model providers
+  </Card>
+  <Card title="AI Agent Node" icon="robot" href="/workflow/nodes/ai-agent">
+    Configure model selection in workflows
+  </Card>
+</CardGroup>

@@ -1,0 +1,206 @@
+---
+title: 'Visual Editor'
+description: 'Build AI agent workflows with the drag-and-drop visual editor'
+sidebarTitle: 'Visual Editor'
+'og:title': 'Visual Editor - Nadoo AI'
+'og:description': 'Design, connect, and test AI workflows using the Nadoo visual workflow builder'
+icon: 'pen-ruler'
+---
+
+## Overview
+
+The Visual Editor is the primary interface for designing workflows in Nadoo AI. It provides a **drag-and-drop canvas** where you compose directed graphs by placing nodes, drawing edges, and configuring properties -- all without writing code.
+
+The editor is split into three main regions: the **node palette** on the left, the **canvas** in the center, and the **property panel** on the right.
+
+## Interface Layout
+
+```
++------------------+-------------------------------+-------------------+
+|                  |                               |                   |
+|   Node Palette   |          Canvas               |  Property Panel   |
+|                  |                               |                   |
+|  - Input/Output  |   [Start] --> [AI Agent]      |  Node: AI Agent   |
+|  - AI/LLM        |               |               |  Model: gpt-4o    |
+|  - Knowledge     |               v               |  Temperature: 0.7 |
+|  - Logic         |           [End]               |  Prompt: ...      |
+|  - Integration   |                               |                   |
+|                  |                               |                   |
++------------------+-------------------------------+-------------------+
+|                  Chat Sandbox / Debug Panel                          |
++---------------------------------------------------------------------+
+```
+
+### Node Palette
+
+The left sidebar contains all available node types organized by category. Drag any node from the palette onto the canvas to add it to your workflow.
+
+<Tabs>
+  <Tab title="Input / Output">
+    | Node | Description |
+    |---|---|
+    | Start Node | Entry point -- receives the user's message |
+    | End Node | Terminal node -- delivers the final response |
+    | Question Node | Asks the user for additional information mid-flow |
+    | Form Node | Presents a structured form for data collection |
+    | Direct Reply Node | Returns an immediate static or templated response |
+  </Tab>
+  <Tab title="AI / LLM">
+    | Node | Description |
+    |---|---|
+    | AI Agent Node | Core LLM interaction with 6 execution modes |
+    | Image Generate | Creates images from text prompts |
+    | Image Understand | Analyzes uploaded images |
+    | TTS | Converts text to speech audio |
+    | STT | Transcribes audio to text |
+  </Tab>
+  <Tab title="Knowledge & Retrieval">
+    | Node | Description |
+    |---|---|
+    | Search Knowledge | Vector / hybrid search over knowledge bases |
+    | Reranker | Re-scores retrieved documents for relevance |
+    | Document Extract | Parses content from PDF, DOCX, etc. |
+    | Database | Executes SQL queries |
+    | Database Semantic RAG | Natural language to SQL with retrieval |
+  </Tab>
+  <Tab title="Logic & Control">
+    | Node | Description |
+    |---|---|
+    | Condition | If/else branching on expressions |
+    | Variable | Set, transform, or compute variables |
+    | Application | Invoke another Nadoo application as a sub-workflow |
+  </Tab>
+  <Tab title="Integration">
+    | Node | Description |
+    |---|---|
+    | Tool Node | Call a registered tool |
+    | Tool Lib Node | Access shared tool libraries |
+    | Python Node | Run arbitrary Python code |
+    | MCP Node | Connect to Model Context Protocol servers |
+  </Tab>
+</Tabs>
+
+### Canvas
+
+The canvas is the central workspace where you assemble your workflow graph.
+
+**Key controls:**
+
+- **Zoom** -- Scroll or pinch to zoom between 10% and 400%
+- **Pan** -- Click and drag on empty space to navigate
+- **Grid Snap** -- Nodes align to an invisible grid for clean layouts
+- **Auto Layout** -- Automatically arrange nodes in a readable flow
+- **Minimap** -- A small overview in the corner for navigating large workflows
+- **Multi-select** -- Hold Shift and drag to select multiple nodes at once
+- **Undo / Redo** -- Full history with Ctrl+Z / Ctrl+Shift+Z
+
+### Property Panel
+
+When you select a node on the canvas, the right-side property panel displays its configuration form. Every node type has a different set of options, but common fields include:
+
+- **Name** -- A human-readable label for the node
+- **Description** -- Optional notes for documentation
+- **Input mapping** -- Which upstream variables feed into this node
+- **Output mapping** -- How the node's result is stored in the workflow context
+- **Error handling** -- Retry count, fallback behavior, timeout
+- **Execution conditions** -- Expressions that determine whether the node runs
+
+### Chat Sandbox
+
+The bottom panel provides an integrated **chat sandbox** for testing your workflow without leaving the editor. Type a message, and the workflow executes end-to-end with full SSE streaming output displayed in real time.
+
+Features of the sandbox:
+
+- Live token-by-token LLM output
+- Variable inspector showing the current workflow context
+- Conversation history for multi-turn testing
+- Ability to reset the session at any time
+
+### Debug Mode
+
+Toggle **Debug Mode** to enable step-by-step execution. In this mode:
+
+- The engine pauses before each node
+- You can inspect the current context and node inputs
+- Click **Step** to advance to the next node
+- Active nodes are highlighted on the canvas with status indicators
+- Failed nodes display the error message inline
+
+## Real-Time Validation
+
+The editor continuously validates your workflow as you build it. Common validations include:
+
+<Warning>
+  **Validation errors** are shown as red badges on the affected nodes and listed in a notification panel. You cannot deploy a workflow that has validation errors.
+</Warning>
+
+- Every workflow must have exactly one **Start Node**
+- Every workflow must have at least one **End Node**
+- All nodes must be reachable from the Start Node (no orphaned nodes)
+- Required configuration fields must be filled in (e.g., model selection on AI Agent Node)
+- Edge connections must be type-compatible (e.g., you cannot connect an image output to a text-only input)
+
+## Building Your First Workflow
+
+Follow these steps to create a simple AI chatbot workflow.
+
+<Steps>
+  <Step title="Create a New Application">
+    From the Nadoo AI dashboard, click **New Application** and select **Workflow** as the application type. Give it a name such as "My First Chatbot".
+  </Step>
+  <Step title="Open the Workflow Editor">
+    After creation, click **Edit Workflow** to open the visual editor. You will see an empty canvas with a Start Node already placed.
+  </Step>
+  <Step title="Add a Start Node">
+    If a Start Node is not already present, drag one from the **Input/Output** section of the node palette onto the canvas. This node captures the user's input message.
+  </Step>
+  <Step title="Add an AI Agent Node">
+    Drag an **AI Agent Node** from the **AI/LLM** section onto the canvas. In the property panel, configure:
+
+    - **Model**: Select a model (e.g., `gpt-4o` or `claude-sonnet-4-20250514`)
+    - **System Prompt**: Write instructions such as "You are a helpful assistant."
+    - **Agent Mode**: Leave as `Standard` for simple Q&A
+    - **Temperature**: Set to `0.7` for balanced creativity
+  </Step>
+  <Step title="Add an End Node">
+    Drag an **End Node** from **Input/Output** onto the canvas. This node will deliver the AI Agent's response to the user.
+  </Step>
+  <Step title="Connect the Nodes">
+    Click the output port of the **Start Node** and drag to the input port of the **AI Agent Node**. Then connect the AI Agent's output port to the **End Node's** input port.
+
+    Your graph should look like: **Start** --> **AI Agent** --> **End**
+  </Step>
+  <Step title="Test in the Chat Sandbox">
+    Open the Chat Sandbox at the bottom of the editor. Type a message like "Hello, what can you do?" and press Enter. You should see the AI Agent's response stream in real time.
+  </Step>
+</Steps>
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl + Z` | Undo |
+| `Ctrl + Shift + Z` | Redo |
+| `Ctrl + S` | Save workflow |
+| `Ctrl + D` | Duplicate selected nodes |
+| `Delete` / `Backspace` | Remove selected nodes or edges |
+| `Ctrl + A` | Select all nodes |
+| `Ctrl + F` | Search nodes by name |
+| `Space` (hold) | Pan mode |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="AI Agent Node" icon="robot" href="/workflow/nodes/ai-agent">
+    Configure the core LLM node with 6 execution modes
+  </Card>
+  <Card title="AI Agent Strategies" icon="lightbulb" href="/workflow/strategies/overview">
+    Learn when to use Standard, ReAct, Chain of Thought, and more
+  </Card>
+  <Card title="Knowledge Base" icon="book" href="/knowledge/overview">
+    Add RAG capabilities to your workflows
+  </Card>
+  <Card title="Messaging Channels" icon="comments" href="/channels/overview">
+    Deploy your workflow to Slack, Discord, Telegram, and more
+  </Card>
+</CardGroup>

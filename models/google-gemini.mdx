@@ -1,0 +1,207 @@
+---
+title: 'Google Gemini'
+description: 'Configure Google Gemini models via AI Studio and Vertex AI in Nadoo AI'
+sidebarTitle: 'Google Gemini'
+'og:title': 'Google Gemini Provider - Nadoo AI'
+icon: 'google'
+---
+
+## Overview
+
+**Google Gemini** is Google's family of multimodal AI models that can process text, images, audio, and video. Nadoo AI supports Gemini through two access paths: **Google AI Studio** (API key-based, for experimentation and smaller workloads) and **Google Vertex AI** (service account-based, for production and enterprise use).
+
+Key strengths:
+
+- **Multimodal natively** -- Process text, images, audio, and video in a single model call
+- **Large context windows** -- Gemini Pro supports up to 1M tokens for massive document processing
+- **Two access paths** -- Simple API key setup (AI Studio) or enterprise-grade deployment (Vertex AI)
+- **Embedding support** -- Dedicated embedding models for knowledge base and RAG
+
+## Access Paths
+
+<Tabs>
+  <Tab title="Google AI Studio">
+    **Best for:** Development, experimentation, and smaller production workloads.
+
+    Google AI Studio provides a simple API key-based access to Gemini models. No Google Cloud project setup is required.
+
+    | Feature | Detail |
+    |---------|--------|
+    | Authentication | API Key |
+    | Pricing | Free tier available; pay-as-you-go |
+    | Data residency | No regional control |
+    | SLA | No enterprise SLA |
+  </Tab>
+  <Tab title="Google Vertex AI">
+    **Best for:** Production workloads, enterprise, and regulated environments.
+
+    Vertex AI provides Gemini access through Google Cloud with full enterprise features.
+
+    | Feature | Detail |
+    |---------|--------|
+    | Authentication | Service Account / Application Default Credentials |
+    | Pricing | Pay-as-you-go with committed use discounts |
+    | Data residency | Regional control via Google Cloud regions |
+    | SLA | Enterprise SLA with guaranteed uptime |
+  </Tab>
+</Tabs>
+
+## Setup -- Google AI Studio
+
+<Steps>
+  <Step title="Get an API Key">
+    Go to [aistudio.google.com](https://aistudio.google.com) and click **Get API Key**. Create a new key or select an existing one.
+  </Step>
+  <Step title="Configure in Nadoo">
+    Go to **Admin > Model Providers > Google Gemini** and enter:
+
+    | Field | Required | Description |
+    |-------|----------|-------------|
+    | API Key | Yes | Your Google AI Studio API key |
+    | Access Path | Yes | Select **AI Studio** |
+  </Step>
+  <Step title="Test Connection">
+    Click **Test** to verify the key and enable available models.
+  </Step>
+</Steps>
+
+## Setup -- Google Vertex AI
+
+<Steps>
+  <Step title="Create a Google Cloud Project">
+    Set up a project in the [Google Cloud Console](https://console.cloud.google.com) and enable the **Vertex AI API**.
+  </Step>
+  <Step title="Create a Service Account">
+    Create a service account with the **Vertex AI User** role (`roles/aiplatform.user`). Download the JSON key file.
+  </Step>
+  <Step title="Configure in Nadoo">
+    Go to **Admin > Model Providers > Google Gemini** and enter:
+
+    | Field | Required | Description |
+    |-------|----------|-------------|
+    | Access Path | Yes | Select **Vertex AI** |
+    | Project ID | Yes | Your Google Cloud project ID |
+    | Region | Yes | The Google Cloud region (e.g., `us-central1`) |
+    | Service Account JSON | Yes | Upload or paste the service account key JSON |
+  </Step>
+  <Step title="Test Connection">
+    Click **Test** to verify the credentials and enable available models.
+  </Step>
+</Steps>
+
+## Available Models
+
+### Chat / LLM
+
+| Model | Context Window | Best For |
+|-------|---------------|----------|
+| `gemini-2.0-flash` | 1M tokens | Fast, efficient multimodal tasks |
+| `gemini-2.0-pro` | 1M tokens | Complex reasoning with massive context |
+| `gemini-1.5-pro` | 1M tokens | Long document analysis, multimodal processing |
+| `gemini-1.5-flash` | 1M tokens | Cost-efficient, fast responses |
+
+### Embedding
+
+| Model | Dimensions | Best For |
+|-------|-----------|----------|
+| `text-embedding-004` | 768 | General-purpose embeddings for RAG |
+| `text-multilingual-embedding-002` | 768 | Multilingual embeddings |
+
+## Capabilities
+
+<CardGroup cols={3}>
+  <Card title="Chat Completion" icon="comments">
+    Conversational AI with streaming and function calling support.
+  </Card>
+  <Card title="Vision" icon="eye">
+    Analyze images alongside text -- charts, documents, screenshots, and photos.
+  </Card>
+  <Card title="Embeddings" icon="vector-square">
+    Generate vector embeddings for semantic search and knowledge base indexing.
+  </Card>
+  <Card title="Long Context" icon="scroll">
+    Process up to 1 million tokens -- entire codebases, books, or document collections in one request.
+  </Card>
+  <Card title="Multimodal" icon="photo-film">
+    Process text, images, audio, and video in a single model call.
+  </Card>
+  <Card title="Function Calling" icon="code">
+    Invoke tools with structured arguments for agentic workflows.
+  </Card>
+</CardGroup>
+
+## When to Use Google Gemini
+
+<AccordionGroup>
+  <Accordion title="Massive context processing" icon="scroll">
+    Gemini's 1M token context window is the largest available. Use it when you need to process entire books, large codebases, or extensive document collections without chunking.
+  </Accordion>
+  <Accordion title="Multimodal tasks" icon="photo-film">
+    When your application needs to analyze images, process audio, or understand video alongside text, Gemini's native multimodal support avoids the need for separate processing pipelines.
+  </Accordion>
+  <Accordion title="Google Cloud ecosystem" icon="google">
+    If your infrastructure is on Google Cloud, Vertex AI integrates with IAM, VPC, Cloud Logging, and other GCP services for a seamless enterprise experience.
+  </Accordion>
+  <Accordion title="Cost-efficient development" icon="coins">
+    Google AI Studio offers a generous free tier for experimentation and development, making it easy to prototype before committing to production costs.
+  </Accordion>
+</AccordionGroup>
+
+## Recommended Models by Use Case
+
+| Use Case | Recommended Model | Reason |
+|----------|------------------|--------|
+| General chatbot | `gemini-2.0-flash` | Fast, multimodal, cost-efficient |
+| Complex analysis | `gemini-2.0-pro` | Highest reasoning capability |
+| Long document Q&A | `gemini-1.5-pro` | 1M token context for massive documents |
+| High-volume workloads | `gemini-1.5-flash` | Fastest Gemini model |
+| Knowledge base search | `text-embedding-004` | Good quality embeddings |
+| Multilingual RAG | `text-multilingual-embedding-002` | Cross-language embedding support |
+
+## Environment Variables
+
+When self-hosting, configure Google Gemini via environment variables:
+
+### AI Studio
+
+```bash
+GOOGLE_API_KEY=your-api-key-here
+```
+
+### Vertex AI
+
+```bash
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+GOOGLE_CLOUD_PROJECT=your-project-id
+GOOGLE_CLOUD_REGION=us-central1
+```
+
+If both environment variables and the admin UI configuration are set, the admin UI values take precedence.
+
+## Rate Limits and Pricing
+
+### AI Studio
+Google AI Studio applies rate limits per API key with a free tier and pay-as-you-go pricing above the free quota.
+
+### Vertex AI
+Vertex AI uses per-project quotas that can be adjusted in the Google Cloud Console. Pricing is per 1,000 characters for input and output.
+
+<Warning>
+  Monitor your usage in the Google Cloud Console to avoid unexpected charges. Set budget alerts for production workloads, especially when processing large documents with the 1M token context window.
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="403 Permission Denied" icon="lock">
+    **AI Studio:** Your API key is invalid or revoked. Generate a new key at [aistudio.google.com](https://aistudio.google.com).
+
+    **Vertex AI:** Your service account lacks the Vertex AI User role. Check IAM permissions in the Google Cloud Console.
+  </Accordion>
+  <Accordion title="429 Resource Exhausted" icon="gauge-high">
+    You have exceeded rate limits. Wait and retry, or request a quota increase in the Google Cloud Console (Vertex AI only).
+  </Accordion>
+  <Accordion title="Model not available" icon="circle-xmark">
+    The model may not be available in your selected region (Vertex AI) or may not be enabled for your API key (AI Studio). Check model availability documentation.
+  </Accordion>
+</AccordionGroup>

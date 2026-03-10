@@ -1,0 +1,113 @@
+---
+title: 'Anthropic'
+description: 'Configure Anthropic Claude models in Nadoo AI'
+sidebarTitle: 'Anthropic'
+'og:title': 'Anthropic Provider - Nadoo AI'
+icon: 'message'
+---
+
+## Overview
+
+Anthropic's Claude models are renowned for complex reasoning, careful instruction following, and exceptionally long context windows. Claude is an excellent choice for applications that involve nuanced conversation, long document analysis, and code generation.
+
+## Setup
+
+<Steps>
+  <Step title="Get an API Key">
+    Sign up or log in at [console.anthropic.com](https://console.anthropic.com). Navigate to **API Keys** and create a new key.
+  </Step>
+  <Step title="Configure in Nadoo">
+    Go to **Admin > Model Providers > Anthropic** and enter:
+
+    | Field | Required | Description |
+    |-------|----------|-------------|
+    | API Key | Yes | Your Anthropic API key (starts with `sk-ant-`) |
+  </Step>
+  <Step title="Test Connection">
+    Click **Test** to verify the key is valid and enable the models you want to use.
+  </Step>
+</Steps>
+
+## Available Models
+
+| Model | Context Window | Strengths |
+|-------|---------------|-----------|
+| `claude-3.5-sonnet` | 200K tokens | Best balance of intelligence, speed, and cost. Recommended default. |
+| `claude-3-opus` | 200K tokens | Highest reasoning capability. Best for complex, multi-step tasks. |
+| `claude-3-haiku` | 200K tokens | Fastest and most cost-efficient. Ideal for high-volume, simpler tasks. |
+
+## Capabilities
+
+<CardGroup cols={2}>
+  <Card title="Chat Completion" icon="comments">
+    Conversational AI with streaming support and careful instruction following.
+  </Card>
+  <Card title="Long Context" icon="scroll">
+    Process up to 200K tokens -- equivalent to roughly 500 pages of text in a single request.
+  </Card>
+  <Card title="Code Generation" icon="code">
+    Strong performance on code writing, review, debugging, and explanation tasks.
+  </Card>
+  <Card title="Streaming" icon="wave-square">
+    Real-time token-by-token streaming for responsive user interfaces.
+  </Card>
+</CardGroup>
+
+## When to Use Anthropic
+
+<AccordionGroup>
+  <Accordion title="Complex reasoning tasks" icon="brain">
+    Claude excels at multi-step logical reasoning, mathematical problem-solving, and tasks that require careful analysis of competing considerations.
+  </Accordion>
+  <Accordion title="Long document processing" icon="file-lines">
+    With a 200K token context window, Claude can ingest entire codebases, legal documents, or research papers without chunking. This makes it ideal for summarization, Q&A over long texts, and document comparison.
+  </Accordion>
+  <Accordion title="Code generation and review" icon="laptop-code">
+    Claude produces high-quality code across many languages and is particularly strong at understanding existing codebases, explaining logic, and suggesting improvements.
+  </Accordion>
+  <Accordion title="Careful, nuanced responses" icon="scale-balanced">
+    Claude is designed to be helpful, harmless, and honest. It performs well in applications that require balanced, well-reasoned responses -- such as customer-facing support or advisory bots.
+  </Accordion>
+</AccordionGroup>
+
+## Recommended Models by Use Case
+
+| Use Case | Recommended Model | Reason |
+|----------|------------------|--------|
+| General chatbot | `claude-3.5-sonnet` | Best all-around performance and cost balance |
+| Complex analysis | `claude-3-opus` | Highest reasoning capability |
+| High-volume support | `claude-3-haiku` | Fast and cost-efficient |
+| Document Q&A | `claude-3.5-sonnet` | Long context + strong comprehension |
+| Code assistant | `claude-3.5-sonnet` | Strong code generation and understanding |
+
+## Environment Variable
+
+When self-hosting, set the API key via environment variable:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-your-api-key-here
+```
+
+If both the environment variable and the admin UI configuration are set, the admin UI value takes precedence.
+
+## Rate Limits and Pricing
+
+Anthropic applies rate limits based on your account tier and usage level. Nadoo AI handles rate-limit responses gracefully and will surface errors in the chat interface.
+
+<Warning>
+  Anthropic uses a tiered rate-limit system that increases automatically as your spending grows. Check your current tier at [console.anthropic.com](https://console.anthropic.com).
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="401 Authentication Error" icon="lock">
+    Your API key is invalid or expired. Generate a new key at [console.anthropic.com](https://console.anthropic.com).
+  </Accordion>
+  <Accordion title="429 Rate Limit" icon="gauge-high">
+    You have exceeded your tier's rate limit. Wait briefly and retry, or check your usage tier for higher limits.
+  </Accordion>
+  <Accordion title="Overloaded Error" icon="server">
+    Anthropic's API is temporarily at capacity. Nadoo AI will automatically retry with exponential backoff.
+  </Accordion>
+</AccordionGroup>

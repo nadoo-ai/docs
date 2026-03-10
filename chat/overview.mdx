@@ -1,0 +1,205 @@
+---
+title: 'Chat & Conversations'
+description: 'Real-time chat system with streaming, memory, and analytics'
+sidebarTitle: 'Overview'
+'og:title': 'Chat & Conversations - Nadoo AI'
+icon: 'message'
+---
+
+## Overview
+
+Nadoo AI provides a unified chat system that powers all application types -- Chat Apps, Workflow Apps, and Channel Apps. The system handles real-time streaming, conversation memory, suggested questions, and analytics through a consistent interface.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Real-Time Streaming" icon="bolt">
+    Server-Sent Events (SSE) with 19 event types deliver tokens, tool calls, and status updates in real time.
+  </Card>
+  <Card title="Conversation Memory" icon="brain">
+    Three memory strategies -- Buffer, Summary, and Knowledge Graph -- keep your agent context-aware across turns.
+  </Card>
+  <Card title="Suggested Questions" icon="lightbulb">
+    AI-powered follow-up question generation helps users discover what they can ask next.
+  </Card>
+  <Card title="Chat Analytics" icon="chart-line">
+    Track token usage, response times, and costs per conversation, application, or workspace.
+  </Card>
+  <Card title="Canvas" icon="pen-to-square">
+    Rich content editing canvas for collaborative document creation within chat.
+  </Card>
+  <Card title="WebSocket Support" icon="plug">
+    Bidirectional WebSocket communication for low-latency, interactive use cases.
+  </Card>
+</CardGroup>
+
+## Streaming with Server-Sent Events (SSE)
+
+Chat responses are streamed in real time using SSE. The client opens a connection and receives a sequence of typed events as the response is generated.
+
+### Event Types
+
+| Event | Description |
+|-------|-------------|
+| `message_start` | Response generation has begun |
+| `text_chunk` | A chunk of the response text |
+| `text_end` | Text generation is complete |
+| `tool_call_start` | The model is invoking a tool |
+| `tool_call_args` | Streaming tool call arguments |
+| `tool_call_end` | Tool call is complete |
+| `tool_result` | Result returned from the tool |
+| `retrieval_start` | Knowledge base retrieval has begun |
+| `retrieval_result` | Retrieved documents from knowledge base |
+| `retrieval_end` | Knowledge base retrieval is complete |
+| `thinking_start` | Model reasoning/thinking has begun |
+| `thinking_chunk` | A chunk of model reasoning |
+| `thinking_end` | Model reasoning is complete |
+| `suggested_questions` | AI-generated follow-up questions |
+| `usage` | Token usage statistics for this response |
+| `error` | An error occurred during generation |
+| `done` | Stream is complete |
+| `ping` | Keep-alive signal |
+| `metadata` | Additional metadata about the response |
+
+### Example SSE Stream
+
+```
+event: message_start
+data: {"conversation_id": "abc-123"}
+
+event: text_chunk
+data: {"content": "Here is "}
+
+event: text_chunk
+data: {"content": "your answer."}
+
+event: usage
+data: {"prompt_tokens": 150, "completion_tokens": 45, "total_tokens": 195}
+
+event: done
+data: {}
+```
+
+## Conversation Memory
+
+Memory allows your agent to recall previous messages within a conversation. Nadoo AI supports three memory strategies.
+
+### Buffer Memory
+
+Retains the last **N** messages in their original form. Simple and effective for short conversations.
+
+```
+Configuration: memory_type = "buffer", window_size = 20
+```
+
+The agent sees the 20 most recent messages as context for each new response.
+
+### Summary Memory
+
+Condenses older messages into a running summary while keeping recent messages intact. Good for long conversations where full history would exceed the model's context window.
+
+```
+Configuration: memory_type = "summary", window_size = 10
+```
+
+Messages beyond the window are summarized by the LLM and prepended to the context.
+
+### Knowledge Graph Memory
+
+Extracts entities and relationships from the conversation and stores them as a knowledge graph. The agent can recall facts about people, topics, and their connections across conversations.
+
+```
+Configuration: memory_type = "knowledge_graph"
+```
+
+<Info>
+  Knowledge Graph memory is the most advanced option. It enables agents to maintain long-term memory about users and topics that persists beyond a single conversation session.
+</Info>
+
+## Chat Session Management
+
+### Create a Session
+
+```bash
+POST /api/v1/chat/sessions
+{
+  "application_id": "app-uuid",
+  "title": "New Conversation"
+}
+```
+
+### Send a Message
+
+```bash
+POST /api/v1/chat/completions
+{
+  "session_id": "session-uuid",
+  "message": "What can you help me with?",
+  "stream": true
+}
+```
+
+### List Sessions
+
+```bash
+GET /api/v1/chat/sessions?application_id=app-uuid
+```
+
+### Get Conversation History
+
+```bash
+GET /api/v1/chat/sessions/{session_id}/messages
+```
+
+### Archive a Session
+
+```bash
+PUT /api/v1/chat/sessions/{session_id}/archive
+```
+
+## Suggested Questions
+
+After each response, the agent can generate follow-up questions that guide the user toward productive next steps. This feature is powered by the same LLM and takes into account the full conversation context.
+
+Suggested questions are delivered as an SSE event:
+
+```
+event: suggested_questions
+data: {"questions": ["Can you explain this in more detail?", "What are the alternatives?", "How do I implement this?"]}
+```
+
+Enable this feature in your application settings under **Chat > Suggested Questions**.
+
+## Chat Analytics
+
+The analytics dashboard tracks the following metrics per conversation, application, and workspace:
+
+| Metric | Description |
+|--------|-------------|
+| **Token Usage** | Prompt tokens, completion tokens, and total tokens consumed |
+| **Response Time** | Time to first token (TTFT) and total response time |
+| **Cost** | Estimated cost based on the model's pricing |
+| **Messages** | Total messages sent and received |
+| **Sessions** | Active, completed, and archived session counts |
+
+## WebSocket Communication
+
+For use cases that require bidirectional communication -- such as real-time collaborative editing or voice-based interaction -- Nadoo AI supports WebSocket connections.
+
+```javascript
+const ws = new WebSocket('ws://localhost:8000/ws/chat/{session_id}');
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Received:', data);
+};
+
+ws.send(JSON.stringify({
+  type: 'message',
+  content: 'Hello, agent!'
+}));
+```
+
+<Note>
+  WebSocket support is recommended for interactive applications. For standard chatbots, SSE streaming via the REST API is simpler and sufficient.
+</Note>

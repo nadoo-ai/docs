@@ -1,0 +1,104 @@
+---
+title: 'AI Models'
+description: 'Configure and manage AI model providers in Nadoo AI'
+sidebarTitle: 'Overview'
+'og:title': 'AI Models - Nadoo AI'
+icon: 'brain'
+---
+
+## Provider-Based Model System
+
+Nadoo AI uses a **capability-based provider system** that lets you connect to 12+ AI model providers through a unified interface. Each provider exposes one or more capabilities -- such as LLM chat, embeddings, speech-to-text, or image generation -- and your applications automatically route requests to the right model based on what they need.
+
+<Info>
+  You can configure multiple providers simultaneously. Nadoo AI will use the provider assigned to each application, giving you full control over cost, latency, and capability tradeoffs.
+</Info>
+
+## Supported Providers
+
+| Provider | Models | Capabilities |
+|----------|--------|-------------|
+| **OpenAI** | GPT-4o, GPT-4, GPT-3.5-turbo | LLM, Embedding, TTS, TTI, Vision |
+| **Anthropic** | Claude 3.5 Sonnet, Claude 3 Opus, Claude 3 Haiku | LLM |
+| **Azure OpenAI** | GPT-4, GPT-3.5 deployments | LLM, Embedding |
+| **AWS Bedrock** | Claude, Llama, Titan | LLM, Embedding |
+| **Google Gemini** | Gemini Pro, Gemini Flash | LLM, Vision |
+| **Google Vertex AI** | PaLM, Gemini | LLM, Embedding |
+| **Ollama** | Llama, Mistral, CodeLlama | LLM, Embedding |
+| **vLLM** | Any open-source model | LLM |
+| **OpenRouter** | 100+ models | LLM |
+| **OpenAI-Compatible** | Any OpenAI-compatible API | LLM |
+
+## Provider Capabilities
+
+Each provider can support one or more of the following capabilities:
+
+| Capability | Description |
+|-----------|-------------|
+| **LLM** | Chat completion and text generation with streaming support |
+| **Embedding** | Convert text into vector representations for semantic search |
+| **STT** | Speech-to-text transcription from audio input |
+| **TTS** | Text-to-speech audio generation |
+| **TTI** | Text-to-image generation (e.g., DALL-E) |
+| **Image Understanding** | Vision capabilities for analyzing images |
+| **Reranking** | Re-score and reorder search results for relevance |
+
+## How to Configure a Provider
+
+<Steps>
+  <Step title="Open Admin Settings">
+    Navigate to **Admin** in the left sidebar of your workspace.
+  </Step>
+  <Step title="Go to Model Providers">
+    Select **Model Providers** from the admin menu.
+  </Step>
+  <Step title="Add Your Provider">
+    Click the provider you want to configure and enter your API key. Some providers require additional fields such as an endpoint URL or deployment name.
+  </Step>
+  <Step title="Test the Connection">
+    Click **Test** to verify the API key is valid and the provider is reachable.
+  </Step>
+  <Step title="Select Models">
+    Once connected, enable the specific models you want to make available in your workspace.
+  </Step>
+</Steps>
+
+## Provider Quick Links
+
+<CardGroup cols={2}>
+  <Card
+    title="OpenAI"
+    icon="bolt"
+    href="/models/openai"
+  >
+    GPT-4o, embeddings, DALL-E, Whisper, and TTS. The most feature-rich provider with support for all capability types.
+  </Card>
+  <Card
+    title="Anthropic"
+    icon="message"
+    href="/models/anthropic"
+  >
+    Claude 3.5 Sonnet, Opus, and Haiku. Best-in-class for complex reasoning, long documents, and code generation.
+  </Card>
+</CardGroup>
+
+## Choosing the Right Provider
+
+<AccordionGroup>
+  <Accordion title="Best for general-purpose chat" icon="comments">
+    **OpenAI GPT-4o** or **Anthropic Claude 3.5 Sonnet** -- both deliver strong performance across a wide range of tasks. GPT-4o offers lower latency; Claude 3.5 Sonnet excels at nuanced reasoning.
+  </Accordion>
+  <Accordion title="Best for cost-sensitive workloads" icon="coins">
+    **GPT-4o-mini**, **Claude 3 Haiku**, or **Ollama** (self-hosted). These models offer excellent quality-to-cost ratios for high-volume applications.
+  </Accordion>
+  <Accordion title="Best for private / air-gapped deployments" icon="lock">
+    **Ollama** or **vLLM** -- run open-source models entirely on your own infrastructure with no data leaving your network.
+  </Accordion>
+  <Accordion title="Best for embeddings and RAG" icon="magnifying-glass">
+    **OpenAI text-embedding-3-small/large** or **Azure OpenAI embeddings**. For self-hosted options, Ollama supports embedding models as well.
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  Provider availability may vary depending on your deployment type. Self-hosted deployments can connect to any provider with network access. Cloud-hosted deployments on Nadoo Cloud come with OpenAI and Anthropic pre-configured.
+</Note>

@@ -32,8 +32,8 @@
     "description": "Open-source AI Agent Builder Platform - Build, deploy, and manage intelligent AI agents with workflow automation",
     "og:site_name": "Nadoo AI Documentation",
     "og:type": "website",
-    "og:title": "Nadoo AI - Open Source AI Agent Builder Platform",
-    "og:description": "Build production-ready AI agents and automation workflows with our comprehensive platform",
+    "og:title": "Nadoo AI - AI Agent Builder Platform",
+    "og:description": "Build production-ready AI agents with visual workflows, RAG knowledge base, 12+ AI providers, and multi-channel messaging",
     "og:image": "https://docs.nadoo.ai/images/og-image.png",
     "og:url": "https://docs.nadoo.ai",
     "twitter:card": "summary_large_image",
@@ -57,32 +57,24 @@
     }
   ],
   "primaryTab": {
-    "name": "Products"
+    "name": "Platform"
   },
   "tabs": [
     {
-      "name": "Flow Core",
-      "url": "flow-core"
+      "name": "Workflow Engine",
+      "url": "workflow"
     },
     {
-      "name": "Plugin SDK",
-      "url": "plugin-sdk"
-    },
-    {
-      "name": "Official Plugins",
-      "url": "plugins"
-    },
-    {
-      "name": "Sandbox",
-      "url": "sandbox"
-    },
-    {
-      "name": "Builder",
-      "url": "builder"
+      "name": "Extensibility",
+      "url": "extend"
     },
     {
       "name": "API Reference",
       "url": "api"
+    },
+    {
+      "name": "Self-Hosting",
+      "url": "self-hosting"
     }
   ],
   "anchors": [
@@ -104,93 +96,145 @@
   ],
   "navigation": [
     {
-      "group": "Platform Overview",
+      "group": "Getting Started",
       "pages": [
-        "introduction"
+        "introduction",
+        "getting-started/quickstart",
+        "getting-started/concepts",
+        "getting-started/architecture"
       ]
     },
     {
-      "group": "Flow Core",
+      "group": "Applications",
       "pages": [
-        {
-          "group": "Getting Started",
-          "pages": [
-            "flow-core/overview",
-            "flow-core/installation",
-            "flow-core/quickstart",
-            "flow-core/philosophy"
-          ]
-        },
-        {
-          "group": "Core Components",
-          "pages": [
-            "flow-core/core/nodes",
-            "flow-core/core/chaining",
-            "flow-core/core/context",
-            "flow-core/core/execution"
-          ]
-        },
-        {
-          "group": "Advanced Features",
-          "pages": [
-            "flow-core/advanced/parallel",
-            "flow-core/advanced/resilience",
-            "flow-core/advanced/streaming",
-            "flow-core/advanced/memory",
-            "flow-core/advanced/callbacks",
-            "flow-core/advanced/caching",
-            "flow-core/advanced/rate-limiting"
-          ]
-        },
-        {
-          "group": "Backends",
-          "pages": [
-            "flow-core/backends/overview",
-            "flow-core/backends/native",
-            "flow-core/backends/custom",
-            "flow-core/backends/registry"
-          ]
-        },
-        {
-          "group": "Examples",
-          "pages": [
-            "examples/overview",
-            "examples/flow-core/basic-workflow",
-            "examples/flow-core/chaining-nodes",
-            "examples/flow-core/parallel-search",
-            "examples/flow-core/streaming-chat",
-            "examples/flow-core/rag-pipeline",
-            "examples/flow-core/human-in-loop"
-          ]
-        }
+        "applications/overview",
+        "applications/chat-app",
+        "applications/workflow-app",
+        "applications/channel-app",
+        "applications/scheduling"
       ]
     },
+    {
+      "group": "AI Models",
+      "pages": [
+        "models/overview",
+        "models/openai",
+        "models/anthropic",
+        "models/azure-openai",
+        "models/aws-bedrock",
+        "models/google-gemini",
+        "models/ollama",
+        "models/vllm",
+        "models/openrouter",
+        "models/embeddings"
+      ]
+    },
+    {
+      "group": "Knowledge Base",
+      "pages": [
+        "knowledge/overview",
+        "knowledge/documents",
+        "knowledge/vector-search",
+        "knowledge/hybrid-search",
+        "knowledge/rag-pipeline",
+        "knowledge/contextual-retrieval"
+      ]
+    },
+    {
+      "group": "Knowledge Graphs",
+      "pages": [
+        "knowledge-graphs/overview",
+        "knowledge-graphs/sparql",
+        "knowledge-graphs/ontology"
+      ]
+    },
+    {
+      "group": "Messaging Channels",
+      "pages": [
+        "channels/overview",
+        "channels/slack",
+        "channels/discord",
+        "channels/telegram",
+        "channels/kakaotalk",
+        "channels/teams",
+        "channels/whatsapp",
+        "channels/webhooks"
+      ]
+    },
+    {
+      "group": "Chat & Multimodal",
+      "pages": [
+        "chat/overview",
+        "chat/streaming",
+        "chat/canvas"
+      ]
+    },
+    {
+      "group": "Workspaces & Security",
+      "pages": [
+        "platform/workspaces",
+        "platform/users-roles",
+        "platform/api-keys",
+        "platform/system-monitoring"
+      ]
+    },
+
+    {
+      "group": "Workflow Engine",
+      "pages": [
+        "workflow/overview",
+        "workflow/visual-editor"
+      ]
+    },
+    {
+      "group": "Node Types",
+      "pages": [
+        "workflow/nodes/ai-agent",
+        "workflow/nodes/start-end",
+        "workflow/nodes/condition",
+        "workflow/nodes/search-knowledge",
+        "workflow/nodes/direct-reply",
+        "workflow/nodes/document-extract",
+        "workflow/nodes/database",
+        "workflow/nodes/python-code",
+        "workflow/nodes/form",
+        "workflow/nodes/loop",
+        "workflow/nodes/intent-classifier"
+      ]
+    },
+    {
+      "group": "AI Agent Strategies",
+      "pages": [
+        "workflow/strategies/overview",
+        "workflow/strategies/standard",
+        "workflow/strategies/chain-of-thought",
+        "workflow/strategies/react",
+        "workflow/strategies/reflection",
+        "workflow/strategies/tree-of-thoughts"
+      ]
+    },
+
     {
       "group": "Plugin SDK",
       "pages": [
-        {
-          "group": "Getting Started",
-          "pages": [
-            "plugin-sdk/overview",
-            "plugin-sdk/installation",
-            "plugin-sdk/quickstart"
-          ]
-        },
+        "extend/plugin-sdk/overview",
+        "extend/plugin-sdk/installation",
+        "extend/plugin-sdk/quickstart",
         {
           "group": "Core Concepts",
           "pages": [
-            "plugin-sdk/core/plugin-class",
-            "plugin-sdk/core/decorators",
-            "plugin-sdk/core/context"
+            "extend/plugin-sdk/plugin-class",
+            "extend/plugin-sdk/decorators",
+            "extend/plugin-sdk/context"
           ]
         },
         {
           "group": "Internal APIs",
           "pages": [
-            "plugin-sdk/api/llm",
-            "plugin-sdk/api/knowledge",
-            "plugin-sdk/api/tools",
-            "plugin-sdk/api/storage"
+            "extend/plugin-sdk/api-llm",
+            "extend/plugin-sdk/api-knowledge",
+            "extend/plugin-sdk/api-tools",
+            "extend/plugin-sdk/api-storage"
           ]
         }
       ]
@@ -198,121 +242,51 @@
     {
       "group": "Official Plugins",
       "pages": [
-        "plugins/overview",
-        "plugins/calculator",
-        "plugins/web-search"
+        "extend/plugins/overview",
+        "extend/plugins/calculator",
+        "extend/plugins/web-search"
       ]
     },
     {
-      "group": "Sandbox",
+      "group": "Skills System",
       "pages": [
-        {
-          "group": "Getting Started",
-          "pages": [
-            "sandbox/overview",
-            "sandbox/installation",
-            "sandbox/quickstart"
-          ]
-        },
-        {
-          "group": "Execution Providers",
-          "pages": [
-            "sandbox/providers/overview",
-            "sandbox/providers/local-docker",
-            "sandbox/providers/aws-lambda",
-            "sandbox/providers/gcp-cloud-run",
-            "sandbox/providers/azure-container"
-          ]
-        },
-        {
-          "group": "Performance",
-          "pages": [
-            "sandbox/warm-pool"
-          ]
-        },
-        {
-          "group": "Supported Languages",
-          "pages": [
-            "sandbox/languages/overview",
-            "sandbox/languages/python",
-            "sandbox/languages/javascript",
-            "sandbox/languages/compiled"
-          ]
-        },
-        {
-          "group": "Configuration",
-          "pages": [
-            "sandbox/config/resource-limits",
-            "sandbox/config/security",
-            "sandbox/config/environment"
-          ]
-        }
+        "extend/skills/overview",
+        "extend/skills/creating-skills",
+        "extend/skills/skill-worker"
       ]
     },
+
     {
-      "group": "Builder Platform",
-      "pages": [
-        "builder/overview",
-        "builder/getting-started",
-        "builder/visual-editor",
-        "builder/roadmap"
-      ]
-    },
-    {
-      "group": "API Reference",
+      "group": "API Overview",
       "pages": [
         "api/overview",
-        {
-          "group": "Flow Core APIs",
-          "pages": [
-            "api/flow-core/base",
-            "api/flow-core/chain",
-            "api/flow-core/batch",
-            "api/flow-core/memory",
-            "api/flow-core/memory_db",
-            "api/flow-core/streaming",
-            "api/flow-core/callbacks",
-            "api/flow-core/tools",
-            "api/flow-core/parsers",
-            "api/flow-core/prompts",
-            "api/flow-core/resilience",
-            "api/flow-core/caching",
-            "api/flow-core/rate_limiting",
-            "api/flow-core/backends"
-          ]
-        },
-        {
-          "group": "Plugin SDK APIs",
-          "pages": [
-            "api/plugin-sdk/llm",
-            "api/plugin-sdk/knowledge",
-            "api/plugin-sdk/tools",
-            "api/plugin-sdk/storage"
-          ]
-        },
-        {
-          "group": "Sandbox APIs",
-          "pages": [
-            "api/sandbox/execute",
-            "api/sandbox/async-execute",
-            "api/sandbox/batch"
-          ]
-        },
-        {
-          "group": "Builder APIs",
-          "pages": [
-            "api/builder/rest-api",
-            "api/builder/webhooks",
-            "api/builder/sdk"
-          ]
-        }
+        "api/authentication",
+        "api/errors",
+        "api/sse-events",
+        "api/websockets"
+      ]
+    },
+
+    {
+      "group": "Deployment",
+      "pages": [
+        "self-hosting/overview",
+        "self-hosting/docker-compose-local",
+        "self-hosting/environment-variables"
+      ]
+    },
+    {
+      "group": "Infrastructure",
+      "pages": [
+        "self-hosting/postgresql",
+        "self-hosting/redis",
+        "self-hosting/celery-workers",
+        "self-hosting/nginx"
       ]
     },
     {
       "group": "Resources",
       "pages": [
-        "resources/comparison",
-        "resources/migration",
         "resources/troubleshooting",
         "resources/faq",
         "resources/glossary"

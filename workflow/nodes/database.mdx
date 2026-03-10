@@ -1,0 +1,247 @@
+---
+title: 'Database Node'
+description: 'Execute SQL queries and semantic search against connected databases within workflows'
+sidebarTitle: 'Database'
+'og:title': 'Database Node - Nadoo AI'
+'og:description': 'Run SQL queries and natural-language-to-SQL semantic RAG against relational databases from Nadoo AI workflows'
+icon: 'database'
+---
+
+## Overview
+
+Nadoo AI provides two database node types for accessing structured data within workflows:
+
+- **Database Node** (`database-node`) -- Execute SQL queries directly against connected relational databases.
+- **Database Semantic RAG Node** (`database-semantic-rag-node`) -- Translate natural language questions into SQL queries using LLM-powered semantic understanding.
+
+Together, these nodes let you build workflows that read, query, and reason over structured data alongside unstructured document retrieval.
+
+## Database Node
+
+The Database Node executes parameterized SQL queries against a connected database and returns the results as structured data in the workflow context.
+
+### Configuration
+
+```json
+{
+  "type": "database-node",
+  "config": {
+    "connection_id": "conn_01HX7A9B2C3D4E5F",
+    "query": "SELECT name, email, plan FROM users WHERE status = :status ORDER BY created_at DESC LIMIT :limit",
+    "parameters": {
+      "status": "{{user_status}}",
+      "limit": 10
+    },
+    "output_variable": "query_results",
+    "timeout_seconds": 30
+  }
+}
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `connection_id` | string | -- | ID of the database connection configured in the platform (required) |
+| `query` | string | -- | SQL query with named parameters using `:param` syntax |
+| `parameters` | object | `{}` | Parameter values, supports workflow variable references |
+| `output_variable` | string | `"query_results"` | Context variable to store the results |
+| `timeout_seconds` | number | `30` | Maximum execution time before the query is cancelled |
+
+### Output
+
+```json
+{
+  "query_results": {
+    "columns": ["name", "email", "plan"],
+    "rows": [
+      {"name": "Alice Kim", "email": "alice@example.com", "plan": "enterprise"},
+      {"name": "Bob Park", "email": "bob@example.com", "plan": "pro"}
+    ],
+    "row_count": 2,
+    "execution_time_ms": 45
+  }
+}
+```
+
+### Parameterized Queries
+
+<Warning>
+  Always use parameterized queries (`:param` syntax) instead of string interpolation. Parameterized queries prevent SQL injection and ensure proper type handling.
+</Warning>
+
+Parameters can reference workflow context variables:
+
+```json
+{
+  "query": "SELECT * FROM orders WHERE customer_id = :customer_id AND status IN (:statuses)",
+  "parameters": {
+    "customer_id": "{{user_id}}",
+    "statuses": ["pending", "processing"]
+  }
+}
+```
+
+### Supported Operations
+
+The Database Node supports **read-only** queries by default for safety:
+
+| Operation | Supported | Notes |
+|---|---|---|
+| `SELECT` | Yes | Full query support with joins, aggregations, subqueries |
+| `INSERT` | Configurable | Must be explicitly enabled in connection settings |
+| `UPDATE` | Configurable | Must be explicitly enabled in connection settings |
+| `DELETE` | Configurable | Must be explicitly enabled in connection settings |
+| `DDL` | No | Schema modifications are never permitted through workflow nodes |
+
+## Database Semantic RAG Node
+
+The Database Semantic RAG Node translates natural language questions into SQL queries using an LLM, executes the generated SQL, and returns the results. This enables non-technical users to query databases using plain English.
+
+### How It Works
+
+<Steps>
+  <Step title="Schema Retrieval">
+    The node retrieves the database schema (tables, columns, types, relationships) for the connected database.
+  </Step>
+  <Step title="Natural Language to SQL">
+    The user's question and the database schema are sent to an LLM, which generates a SQL query.
+  </Step>
+  <Step title="Query Validation">
+    The generated SQL is validated for safety (no destructive operations) and syntactic correctness.
+  </Step>
+  <Step title="Execution">
+    The validated query is executed against the database, and results are returned.
+  </Step>
+</Steps>
+
+### Configuration
+
+```json
+{
+  "type": "database-semantic-rag-node",
+  "config": {
+    "connection_id": "conn_01HX7A9B2C3D4E5F",
+    "question": "{{user_message}}",
+    "model": "gpt-4o",
+    "schema_filter": {
+      "include_tables": ["users", "orders", "products"],
+      "exclude_columns": ["password_hash", "api_key"]
+    },
+    "max_rows": 100,
+    "output_variable": "semantic_results"
+  }
+}
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `connection_id` | string | -- | Database connection ID (required) |
+| `question` | string | -- | Natural language question to translate to SQL |
+| `model` | string | `"gpt-4o"` | LLM model used for SQL generation |
+| `schema_filter.include_tables` | string[] | all tables | Restrict which tables the LLM can query |
+| `schema_filter.exclude_columns` | string[] | `[]` | Hide sensitive columns from the LLM |
+| `max_rows` | number | `100` | Maximum number of rows to return |
+| `output_variable` | string | `"semantic_results"` | Context variable for the results |
+
+### Output
+
+```json
+{
+  "semantic_results": {
+    "question": "How many orders were placed last month?",
+    "generated_sql": "SELECT COUNT(*) as order_count FROM orders WHERE created_at >= '2026-02-01' AND created_at < '2026-03-01'",
+    "columns": ["order_count"],
+    "rows": [{"order_count": 1247}],
+    "row_count": 1,
+    "execution_time_ms": 120
+  }
+}
+```
+
+The output includes the `generated_sql` so downstream nodes (or the user) can inspect exactly what query was executed.
+
+### Schema Filtering
+
+Use `schema_filter` to control what the LLM sees:
+
+- **`include_tables`** -- Only expose specific tables. This improves SQL generation accuracy by reducing noise and prevents the LLM from accessing tables with sensitive data.
+- **`exclude_columns`** -- Hide sensitive columns (passwords, API keys, PII) from the schema. The LLM will not reference these columns in generated queries.
+
+```json
+{
+  "schema_filter": {
+    "include_tables": ["products", "categories", "inventory"],
+    "exclude_columns": ["cost_price", "supplier_contract_id"]
+  }
+}
+```
+
+## Example: Data Analysis Workflow
+
+A workflow that lets users ask questions about business data in natural language:
+
+```mermaid
+graph LR
+    A[Start] --> B[Semantic RAG\n"Translate question to SQL"]
+    B --> C[Condition\n"Results found?"]
+    C -->|yes| D[AI Agent\n"Summarize results"]
+    C -->|no| E[Direct Reply\n"No data found"]
+    D --> F[End]
+    E --> F
+
+    style B fill:#e1f5fe
+    style C fill:#fff9c4
+    style D fill:#fff3e0
+```
+
+1. The user asks: "What were our top 5 products by revenue last quarter?"
+2. **Semantic RAG Node** generates and executes the SQL query.
+3. **Condition Node** checks if any results were returned.
+4. **AI Agent Node** summarizes the tabular results into a natural language response with insights.
+
+## Database Connections
+
+Database connections are configured at the platform level and referenced by `connection_id` in workflow nodes. Supported databases include:
+
+| Database | Connection String Format |
+|---|---|
+| PostgreSQL | `postgresql://user:pass@host:5432/dbname` |
+| MySQL | `mysql://user:pass@host:3306/dbname` |
+| SQLite | `sqlite:///path/to/database.db` |
+
+<Info>
+  Database connections are managed in **Settings > Database Connections** in the platform UI. Connection credentials are encrypted at rest.
+</Info>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always use parameterized queries">
+    Never concatenate user input directly into SQL strings. Use the `:param` syntax and the `parameters` object to prevent SQL injection.
+  </Accordion>
+  <Accordion title="Filter schemas for Semantic RAG">
+    The fewer tables and columns the LLM sees, the more accurate the generated SQL will be. Always use `schema_filter` to expose only the tables relevant to the workflow's purpose.
+  </Accordion>
+  <Accordion title="Set reasonable timeouts and row limits">
+    Prevent runaway queries with `timeout_seconds` and `max_rows`. A query that returns 10,000 rows will overwhelm the workflow context and downstream LLM processing.
+  </Accordion>
+  <Accordion title="Validate Semantic RAG output">
+    The generated SQL may not always be correct. For critical workflows, add a review step where the user can confirm the generated query before execution, or use a Condition Node to verify result reasonableness.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Search Knowledge" icon="magnifying-glass-chart" href="/workflow/nodes/search-knowledge">
+    Combine structured and unstructured data retrieval
+  </Card>
+  <Card title="Python Code Node" icon="python" href="/workflow/nodes/python-code">
+    Post-process query results with custom logic
+  </Card>
+  <Card title="Condition Node" icon="code-branch" href="/workflow/nodes/condition">
+    Branch based on query results
+  </Card>
+  <Card title="AI Agent Node" icon="robot" href="/workflow/nodes/ai-agent">
+    Summarize and analyze database results with LLM
+  </Card>
+</CardGroup>

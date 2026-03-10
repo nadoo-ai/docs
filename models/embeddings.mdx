@@ -1,0 +1,237 @@
+---
+title: 'Embedding Providers'
+description: 'Configure embedding models for knowledge base indexing, semantic search, and RAG pipelines'
+sidebarTitle: 'Embeddings'
+'og:title': 'Embedding Providers - Nadoo AI'
+icon: 'vector-square'
+---
+
+## Overview
+
+**Embeddings** convert text into dense numerical vectors that capture semantic meaning. In Nadoo AI, embeddings are the foundation of the **knowledge base** and **RAG (Retrieval-Augmented Generation)** pipeline. When you upload documents to a knowledge base, the system chunks them and generates embedding vectors for each chunk. At query time, the user's question is embedded and compared against the stored vectors to find the most relevant content.
+
+```
+Document → Chunking → Embedding Model → Vector Store (pgvector)
+                                              ↑
+User Query → Embedding Model → Similarity Search → Top-K Results → LLM Context
+```
+
+## Supported Embedding Providers
+
+Nadoo AI supports **9+ embedding providers**, giving you flexibility to choose based on quality, cost, privacy, and infrastructure requirements.
+
+| Provider | Models | Dimensions | Hosting |
+|----------|--------|-----------|---------|
+| **OpenAI** | text-embedding-3-small, text-embedding-3-large | 1536 / 3072 | Cloud API |
+| **Azure OpenAI** | text-embedding-ada-002, text-embedding-3-* | 1536 / 3072 | Cloud (Azure) |
+| **AWS Bedrock** | amazon.titan-embed-text-v2 | 1024 | Cloud (AWS) |
+| **Google AI Studio** | text-embedding-004 | 768 | Cloud API |
+| **Google Vertex AI** | text-embedding-004, text-multilingual-embedding-002 | 768 | Cloud (GCP) |
+| **HuggingFace** | sentence-transformers/*, BGE, E5 | Varies | Cloud API |
+| **Ollama** | nomic-embed-text, mxbai-embed-large, all-minilm | 384 -- 1024 | Local |
+| **vLLM** | Any HuggingFace embedding model | Varies | Self-hosted |
+| **Local (Built-in)** | all-MiniLM-L6-v2 | 384 | Local (CPU) |
+
+## How Embeddings Work in RAG
+
+The embedding model plays two critical roles in the RAG pipeline:
+
+### 1. Indexing (Write Path)
+
+When documents are uploaded to a knowledge base:
+
+1. Documents are split into chunks (configurable chunk size and overlap)
+2. Each chunk is passed through the embedding model
+3. The resulting vectors are stored in PostgreSQL with pgvector
+4. BM25 keyword indexes are built in parallel for hybrid search
+
+### 2. Retrieval (Read Path)
+
+When a user sends a query:
+
+1. The query text is embedded using the **same** embedding model
+2. A similarity search finds the closest vectors in the knowledge base
+3. Optionally, BM25 keyword search runs in parallel (hybrid mode)
+4. Results are combined, deduplicated, and optionally reranked
+5. Top-K chunks are injected into the LLM's context alongside the user's message
+
+<Warning>
+  The embedding model used for indexing **must** match the model used for retrieval. Changing the embedding model after indexing requires re-embedding all documents in the knowledge base.
+</Warning>
+
+## Configuring Embeddings
+
+Embedding models are configured at the **knowledge base level**. Each knowledge base can use a different embedding provider and model.
+
+<Steps>
+  <Step title="Create or Edit a Knowledge Base">
+    Navigate to **Knowledge Base** in your workspace and create a new one or edit an existing one.
+  </Step>
+  <Step title="Select Embedding Provider">
+    In the **Embedding** section, choose the provider:
+
+    | Field | Description |
+    |-------|-------------|
+    | **Provider** | The embedding service (OpenAI, Ollama, HuggingFace, etc.) |
+    | **Model** | The specific embedding model from that provider |
+  </Step>
+  <Step title="Verify Provider Credentials">
+    Ensure the selected provider is configured in **Admin > Model Providers** with valid credentials.
+  </Step>
+  <Step title="Save and Index">
+    Save the knowledge base configuration. When you upload documents, they will be embedded using the selected model.
+  </Step>
+</Steps>
+
+## Provider Details
+
+### OpenAI Embeddings
+
+The most popular choice for cloud-based RAG.
+
+| Model | Dimensions | Max Tokens | Cost (per 1M tokens) |
+|-------|-----------|------------|---------------------|
+| `text-embedding-3-small` | 1536 | 8,191 | Low |
+| `text-embedding-3-large` | 3072 | 8,191 | Medium |
+
+**Best for:** General-purpose RAG with the best quality-to-cost ratio.
+
+### Azure OpenAI Embeddings
+
+Same models as OpenAI, deployed in your Azure region for data residency.
+
+| Model | Dimensions | Max Tokens |
+|-------|-----------|------------|
+| `text-embedding-ada-002` | 1536 | 8,191 |
+| `text-embedding-3-small` | 1536 | 8,191 |
+| `text-embedding-3-large` | 3072 | 8,191 |
+
+**Best for:** Enterprise environments requiring Azure compliance and regional data control.
+
+### AWS Bedrock Embeddings
+
+| Model | Dimensions | Max Tokens |
+|-------|-----------|------------|
+| `amazon.titan-embed-text-v2:0` | 1024 | 8,192 |
+
+**Best for:** AWS-centric infrastructure with native IAM and VPC integration.
+
+### Google Embeddings
+
+Available through both AI Studio and Vertex AI.
+
+| Model | Dimensions | Max Tokens |
+|-------|-----------|------------|
+| `text-embedding-004` | 768 | 2,048 |
+| `text-multilingual-embedding-002` | 768 | 2,048 |
+
+**Best for:** Multilingual applications and Google Cloud environments.
+
+### HuggingFace Embeddings
+
+Access open-source embedding models through the HuggingFace Inference API.
+
+| Model | Dimensions | Best For |
+|-------|-----------|----------|
+| `BAAI/bge-large-en-v1.5` | 1024 | High-quality English embeddings |
+| `intfloat/e5-large-v2` | 1024 | Instruction-tuned embeddings |
+| `sentence-transformers/all-MiniLM-L6-v2` | 384 | Fast, lightweight embeddings |
+
+**Best for:** Access to cutting-edge open-source embedding models without self-hosting.
+
+### Ollama Embeddings (Local)
+
+Run embedding models entirely on your hardware.
+
+| Model | Dimensions | Best For |
+|-------|-----------|----------|
+| `nomic-embed-text` | 768 | Best quality local embeddings |
+| `mxbai-embed-large` | 1024 | High-dimensional local embeddings |
+| `all-minilm` | 384 | Fast, lightweight local embeddings |
+| `snowflake-arctic-embed` | 1024 | Strong retrieval performance |
+
+**Best for:** Privacy-sensitive environments and offline deployments.
+
+### vLLM Embeddings (Self-Hosted)
+
+Serve any HuggingFace embedding model at scale with vLLM.
+
+**Best for:** High-volume production embedding with custom or fine-tuned models.
+
+### Local Built-in Embeddings
+
+Nadoo AI includes a built-in lightweight embedding model that runs on CPU without external dependencies.
+
+| Model | Dimensions |
+|-------|-----------|
+| `all-MiniLM-L6-v2` | 384 |
+
+**Best for:** Quick setup, development, and testing without configuring an external provider.
+
+## Choosing the Right Embedding Model
+
+The choice of embedding model affects retrieval quality, speed, and cost. Here is a decision framework:
+
+| Priority | Recommended Provider | Model | Why |
+|----------|---------------------|-------|-----|
+| **Best quality** | OpenAI | `text-embedding-3-large` | Highest dimensional embeddings with strong semantic capture |
+| **Best value** | OpenAI | `text-embedding-3-small` | Strong quality at low cost |
+| **Enterprise compliance** | Azure OpenAI | `text-embedding-3-small` | Same quality with Azure data governance |
+| **Complete privacy** | Ollama | `nomic-embed-text` | No data leaves your network |
+| **Multilingual** | Google | `text-multilingual-embedding-002` | Built for cross-language retrieval |
+| **Lowest latency** | Local built-in | `all-MiniLM-L6-v2` | No network call, runs on CPU |
+| **High volume** | vLLM | Any HuggingFace model | GPU-accelerated batch embedding |
+| **AWS ecosystem** | AWS Bedrock | Titan Embed v2 | Native AWS integration |
+
+### Dimensions and Quality
+
+Embedding dimensions affect both quality and storage:
+
+| Dimensions | Storage per Vector | Quality | Speed |
+|-----------|-------------------|---------|-------|
+| 384 | ~1.5 KB | Good | Fastest |
+| 768 | ~3 KB | Better | Fast |
+| 1024 | ~4 KB | Very Good | Moderate |
+| 1536 | ~6 KB | Excellent | Moderate |
+| 3072 | ~12 KB | Best | Slower |
+
+<Tip>
+  For most use cases, **1536 dimensions** (OpenAI text-embedding-3-small) provides the best balance of quality, speed, and storage cost. Only use 3072 dimensions when retrieval accuracy is the top priority and storage cost is not a concern.
+</Tip>
+
+## Migrating Embedding Models
+
+Changing the embedding model for an existing knowledge base requires re-embedding all documents, since vectors from different models are not compatible.
+
+<Steps>
+  <Step title="Update the Embedding Configuration">
+    Change the embedding provider and model in the knowledge base settings.
+  </Step>
+  <Step title="Trigger Re-indexing">
+    Click **Re-index All Documents** in the knowledge base dashboard. This queues all documents for re-embedding with the new model.
+  </Step>
+  <Step title="Monitor Progress">
+    Track re-indexing progress in the dashboard. The knowledge base remains queryable with old embeddings until re-indexing completes.
+  </Step>
+</Steps>
+
+<Warning>
+  Re-indexing large knowledge bases can take significant time and may incur API costs (for cloud embedding providers). Plan the migration during a maintenance window for production knowledge bases.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Knowledge Base" icon="book-open" href="/knowledge/overview">
+    Build and manage knowledge bases with RAG
+  </Card>
+  <Card title="OpenAI" icon="bolt" href="/models/openai">
+    Configure OpenAI for the most popular embedding models
+  </Card>
+  <Card title="Ollama" icon="server" href="/models/ollama">
+    Run embedding models locally with Ollama
+  </Card>
+  <Card title="AI Models Overview" icon="brain" href="/models/overview">
+    See all supported AI model providers
+  </Card>
+</CardGroup>

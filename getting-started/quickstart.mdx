@@ -1,0 +1,277 @@
+---
+title: 'Quick Start'
+description: 'Get the Nadoo AI Agent Builder Platform running locally in minutes'
+sidebarTitle: 'Quick Start'
+'og:title': 'Quick Start - Nadoo AI'
+'og:description': 'Clone, configure, and launch the full Nadoo AI platform with one command'
+icon: 'play'
+---
+
+## Prerequisites
+
+Before you begin, make sure you have the following installed on your machine:
+
+<CardGroup cols={2}>
+  <Card title="Docker & Docker Compose" icon="docker">
+    Required for running PostgreSQL, Redis, and containerized services.
+
+    [Install Docker](https://docs.docker.com/get-docker/)
+  </Card>
+  <Card title="Node.js 22+" icon="node-js">
+    Required for the Next.js frontend and monorepo tooling.
+
+    [Install Node.js](https://nodejs.org/)
+  </Card>
+  <Card title="Python 3.11+" icon="python">
+    Required for the FastAPI backend and plugin development.
+
+    [Install Python](https://www.python.org/downloads/)
+  </Card>
+  <Card title="Git" icon="git-alt">
+    Required for cloning the repository and managing submodules.
+
+    [Install Git](https://git-scm.com/downloads)
+  </Card>
+</CardGroup>
+
+<Info>
+  **Docker is essential.** The platform uses Docker Compose to run PostgreSQL (with pgvector), Redis, and other infrastructure services. Make sure the Docker daemon is running before proceeding.
+</Info>
+
+## Installation
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the Nadoo AI Agent Builder monorepo from GitHub:
+
+    ```bash
+    git clone https://github.com/nadoo/nadoo-ai-agent-builder.git
+    cd nadoo-ai-agent-builder
+    ```
+  </Step>
+
+  <Step title="Initialize Submodules">
+    The repository uses Git submodules for the Plugin SDK and official plugins. Initialize them:
+
+    ```bash
+    git submodule update --init --recursive
+    ```
+  </Step>
+
+  <Step title="Start the Platform">
+    Launch the entire platform with a single command:
+
+    ```bash
+    npm run start
+    ```
+
+    This command performs the following:
+    - Starts **PostgreSQL** (with pgvector extension) and **Redis** via Docker Compose
+    - Runs database migrations with Alembic
+    - Starts the **FastAPI backend** on port 8000
+    - Starts the **Next.js frontend** on port 3000
+  </Step>
+
+  <Step title="Verify the Installation">
+    Once the startup completes, open these URLs in your browser:
+
+    | Service | URL | Description |
+    |---------|-----|-------------|
+    | Frontend | [http://localhost:3000](http://localhost:3000) | Visual workflow editor, chat interface, and admin dashboard |
+    | Backend API | [http://localhost:8000](http://localhost:8000) | FastAPI server |
+    | API Documentation | [http://localhost:8000/api/docs](http://localhost:8000/api/docs) | Interactive Swagger UI for all REST endpoints |
+
+    <Warning>
+      If ports 3000 or 8000 are already in use, the startup may fail. Stop any conflicting services before running `npm run start`.
+    </Warning>
+  </Step>
+</Steps>
+
+## What Happens During Startup
+
+When you run `npm run start`, the platform orchestrates several services:
+
+```mermaid
+graph LR
+    A[npm run start] --> B[Docker Compose Up]
+    B --> C[PostgreSQL + pgvector]
+    B --> D[Redis]
+    A --> E[Alembic Migrate]
+    E --> F[FastAPI Backend :8000]
+    A --> G[Next.js Frontend :3000]
+
+    C --> F
+    D --> F
+    F --> G
+```
+
+- **PostgreSQL** stores all application data including workspaces, workflows, knowledge base documents, and vector embeddings (via pgvector)
+- **Redis** handles caching, session management, and Celery task queue brokering
+- **FastAPI Backend** serves the REST API, manages workflow execution through LangGraph, and coordinates AI provider calls
+- **Next.js Frontend** provides the visual workflow editor, chat interface, knowledge base management, and administration UI
+
+## First Steps After Launch
+
+Once the platform is running, follow these steps to build and test your first AI agent:
+
+<Steps>
+  <Step title="Create a Workspace">
+    Open [http://localhost:3000](http://localhost:3000) in your browser. You will be prompted to create your first **Workspace**. A workspace is the top-level isolation unit for multi-tenancy -- all your applications, knowledge bases, and settings live inside a workspace.
+
+    ```
+    Workspace Name: My First Workspace
+    ```
+  </Step>
+
+  <Step title="Configure an AI Model Provider">
+    Navigate to **Settings** and add at least one AI model provider API key. For example:
+
+    ```
+    Provider: OpenAI
+    API Key: sk-...
+    ```
+
+    <Info>
+      You can configure multiple providers (OpenAI, Anthropic, Azure, Ollama, etc.) and select different models per workflow node. For local models, set up [Ollama](https://ollama.com/) and point to `http://localhost:11434`.
+    </Info>
+  </Step>
+
+  <Step title="Create an Application">
+    Click **New Application** and choose an application type:
+
+    | Type | Description |
+    |------|-------------|
+    | **Chat** | Simple conversational agent with a chat interface |
+    | **Workflow** | Visual workflow with multi-step processing and branching logic |
+    | **Channel** | Agent deployed to an external messaging platform (Slack, Discord, etc.) |
+
+    For this quickstart, select **Workflow** to get the full visual editor experience.
+  </Step>
+
+  <Step title="Build a Workflow">
+    The visual workflow editor opens with a blank canvas. Build your first workflow:
+
+    1. **Add a Start node** -- This is the entry point that receives user input
+    2. **Add an AI Agent node** -- Drag it onto the canvas and connect it to the Start node
+    3. **Configure the AI Agent** -- Select a model (e.g., GPT-4o), set the system prompt, and choose an agent strategy (Standard, CoT, ReAct, etc.)
+    4. **Add an End node** -- Connect it to the AI Agent node to return the response
+    5. **Save** the workflow
+
+    <Info>
+      The workflow editor supports 18+ node types including Condition, Loop, Search Knowledge, HTTP Request, Code Executor, Variable Aggregator, and more. Explore the [Node Types documentation](/workflow/nodes/ai-agent) for details.
+    </Info>
+  </Step>
+
+  <Step title="Test in the Chat Interface">
+    Click the **Test** button (or navigate to the Chat tab) to open a conversation with your workflow. Type a message and see your AI agent respond in real time with streaming output.
+
+    ```
+    You: What can you help me with?
+    Agent: I'm an AI assistant ready to help you with...
+    ```
+  </Step>
+</Steps>
+
+## Optional: Add a Knowledge Base
+
+To give your agent access to your own documents:
+
+<Steps>
+  <Step title="Create a Knowledge Base">
+    Navigate to **Knowledge Base** and click **New Knowledge Base**. Give it a name and description.
+  </Step>
+
+  <Step title="Upload Documents">
+    Upload PDF, DOCX, TXT, or Markdown files. The platform automatically:
+    - Splits documents into chunks
+    - Generates vector embeddings
+    - Indexes for both semantic (vector) and keyword (BM25) search
+  </Step>
+
+  <Step title="Connect to Your Workflow">
+    In the workflow editor, add a **Search Knowledge** node and connect it between the Start node and the AI Agent node. Configure it to query your knowledge base and pass retrieved context to the AI Agent.
+  </Step>
+</Steps>
+
+## Environment Variables
+
+For advanced configuration, you can customize the platform by setting environment variables. Key variables include:
+
+```bash
+# AI Provider Keys
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Database (defaults are pre-configured for Docker)
+DATABASE_URL=postgresql://nadoo:nadoo@localhost:5432/nadoo
+REDIS_URL=redis://localhost:6379/0
+
+# Security
+SECRET_KEY=your-secret-key
+JWT_SECRET=your-jwt-secret
+```
+
+<Note>
+  See the [Environment Variables reference](/self-hosting/environment-variables) for the full list of configurable options.
+</Note>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Docker containers fail to start">
+    Make sure Docker Desktop is running and has sufficient resources allocated (at least 4 GB RAM recommended). Check container logs with:
+
+    ```bash
+    docker compose logs -f
+    ```
+  </Accordion>
+
+  <Accordion title="Port 3000 or 8000 is already in use">
+    Stop any services using those ports, or modify the port configuration in the Docker Compose file and environment variables.
+
+    ```bash
+    # Check what is using a port
+    lsof -i :3000
+    lsof -i :8000
+    ```
+  </Accordion>
+
+  <Accordion title="Database migration errors">
+    If migrations fail, you can reset the database and re-run:
+
+    ```bash
+    # From the backend package directory
+    alembic upgrade head
+    ```
+  </Accordion>
+
+  <Accordion title="Frontend cannot connect to backend">
+    Ensure the backend is running on port 8000 and the frontend environment is configured to point to `http://localhost:8000`. Check the browser console for CORS or network errors.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={3}>
+  <Card
+    title="Core Concepts"
+    icon="lightbulb"
+    href="/getting-started/concepts"
+  >
+    Understand workspaces, applications, workflows, and nodes
+  </Card>
+  <Card
+    title="Architecture"
+    icon="sitemap"
+    href="/getting-started/architecture"
+  >
+    Explore the system architecture and technology stack
+  </Card>
+  <Card
+    title="Workflow Engine"
+    icon="diagram-project"
+    href="/workflow/overview"
+  >
+    Deep dive into the visual workflow editor and node types
+  </Card>
+</CardGroup>

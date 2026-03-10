@@ -1,0 +1,137 @@
+---
+title: 'Workspaces & Access Control'
+description: 'Multi-tenant workspaces, RBAC, and security features'
+sidebarTitle: 'Workspaces'
+'og:title': 'Workspaces & Access Control - Nadoo AI'
+icon: 'building'
+---
+
+## Overview
+
+A **Workspace** is the fundamental isolation unit in Nadoo AI. Every resource -- applications, knowledge bases, models, API keys, and team members -- belongs to a workspace. Workspaces provide multi-tenant isolation so that different teams, projects, or customers can operate independently on the same Nadoo AI instance.
+
+## Multi-Tenant Architecture
+
+Each workspace has its own:
+
+- **Applications** and their configurations
+- **Knowledge bases** and uploaded documents
+- **Model provider settings** and API keys
+- **Team members** with role-based permissions
+- **API keys** scoped to the workspace
+- **Usage analytics** and billing
+
+Data is strictly isolated between workspaces. A user in Workspace A cannot access any resources in Workspace B unless explicitly invited.
+
+## Role-Based Access Control (RBAC)
+
+Nadoo AI uses role-based access control to manage permissions within each workspace.
+
+### Workspace Roles
+
+| Role | Permissions |
+|------|------------|
+| **Owner** | Full control. Manage members, billing, settings, and all resources. Can delete the workspace. |
+| **Admin** | Manage applications, knowledge bases, model providers, and members. Cannot delete the workspace or transfer ownership. |
+| **Member** | Create and manage their own applications. Use shared knowledge bases and models. Cannot manage members or workspace settings. |
+| **Viewer** | Read-only access. Can view applications and chat histories but cannot create or modify resources. |
+
+### Permission Matrix
+
+| Action | Owner | Admin | Member | Viewer |
+|--------|-------|-------|--------|--------|
+| Create applications | Yes | Yes | Yes | No |
+| Edit any application | Yes | Yes | Own only | No |
+| Delete applications | Yes | Yes | Own only | No |
+| Manage knowledge bases | Yes | Yes | Upload only | No |
+| Configure model providers | Yes | Yes | No | No |
+| Invite / remove members | Yes | Yes | No | No |
+| Manage API keys | Yes | Yes | No | No |
+| View analytics | Yes | Yes | Yes | Yes |
+| Workspace settings | Yes | Yes | No | No |
+| Delete workspace | Yes | No | No | No |
+
+## User Management
+
+### Registration and Login
+
+Nadoo AI supports email/password registration with JWT-based authentication.
+
+<Steps>
+  <Step title="Register">
+    Create an account with email and password via the sign-up page or `POST /api/v1/auth/register`.
+  </Step>
+  <Step title="Login">
+    Authenticate via `POST /api/v1/auth/login` to receive an access token and refresh token.
+  </Step>
+  <Step title="Profile">
+    Update your display name, avatar, and preferences via the profile settings page.
+  </Step>
+</Steps>
+
+### JWT Authentication
+
+Authentication uses JSON Web Tokens (JWT):
+
+- **Access Token**: Short-lived token (default: 30 minutes) included in the `Authorization: Bearer` header
+- **Refresh Token**: Long-lived token used to obtain new access tokens without re-authenticating
+- **Token Refresh**: `POST /api/v1/auth/refresh` exchanges a refresh token for a new access token
+
+## API Key Management
+
+Workspace API keys provide programmatic access to the Nadoo AI API without requiring user authentication.
+
+| Operation | Description |
+|-----------|-------------|
+| **Create** | Generate a new API key scoped to the current workspace |
+| **List** | View all active API keys with their creation date and last used timestamp |
+| **Rotate** | Revoke an existing key and generate a replacement |
+| **Delete** | Permanently revoke an API key |
+
+API keys are passed via the `X-API-Key` header:
+
+```bash
+curl -H "X-API-Key: nai-your-api-key" \
+  https://your-instance.com/api/v1/applications
+```
+
+<Warning>
+  API keys provide full access to the workspace they are scoped to. Store them securely and rotate them regularly. Never commit API keys to version control.
+</Warning>
+
+## OAuth / SSO Support
+
+<Info>
+  OAuth and SSO integration is available for enterprise deployments. Contact the Nadoo AI team for configuration details.
+</Info>
+
+Enterprise SSO features include:
+
+- **SAML 2.0** for identity provider integration
+- **OpenID Connect (OIDC)** for standards-based SSO
+- **Google Workspace** sign-in
+- **Microsoft Entra ID** (formerly Azure AD) sign-in
+- Automatic team provisioning via SCIM
+
+## Rate Limiting
+
+Nadoo AI applies rate limits to protect the platform and ensure fair usage.
+
+| Scope | Limit | Description |
+|-------|-------|-------------|
+| **IP-based** | 300 requests/min | Applied per client IP address for unauthenticated or general requests |
+| **User-based** | 600 requests/min | Applied per authenticated user across all their API keys |
+
+When a rate limit is exceeded, the API returns `429 Too Many Requests` with a `Retry-After` header indicating how long to wait.
+
+```json
+{
+  "status": "error",
+  "code": 429,
+  "message": "Rate limit exceeded. Retry after 12 seconds."
+}
+```
+
+<Note>
+  Enterprise customers can request custom rate limits tailored to their workload. Contact the Nadoo AI team for details.
+</Note>

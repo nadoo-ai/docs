@@ -1,0 +1,286 @@
+---
+title: 'Loop Node'
+description: 'Iterate over collections or repeat execution until a condition is met, with sub-graph support and variable scoping'
+sidebarTitle: 'Loop'
+'og:title': 'Loop Node - Nadoo AI'
+'og:description': 'Build iterative workflows with the Loop Node -- iterate over arrays, repeat until conditions, and compose sub-graphs with safety limits'
+icon: 'arrows-rotate'
+---
+
+## Overview
+
+The **Loop Node** executes a sub-graph of nodes repeatedly, either iterating over a collection (for-each) or repeating until a condition evaluates to false (while-loop). This enables workflows that process lists of items, retry operations, or perform iterative refinement without duplicating nodes in the graph.
+
+The loop body is a self-contained sub-graph embedded within the Loop Node. Each iteration executes the full sub-graph, and results accumulate across iterations.
+
+## Loop Modes
+
+<Tabs>
+  <Tab title="For-Each">
+    ### For-Each Loop
+
+    Iterates over an array variable, executing the loop body once per element. The current element and its index are available as scoped variables within each iteration.
+
+    ```json
+    {
+      "type": "loop-node",
+      "config": {
+        "mode": "for_each",
+        "collection": "{{search_results}}",
+        "item_variable": "current_result",
+        "index_variable": "i",
+        "max_iterations": 50,
+        "output_variable": "processed_results"
+      }
+    }
+    ```
+
+    | Parameter | Type | Default | Description |
+    |---|---|---|---|
+    | `mode` | string | -- | Set to `"for_each"` |
+    | `collection` | string | -- | Reference to an array in the workflow context |
+    | `item_variable` | string | `"item"` | Variable name for the current element inside the loop |
+    | `index_variable` | string | `"index"` | Variable name for the 0-based iteration index |
+    | `max_iterations` | number | `50` | Safety limit to prevent infinite loops |
+    | `output_variable` | string | `"loop_results"` | Context variable for accumulated results |
+
+    **Example:** Process each search result individually through an AI Agent:
+
+    ```mermaid
+    graph TD
+        A[Search Knowledge] --> B[Loop Node\nfor each result]
+
+        subgraph "Loop Body"
+            C[AI Agent\n"Summarize this chunk"] --> D[Python Code\n"Format summary"]
+        end
+
+        B --> C
+        D --> B
+        B --> E[AI Agent\n"Combine summaries"]
+        E --> F[End]
+
+        style B fill:#e1f5fe
+        style C fill:#fff3e0
+        style D fill:#e8f5e9
+    ```
+  </Tab>
+  <Tab title="While Loop">
+    ### While Loop
+
+    Repeats the loop body as long as a condition evaluates to true. The condition is checked at the **start** of each iteration (pre-check).
+
+    ```json
+    {
+      "type": "loop-node",
+      "config": {
+        "mode": "while",
+        "condition": {
+          "variable": "{{quality_score}}",
+          "operator": "lt",
+          "value": 0.8
+        },
+        "max_iterations": 5,
+        "output_variable": "refined_output"
+      }
+    }
+    ```
+
+    | Parameter | Type | Default | Description |
+    |---|---|---|---|
+    | `mode` | string | -- | Set to `"while"` |
+    | `condition` | object | -- | Condition to evaluate before each iteration (same syntax as Condition Node) |
+    | `max_iterations` | number | `10` | Safety limit to prevent infinite loops |
+    | `output_variable` | string | `"loop_results"` | Context variable for the final result |
+
+    **Example:** Iteratively improve content until quality threshold is met:
+
+    ```mermaid
+    graph TD
+        A[AI Agent\n"Generate draft"] --> B[Loop Node\nwhile score < 0.8]
+
+        subgraph "Loop Body"
+            C[AI Agent\n"Critique and revise"] --> D[Python Code\n"Score quality"]
+        end
+
+        B --> C
+        D --> B
+        B --> E[End]
+
+        style B fill:#e1f5fe
+        style C fill:#fff3e0
+        style D fill:#e8f5e9
+    ```
+  </Tab>
+</Tabs>
+
+## Loop Body (Sub-Graph)
+
+The loop body is a **sub-graph** of nodes that executes as a unit within each iteration. The sub-graph is defined visually in the workflow editor by connecting nodes inside the Loop Node's container.
+
+### Sub-Graph Rules
+
+- The loop body must have a **single entry point** and a **single exit point**
+- Nodes inside the loop body can reference both loop-scoped variables and global workflow variables
+- The exit point's output becomes the iteration result
+- All standard node types are available inside the loop body (including nested Loop Nodes)
+
+## Variable Scoping
+
+Variables within the Loop Node follow specific scoping rules:
+
+| Variable Type | Scope | Behavior |
+|---|---|---|
+| `item_variable` / `index_variable` | Loop iteration | Reset at the start of each iteration |
+| Variables written by loop body nodes | Loop iteration | Accessible within the current iteration only |
+| Global workflow variables | Workflow-wide | Readable inside the loop; writes persist across iterations |
+| `output_variable` | Workflow-wide | Accumulates results from all iterations |
+
+### Accessing Iteration Results
+
+**For-each mode:** The `output_variable` is an array where each element is the output from the corresponding iteration.
+
+```json
+{
+  "processed_results": [
+    {"summary": "Result 1 summary...", "score": 0.92},
+    {"summary": "Result 2 summary...", "score": 0.85},
+    {"summary": "Result 3 summary...", "score": 0.78}
+  ]
+}
+```
+
+**While mode:** The `output_variable` contains the output from the **final** iteration (the one that caused the condition to become false or hit the max iteration limit).
+
+## Max Iterations (Safety Limit)
+
+Every Loop Node requires a `max_iterations` parameter to prevent infinite loops and runaway resource consumption.
+
+| Mode | Recommended Max | Rationale |
+|---|---|---|
+| For-each | 50-100 | Bounded by the collection size, but capped for safety |
+| While | 5-10 | Iterative refinement typically converges within a few rounds |
+
+When `max_iterations` is reached:
+
+1. The loop exits normally (it is **not** treated as an error)
+2. The `output_variable` contains results accumulated so far
+3. A `loop_limit_reached` flag is set to `true` in the context
+
+```json
+{
+  "output_variable": "loop_results",
+  "loop_limit_reached": true,
+  "iterations_completed": 10
+}
+```
+
+<Warning>
+  Always set a reasonable `max_iterations` value. A while-loop with a condition that never becomes false and no iteration limit will run until the workflow timeout.
+</Warning>
+
+## Example: Batch Processing
+
+Process a list of documents through an extraction and summarization pipeline:
+
+```json
+{
+  "type": "loop-node",
+  "config": {
+    "mode": "for_each",
+    "collection": "{{uploaded_files}}",
+    "item_variable": "current_file",
+    "index_variable": "file_index",
+    "max_iterations": 20,
+    "output_variable": "extraction_results"
+  }
+}
+```
+
+Loop body sub-graph:
+
+1. **Document Extract Node** -- Extract text from `{{current_file}}`
+2. **AI Agent Node** -- Summarize the extracted text
+3. **Python Code Node** -- Format the summary with metadata
+
+After the loop, `{{extraction_results}}` contains an array of formatted summaries, one per document.
+
+## Example: Iterative Refinement
+
+Improve a generated response through multiple critique-and-revise cycles:
+
+```json
+{
+  "type": "loop-node",
+  "config": {
+    "mode": "while",
+    "condition": {
+      "variable": "{{quality_score}}",
+      "operator": "lt",
+      "value": 0.85
+    },
+    "max_iterations": 3,
+    "output_variable": "final_response"
+  }
+}
+```
+
+Loop body sub-graph:
+
+1. **AI Agent Node (Reflection mode)** -- Critique the current response and produce a revised version
+2. **Python Code Node** -- Evaluate the revised response and update `{{quality_score}}`
+
+The loop exits when the quality score reaches 0.85 or after 3 iterations, whichever comes first.
+
+## Nested Loops
+
+Loop Nodes can be nested, though this should be done with caution. The total number of iterations is multiplicative -- a loop of 10 containing a loop of 10 will execute the inner body 100 times.
+
+```mermaid
+graph TD
+    A[Outer Loop\nfor each department] --> B[Inner Loop\nfor each employee]
+    B --> C[AI Agent\n"Generate review"]
+    C --> B
+    B --> A
+    A --> D[End]
+
+    style A fill:#e1f5fe
+    style B fill:#fff3e0
+```
+
+<Info>
+  Keep the combined iteration count manageable. Each iteration that includes an LLM call incurs latency and token cost. A nested loop with 10 x 10 iterations making LLM calls would result in 100 API calls.
+</Info>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Set conservative max_iterations">
+    Start with a low limit and increase only if needed. For while-loops with LLM calls, 3-5 iterations is usually sufficient for convergence.
+  </Accordion>
+  <Accordion title="Avoid modifying the collection during iteration">
+    In for-each mode, do not modify the `collection` variable inside the loop body. This can lead to unpredictable behavior. If you need to filter items, do so before the loop.
+  </Accordion>
+  <Accordion title="Use Python Code Nodes for aggregation">
+    After a for-each loop, use a Python Code Node to aggregate, filter, or summarize the accumulated results before passing them to downstream nodes.
+  </Accordion>
+  <Accordion title="Check loop_limit_reached for while-loops">
+    After a while-loop, use a Condition Node to check `{{loop_limit_reached}}`. If true, the loop may not have converged, and you should handle this case (e.g., return a best-effort response with a caveat).
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Condition Node" icon="code-branch" href="/workflow/nodes/condition">
+    Define loop exit conditions and post-loop branching
+  </Card>
+  <Card title="Python Code Node" icon="python" href="/workflow/nodes/python-code">
+    Aggregate and process loop results
+  </Card>
+  <Card title="Search Knowledge" icon="magnifying-glass-chart" href="/workflow/nodes/search-knowledge">
+    Retrieve collections to iterate over
+  </Card>
+  <Card title="AI Agent Node" icon="robot" href="/workflow/nodes/ai-agent">
+    Process each iteration with LLM reasoning
+  </Card>
+</CardGroup>

@@ -1,0 +1,490 @@
+---
+title: 'Error Handling'
+description: 'API error codes and response format'
+sidebarTitle: 'Error Handling'
+'og:title': 'Error Handling - Nadoo AI'
+icon: 'circle-exclamation'
+---
+
+## Overview
+
+All Nadoo AI API responses follow a consistent envelope format. When an error occurs, the response includes a `null` data field, an `"error"` status, the HTTP status code, and a human-readable message describing what went wrong. This predictable structure makes it straightforward to implement centralized error handling in your client.
+
+---
+
+## Error Response Format
+
+Every error response uses this standard structure:
+
+```json
+{
+  "data": null,
+  "status": "error",
+  "code": 400,
+  "message": "Descriptive error message"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data` | `null` | Always `null` for error responses |
+| `status` | `string` | Always `"error"` for error responses |
+| `code` | `integer` | The HTTP status code |
+| `message` | `string` | A human-readable description of the error |
+
+For comparison, a successful response looks like:
+
+```json
+{
+  "data": { "id": "app-123", "name": "My Agent" },
+  "status": "success",
+  "code": 200,
+  "message": "OK"
+}
+```
+
+---
+
+## HTTP Status Codes
+
+### Client Errors (4xx)
+
+<AccordionGroup>
+  <Accordion title="400 Bad Request" icon="xmark">
+    The request body or query parameters are invalid. This typically means a required field is missing, a value has the wrong type, or a validation rule was violated.
+
+    ```json
+    {
+      "data": null,
+      "status": "error",
+      "code": 400,
+      "message": "Invalid request: 'name' field is required"
+    }
+    ```
+
+    **Common causes:**
+    - Missing required fields in the request body
+    - Invalid JSON syntax
+    - Field value outside allowed range (e.g., `temperature` > 2.0)
+    - Invalid UUID format for resource IDs
+  </Accordion>
+
+  <Accordion title="401 Unauthorized" icon="lock">
+    The request lacks valid authentication credentials or the provided token has expired.
+
+    ```json
+    {
+      "data": null,
+      "status": "error",
+      "code": 401,
+      "message": "Authentication required"
+    }
+    ```
+
+    **Common causes:**
+    - Missing `Authorization` header or `X-API-Key` header
+    - Expired JWT access token (refresh it via `POST /api/v1/auth/refresh`)
+    - Revoked API key
+    - Invalid token format
+  </Accordion>
+
+  <Accordion title="403 Forbidden" icon="ban">
+    The authenticated user does not have permission to perform the requested action on the target resource.
+
+    ```json
+    {
+      "data": null,
+      "status": "error",
+      "code": 403,
+      "message": "You do not have permission to delete this application"
+    }
+    ```
+
+    **Common causes:**
+    - Attempting to modify a resource in a workspace where you have a read-only role
+    - Accessing an application that belongs to a different workspace
+    - API key scoped to a workspace that does not own the resource
+    - Public API access disabled for the workspace
+  </Accordion>
+
+  <Accordion title="404 Not Found" icon="magnifying-glass">
+    The requested resource does not exist or has been deleted.
+
+    ```json
+    {
+      "data": null,
+      "status": "error",
+      "code": 404,
+      "message": "Application not found"
+    }
+    ```
+
+    **Common causes:**
+    - Incorrect resource ID
+    - Resource was deleted
+    - Resource belongs to a different workspace
+  </Accordion>
+
+  <Accordion title="409 Conflict" icon="code-merge">
+    The request conflicts with the current state of the resource.
+
+    ```json
+    {
+      "data": null,
+      "status": "error",
+      "code": 409,
+      "message": "A knowledge base with this name already exists in the workspace"
+    }
+    ```
+
+    **Common causes:**
+    - Duplicate resource name within a workspace
+    - Email address already registered
+    - Concurrent modification conflict
+  </Accordion>
+
+  <Accordion title="413 Payload Too Large" icon="weight-hanging">
+    The uploaded file or request body exceeds the maximum allowed size.
+
+    ```json
+    {
+      "data": null,
+      "status": "error",
+      "code": 413,
+      "message": "File size exceeds the maximum limit of 100MB"
+    }
+    ```
+
+    **Configuration:** The maximum upload size is controlled by the `NADOO_MAX_UPLOAD_SIZE` environment variable (default: 100 MB).
+  </Accordion>
+
+  <Accordion title="422 Unprocessable Entity" icon="triangle-exclamation">
+    The request body is syntactically valid JSON but fails semantic validation. This is FastAPI's default for Pydantic validation errors.
+
+    ```json
+    {
+      "data": null,
+      "status": "error",
+      "code": 422,
+      "message": "Validation error: temperature must be between 0 and 2"
+    }
+    ```
+
+    **Common causes:**
+    - Field value violates a Pydantic validation rule
+    - Enum value not in the allowed set
+    - Nested object fails schema validation
+  </Accordion>
+
+  <Accordion title="429 Too Many Requests" icon="gauge-high">
+    The rate limit has been exceeded. The response includes a `Retry-After` header indicating how many seconds to wait.
+
+    ```
+    HTTP/1.1 429 Too Many Requests
+    Retry-After: 12
+    ```
+
+    ```json
+    {
+      "data": null,
+      "status": "error",
+      "code": 429,
+      "message": "Rate limit exceeded. Retry after 12 seconds."
+    }
+    ```
+
+    **Rate limits:**
+
+    | Scope | Limit |
+    |-------|-------|
+    | IP-based | 300 requests/min |
+    | User-based (authenticated) | 600 requests/min |
+  </Accordion>
+</AccordionGroup>
+
+### Server Errors (5xx)
+
+<AccordionGroup>
+  <Accordion title="500 Internal Server Error" icon="server">
+    An unexpected error occurred on the server. These errors are logged with a request ID for troubleshooting.
+
+    ```json
+    {
+      "data": null,
+      "status": "error",
+      "code": 500,
+      "message": "An internal error occurred. Request ID: req-abc-123"
+    }
+    ```
+
+    **What to do:**
+    - Retry the request after a short delay
+    - If the error persists, contact support with the request ID
+    - Check the [system health endpoint](/api/overview) to verify service status
+  </Accordion>
+
+  <Accordion title="502 Bad Gateway" icon="plug-circle-xmark">
+    The server received an invalid response from an upstream service, typically an AI model provider.
+
+    ```json
+    {
+      "data": null,
+      "status": "error",
+      "code": 502,
+      "message": "AI provider returned an invalid response"
+    }
+    ```
+
+    **Common causes:**
+    - AI provider (OpenAI, Anthropic, etc.) is temporarily unavailable
+    - Invalid API key configured for the model provider
+    - Network connectivity issue between Nadoo AI and the provider
+  </Accordion>
+
+  <Accordion title="503 Service Unavailable" icon="power-off">
+    The service is temporarily unavailable, usually due to maintenance or overload.
+
+    ```json
+    {
+      "data": null,
+      "status": "error",
+      "code": 503,
+      "message": "Service temporarily unavailable. Please try again later."
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="504 Gateway Timeout" icon="clock">
+    The request timed out while waiting for an upstream service (e.g., an LLM call or document processing job).
+
+    ```json
+    {
+      "data": null,
+      "status": "error",
+      "code": 504,
+      "message": "Request timed out while waiting for AI model response"
+    }
+    ```
+
+    **Common causes:**
+    - Large prompt or high `max_tokens` value causing slow LLM response
+    - Document processing exceeding the timeout limit
+    - Network latency to the AI provider
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Streaming Error Events
+
+When an error occurs during SSE or WebSocket streaming, the error is delivered as an event within the stream rather than as an HTTP error response.
+
+### SSE Error Event
+
+```
+event: error
+data: {"code": "rate_limit", "message": "OpenAI rate limit exceeded. Retrying in 5 seconds."}
+```
+
+### WebSocket Error Message
+
+```json
+{
+  "type": "error",
+  "data": {
+    "message": "Failed to process message",
+    "code": "provider_error"
+  }
+}
+```
+
+### Streaming Error Codes
+
+| Code | Description |
+|------|-------------|
+| `rate_limit` | The AI provider's rate limit was exceeded |
+| `context_overflow` | The input exceeded the model's context window |
+| `tool_error` | A tool invocation failed during agent execution |
+| `timeout` | The request or LLM call timed out |
+| `provider_error` | The AI provider returned an unexpected error |
+| `auth_error` | Authentication or authorization failure mid-stream |
+
+<Info>
+  Streaming errors do not close the connection by default. The server may attempt automatic retries (with exponential backoff) before emitting a terminal error event. Monitor the `error` event and decide whether to retry or surface the error to the user.
+</Info>
+
+---
+
+## Error Handling Best Practices
+
+<AccordionGroup>
+  <Accordion title="Implement centralized error handling" icon="bullseye">
+    Wrap all API calls in a shared error handler that inspects the `status` and `code` fields. This avoids duplicating error logic across your application.
+
+    ```javascript
+    async function apiCall(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}`,
+          ...options.headers,
+        },
+      });
+
+      const body = await response.json();
+
+      if (body.status === 'error') {
+        // Handle specific error codes
+        switch (body.code) {
+          case 401:
+            await refreshTokenAndRetry();
+            break;
+          case 429:
+            const retryAfter = response.headers.get('Retry-After');
+            await sleep(retryAfter * 1000);
+            return apiCall(url, options); // Retry
+          default:
+            throw new ApiError(body.code, body.message);
+        }
+      }
+
+      return body.data;
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Handle token expiration gracefully" icon="rotate">
+    JWT access tokens expire after a configurable period (default: 24 hours). When you receive a `401` response, attempt to refresh the token before prompting the user to log in again.
+
+    ```javascript
+    async function refreshTokenAndRetry() {
+      const refreshToken = getRefreshToken();
+
+      const response = await fetch('/api/v1/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+
+      if (response.ok) {
+        const { data } = await response.json();
+        setToken(data.access_token);
+        // Retry the original request
+      } else {
+        // Refresh token also expired -- redirect to login
+        redirectToLogin();
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Respect rate limits with backoff" icon="gauge-high">
+    When you receive a `429` response, read the `Retry-After` header and wait the specified number of seconds before retrying. For burst workloads, implement a token bucket or leaky bucket pattern on the client side to stay under the limit proactively.
+
+    | Scope | Limit | Strategy |
+    |-------|-------|----------|
+    | IP-based | 300 req/min | Throttle unauthenticated requests |
+    | User-based | 600 req/min | Queue and batch API calls |
+  </Accordion>
+
+  <Accordion title="Use request IDs for debugging" icon="fingerprint">
+    Server error responses (`5xx`) include a request ID in the message. Save this ID when logging errors on the client side, and provide it when contacting support. This allows the team to trace the exact request through server logs.
+  </Accordion>
+
+  <Accordion title="Validate before sending" icon="check-double">
+    Reduce `400` and `422` errors by validating inputs on the client side before sending the request. Match the server's validation rules:
+
+    - `temperature`: 0.0 to 2.0
+    - `max_tokens`: positive integer
+    - Resource IDs: valid UUID v4 format
+    - File uploads: check size and extension against allowed values
+  </Accordion>
+
+  <Accordion title="Handle streaming errors differently" icon="bolt">
+    SSE and WebSocket errors arrive as in-stream events, not HTTP status codes. Register handlers for the `error` event type in both SSE (`EventSource`) and WebSocket (`onmessage`) listeners. Decide based on the error `code` whether to retry, reconnect, or surface the error.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Error Response Examples
+
+### Validation Error (422)
+
+```bash
+POST /api/v1/applications
+Content-Type: application/json
+
+{
+  "name": "",
+  "type": "invalid_type"
+}
+```
+
+```json
+{
+  "data": null,
+  "status": "error",
+  "code": 422,
+  "message": "Validation error: 'name' must not be empty; 'type' must be one of: chat, workflow, channel"
+}
+```
+
+### Resource Not Found (404)
+
+```bash
+GET /api/v1/applications/00000000-0000-0000-0000-000000000000
+Authorization: Bearer eyJ...
+```
+
+```json
+{
+  "data": null,
+  "status": "error",
+  "code": 404,
+  "message": "Application not found"
+}
+```
+
+### Rate Limited (429)
+
+```bash
+# After exceeding 600 requests/min as an authenticated user
+POST /api/v1/chat/completions
+Authorization: Bearer eyJ...
+```
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 8
+Content-Type: application/json
+```
+
+```json
+{
+  "data": null,
+  "status": "error",
+  "code": 429,
+  "message": "Rate limit exceeded. Retry after 8 seconds."
+}
+```
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/api/authentication">
+    Authentication methods, token refresh, and API key management
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Complete REST API endpoint reference
+  </Card>
+  <Card title="SSE Events" icon="bolt" href="/api/sse-events">
+    Streaming error events and real-time communication
+  </Card>
+  <Card title="WebSocket API" icon="plug" href="/api/websockets">
+    Bidirectional real-time communication
+  </Card>
+</CardGroup>

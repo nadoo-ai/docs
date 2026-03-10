@@ -1,9 +1,9 @@
 ---
 title: 'Nadoo AI Platform'
-description: 'Open-source AI Agent Builder Platform for enterprises and developers'
+description: 'Open-source AI Agent Builder Platform - Build, deploy, and manage intelligent AI agents with visual workflows'
 sidebarTitle: 'Introduction'
-'og:title': 'Nadoo AI - Build Intelligent AI Agents'
-'og:description': 'Enterprise-ready platform for building, deploying, and managing AI agents with workflow automation'
+'og:title': 'Nadoo AI - AI Agent Builder Platform'
+'og:description': 'Build production-ready AI agents with visual workflows, RAG knowledge base, 12+ AI providers, and multi-channel messaging'
 'twitter:title': 'Nadoo AI Platform Documentation'
 ---
 
@@ -11,245 +11,255 @@ sidebarTitle: 'Introduction'
   <img
     className="block dark:hidden rounded-lg"
     src="/images/hero-light.png"
-    alt="Nadoo AI Platform"
+    alt="Nadoo AI Agent Builder Platform"
   />
   <img
     className="hidden dark:block rounded-lg"
     src="/images/hero-dark.png"
-    alt="Nadoo AI Platform"
+    alt="Nadoo AI Agent Builder Platform"
   />
 </Hero>
 
-## The Complete AI Agent Platform
+## Build Intelligent AI Agents, Visually
 
-**Nadoo AI** is an open-source platform that empowers developers and enterprises to build, deploy, and manage intelligent AI agents. From low-level workflow orchestration to secure code execution and visual no-code builders, we provide the complete stack for AI automation.
+**Nadoo AI** is an open-source AI Agent Builder Platform that lets you design, deploy, and manage production-ready AI agents through a visual workflow engine. Connect 12+ AI model providers, build RAG-powered knowledge bases, and deliver agents across Slack, Discord, Telegram, KakaoTalk, Teams, and WhatsApp -- all from a single platform.
 
-<CardGroup cols={2}>
+<CardGroup cols={3}>
   <Card
-    title="Flow Core"
-    icon="cube"
-    href="/flow-core/overview"
+    title="Workflow Engine"
+    icon="diagram-project"
+    href="/workflow/overview"
   >
-    **Python Framework**
+    **Visual Graph Builder**
 
-    Type-safe workflow orchestration with resilience, caching, and multi-backend support
+    LangGraph-based workflow engine with 18+ node types and 6 AI agent strategies including CoT, ReAct, and Tree of Thoughts
   </Card>
   <Card
-    title="Plugin SDK"
+    title="Knowledge Base"
+    icon="book-open"
+    href="/knowledge/overview"
+  >
+    **RAG with Hybrid Search**
+
+    Document ingestion with pgvector embeddings, BM25 keyword search, hybrid retrieval, and reranking for accurate responses
+  </Card>
+  <Card
+    title="AI Models"
+    icon="microchip-ai"
+    href="/models/overview"
+  >
+    **12+ Providers**
+
+    OpenAI, Anthropic, Azure OpenAI, AWS Bedrock, Google Vertex AI, Ollama, vLLM, and more with unified API
+  </Card>
+  <Card
+    title="Multi-Channel"
+    icon="comments"
+    href="/channels/overview"
+  >
+    **6+ Messaging Platforms**
+
+    Deploy agents to Slack, Discord, Telegram, KakaoTalk, Microsoft Teams, and WhatsApp
+  </Card>
+  <Card
+    title="Extensibility"
     icon="puzzle-piece"
-    href="/plugin-sdk/overview"
+    href="/extend/plugin-sdk/overview"
   >
-    **Extend & Customize**
+    **Plugin SDK + Skills**
 
-    Build custom tools with access to LLMs, knowledge bases, and storage
-  </Card>
-  <Card
-    title="Sandbox"
-    icon="shield"
-    href="/sandbox/overview"
-  >
-    **Secure Execution**
-
-    Execute code in 12+ languages within isolated Docker containers
-  </Card>
-  <Card
-    title="Builder Platform"
-    icon="palette"
-    href="/builder/overview"
-  >
-    **Visual Interface**
-
-    No-code workflow designer for creating AI agents without coding
+    Build custom plugins with the Plugin SDK, import reusable Skills from Git repositories, and extend the platform
   </Card>
 </CardGroup>
 
 ## Why Nadoo AI?
 
 <AccordionGroup>
-  <Accordion title="Full-Stack Solution" icon="stack">
-    **From Code to No-Code**
+  <Accordion title="Full-Stack AI Platform" icon="layer-group">
+    **Everything You Need in One Platform**
 
-    - **Flow Core**: Low-level framework for developers who need full control
-    - **Builder**: Visual interface for business users and rapid prototyping
-    - **APIs**: RESTful and GraphQL APIs for integration
-    - **SDKs**: Client libraries for major programming languages
+    - **Visual Workflow Engine**: Design complex AI agent logic with a drag-and-drop graph editor
+    - **Knowledge Base with RAG**: Ingest documents, build vector indexes, and power agents with retrieval-augmented generation
+    - **Multi-Channel Messaging**: Deliver agents across 6+ messaging platforms without custom integration code
+    - **Chat Interface**: Built-in chat UI with streaming responses, multimodal input, and conversation memory
   </Accordion>
   <Accordion title="Production Ready" icon="rocket">
-    **Built for Scale**
+    **Built for Real Workloads**
 
-    - Handle thousands of concurrent workflows
-    - Distributed execution across multiple nodes
-    - Built-in monitoring and observability
-    - Enterprise security and compliance
+    - **Multi-tenancy**: Workspace-based isolation with role-based access control (RBAC)
+    - **Async-first**: FastAPI backend with async processing for high throughput
+    - **Background Tasks**: Celery workers for document processing, embedding generation, and long-running operations
+    - **API Key Management**: Secure credential storage for AI providers and external services
+    - **Docker Deployment**: One-command setup with Docker Compose for local and production environments
   </Accordion>
   <Accordion title="Extensible Architecture" icon="puzzle-piece">
-    **Adapt to Your Needs**
+    **Adapt and Extend**
 
-    - Protocol-based backend system (extensible for LangGraph, CrewAI, etc.)
-    - Plugin SDK for custom tools and integrations
-    - Integration with 100+ external services
-    - Custom node and agent development
+    - **Plugin SDK**: Python SDK for building custom tools that integrate with LLMs, knowledge bases, and storage
+    - **Skills System**: Import and execute reusable skills from Git repositories
+    - **18+ Node Types**: AI Agent, Condition, Loop, Search Knowledge, HTTP Request, Code Executor, and more
+    - **6 Agent Strategies**: Standard, Chain of Thought, ReAct, Function Calling, Reflection, Tree of Thoughts
   </Accordion>
   <Accordion title="Open Source" icon="heart">
-    **Community Driven**
+    **Community-Driven Development**
 
-    - Active community of contributors
-    - Transparent development process
-    - No vendor lock-in
-    - Open development on GitHub
+    - Fully open-source under permissive license
+    - Active community on GitHub and Discord
+    - No vendor lock-in -- self-host on your own infrastructure
+    - Transparent roadmap and contribution process
   </Accordion>
 </AccordionGroup>
 
 ## Platform Components
 
-### Flow Core
-Production-ready Python workflow orchestration framework with enterprise features.
+### Workflow Engine
+The core of Nadoo AI -- a LangGraph-based visual workflow engine where you connect nodes to build AI agent logic. Each workflow is a directed graph that processes user inputs through chains of AI reasoning, knowledge retrieval, conditional branching, and external tool calls.
 
 <Info>
-  **Perfect for:** Python developers, ML engineers, and teams building custom AI solutions
+  **Perfect for:** Teams building complex AI agents that require multi-step reasoning, tool use, and conditional logic
 </Info>
 
-Key Features:
-- **Type-safe** with Pydantic v2
-- **Async-first** architecture for high performance
-- **Resilience**: Retry policies with exponential backoff, fallback strategies
-- **Caching**: Response caching with Redis support
-- **Rate Limiting**: Token bucket algorithm for API protection
-- **Memory Management**: Dual-layer storage (Redis + Database)
-- **Multi-backend**: Protocol-based architecture for extensibility
-
-[Explore Flow Core →](/flow-core/overview)
-
-### Plugin SDK
-Build custom tools and extend Nadoo AI with your own functionality.
+### Knowledge Base
+Ingest documents (PDF, DOCX, TXT, Markdown) into a vector store powered by PostgreSQL with pgvector. The RAG pipeline supports hybrid search combining dense vector similarity with BM25 keyword matching, plus optional reranking for improved relevance.
 
 <Info>
-  **Perfect for:** Developers creating custom integrations and domain-specific tools
+  **Perfect for:** Organizations that need AI agents grounded in their own documents and data
 </Info>
 
-Key Features:
-- **LLM Client**: Invoke language models directly
-- **Knowledge Client**: Search knowledge bases with semantic search
-- **Tools Client**: Call other tools and chain functionality
-- **Storage Client**: Persist data with TTL support
-- Simple decorator-based API
-
-[Explore Plugin SDK →](/plugin-sdk/overview)
-
-### Sandbox
-Secure code execution service supporting 12+ programming languages.
-
-<Info>
-  **Perfect for:** Code playgrounds, automated testing, AI coding assistants, educational platforms
-</Info>
-
-Key Features:
-- **Multi-language**: Python, JavaScript, TypeScript, Java, Go, Rust, C++, C#, Ruby, PHP, SQL, Bash
-- **Container Isolation**: Each execution in separate Docker container
-- **Resource Limits**: CPU, memory, timeout controls
-- **Async Execution**: Background tasks with status polling
-- **Batch API**: Execute multiple snippets in one request
-
-[Explore Sandbox →](/sandbox/overview)
-
-### Builder Platform (Coming Soon)
-Visual workflow designer for creating AI agents without code.
-
-<Warning>
-  **Status:** Currently in private beta. The Builder platform is under active development and not yet publicly available.
-</Warning>
-
-Planned Features:
-- Drag-and-drop interface
-- Pre-built templates
-- Real-time collaboration
-- One-click deployment
-- Version control
-
-### Integrations
-Connect with your existing tools and services.
+### Multi-Channel Messaging
+Connect your AI agents to the messaging platforms your users already use. Each channel integration handles authentication, message formatting, and bidirectional communication.
 
 <Tabs>
-  <Tab title="AI Models">
-    - OpenAI GPT-4
-    - Anthropic Claude
-    - Google Gemini
-    - Local LLMs (Ollama, LlamaCpp)
-    - Custom models
+  <Tab title="Supported Channels">
+    - **Slack** -- Bot integration with slash commands and thread support
+    - **Discord** -- Bot with channel and DM support
+    - **Telegram** -- Bot API integration
+    - **KakaoTalk** -- Channel and chatbot integration
+    - **Microsoft Teams** -- Bot Framework integration
+    - **WhatsApp** -- Business API integration
   </Tab>
-  <Tab title="Data Sources">
-    - Databases (PostgreSQL, MySQL, MongoDB)
-    - Vector stores (Pinecone, Weaviate, Qdrant)
-    - Cloud storage (S3, GCS, Azure)
-    - APIs and webhooks
+  <Tab title="AI Model Providers">
+    - **OpenAI** -- GPT-4o, GPT-4, GPT-3.5
+    - **Anthropic** -- Claude 4, Claude 3.5 Sonnet
+    - **Azure OpenAI** -- Enterprise OpenAI deployments
+    - **AWS Bedrock** -- Claude, Titan, and more
+    - **Google Vertex AI** -- Gemini models
+    - **Ollama** -- Local open-source models
+    - **vLLM** -- High-throughput inference server
+    - **Custom endpoints** -- Any OpenAI-compatible API
   </Tab>
-  <Tab title="Tools">
-    - Slack, Discord, Teams
-    - GitHub, GitLab
-    - Jira, Linear
-    - Google Workspace
-    - Custom tools
+  <Tab title="Knowledge Sources">
+    - PDF documents
+    - Microsoft Word (DOCX)
+    - Plain text and Markdown
+    - Web page scraping
+    - Custom data loaders via plugins
   </Tab>
 </Tabs>
 
-## Use Cases
+### Knowledge Graphs
+Build structured knowledge representations using RDF/OWL ontologies. Query with SPARQL and enable multi-hop reasoning across connected entities for complex question answering.
 
-<CardGroup cols={2}>
-  <Card
-    title="Customer Support Automation"
-    icon="headset"
-  >
-    Build intelligent chatbots that understand context, access knowledge bases, and escalate to humans when needed.
-  </Card>
-  <Card
-    title="AI Code Execution"
-    icon="code"
-  >
-    Power AI coding assistants, online code editors, and automated testing platforms with secure multi-language execution.
-  </Card>
-  <Card
-    title="Document Processing"
-    icon="file-alt"
-  >
-    Extract, analyze, and process documents with AI-powered workflows that handle PDFs, emails, and forms.
-  </Card>
-  <Card
-    title="Custom Tool Development"
-    icon="screwdriver-wrench"
-  >
-    Create domain-specific tools with Plugin SDK that integrate with your existing systems and workflows.
-  </Card>
-  <Card
-    title="Data Analysis & Reporting"
-    icon="chart-line"
-  >
-    Create agents that analyze data, generate insights, and produce automated reports on schedule or demand.
-  </Card>
-  <Card
-    title="DevOps Automation"
-    icon="server"
-  >
-    Automate deployment pipelines, monitor systems, and respond to incidents with intelligent agents.
-  </Card>
-</CardGroup>
+### Plugin SDK and Skills
+Extend the platform with custom Python plugins that access LLMs, knowledge bases, tools, and storage. The Skills system lets you import reusable executable units from Git repositories.
+
+## Architecture Overview
+
+```mermaid
+graph TB
+    subgraph "Frontend - Next.js"
+        A[Visual Workflow Editor]
+        B[Chat Interface]
+        C[Knowledge Base UI]
+        D[Admin Dashboard]
+    end
+
+    subgraph "Backend - FastAPI"
+        E[REST API Gateway]
+        F[Auth & RBAC]
+        G[Workflow Service]
+        H[Knowledge Service]
+        I[Channel Service]
+    end
+
+    subgraph "Processing Layer"
+        J[LangGraph Engine]
+        K[Celery Workers]
+        L[Skill Worker]
+    end
+
+    subgraph "Data Layer"
+        M[(PostgreSQL + pgvector)]
+        N[(Redis)]
+    end
+
+    subgraph "External"
+        O[AI Providers]
+        P[Messaging Channels]
+    end
+
+    A --> E
+    B --> E
+    C --> E
+    D --> E
+
+    E --> F
+    F --> G
+    F --> H
+    F --> I
+
+    G --> J
+    H --> K
+    I --> P
+
+    J --> O
+    J --> M
+    J --> N
+
+    K --> M
+    L --> N
+```
 
 ## Quick Start Paths
 
-Choose your journey based on your role and needs:
+Choose your path based on how you want to use Nadoo AI:
 
 <Tabs>
-  <Tab title="Workflow Developer">
+  <Tab title="Platform User">
+    Get the full platform running locally with Docker.
     <Steps>
-      <Step title="Install Flow Core">
+      <Step title="Clone and Start">
         ```bash
-        pip install nadoo-flow-core
+        git clone https://github.com/nadoo/nadoo-ai-agent-builder.git
+        cd nadoo-ai-agent-builder
+        git submodule update --init --recursive
+        npm run start
         ```
       </Step>
-      <Step title="Build First Workflow">
-        Follow our [quickstart guide](/flow-core/quickstart)
+      <Step title="Open the Platform">
+        - Frontend: [http://localhost:3000](http://localhost:3000)
+        - Backend API: [http://localhost:8000](http://localhost:8000)
+        - API Docs: [http://localhost:8000/api/docs](http://localhost:8000/api/docs)
       </Step>
-      <Step title="Add Production Features">
-        Learn about [resilience](/api/flow-core/resilience), [caching](/api/flow-core/caching), and [rate limiting](/api/flow-core/rate_limiting)
+      <Step title="Build Your First Agent">
+        Create a workspace, build a workflow, and test it in the chat interface.
+
+        [Follow the Quick Start guide](/getting-started/quickstart)
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Workflow Developer">
+    <Steps>
+      <Step title="Start the Platform">
+        Follow the Platform User steps above to get the platform running locally
+      </Step>
+      <Step title="Learn Workflow Concepts">
+        Understand [nodes, edges, and agent strategies](/getting-started/concepts)
+      </Step>
+      <Step title="Build Custom Workflows">
+        Use the visual editor to create workflows with 18+ node types
+
+        [Explore the Workflow Engine](/workflow/overview)
       </Step>
     </Steps>
   </Tab>
@@ -261,157 +271,116 @@ Choose your journey based on your role and needs:
         ```
       </Step>
       <Step title="Create Your First Plugin">
-        Follow our [Plugin SDK guide](/plugin-sdk/overview)
+        Build a custom tool with access to LLMs, knowledge bases, and storage
+
+        [Plugin SDK Guide](/extend/plugin-sdk/overview)
       </Step>
-      <Step title="Publish to Registry">
-        Share your plugin with the community
-      </Step>
-    </Steps>
-  </Tab>
-  <Tab title="Code Execution">
-    <Steps>
-      <Step title="Start Sandbox Service">
-        ```bash
-        docker-compose up -d
-        ```
-      </Step>
-      <Step title="Execute Your First Code">
-        Follow our [Sandbox quickstart](/sandbox/quickstart)
-      </Step>
-      <Step title="Integrate with Your App">
-        Use the [Sandbox API](/api/sandbox/execute) in your application
+      <Step title="Register and Test">
+        Register your plugin with the platform and test it in workflows
       </Step>
     </Steps>
   </Tab>
   <Tab title="Enterprise">
     <Steps>
-      <Step title="Schedule Demo">
-        [Contact our team](mailto:enterprise@nadoo.ai) for a personalized demo
+      <Step title="Review Architecture">
+        Understand the [platform architecture](/getting-started/architecture) and deployment model
       </Step>
-      <Step title="Pilot Program">
-        Start with a proof of concept in your environment
+      <Step title="Self-Host Deployment">
+        Deploy with Docker Compose or Kubernetes on your infrastructure
+
+        [Self-Hosting Guide](/self-hosting/overview)
       </Step>
-      <Step title="Full Deployment">
-        Roll out with our professional services team
+      <Step title="Contact Us">
+        [Reach out to our team](mailto:enterprise@nadoo.ai) for enterprise support and customization
       </Step>
     </Steps>
   </Tab>
 </Tabs>
 
-## Architecture Overview
+## Use Cases
 
-```mermaid
-graph TB
-    subgraph "User Interfaces"
-        A[Visual Builder]
-        B[REST APIs]
-        C[Python SDK]
-        D[Plugin SDK]
-    end
+<CardGroup cols={2}>
+  <Card
+    title="Customer Support Automation"
+    icon="headset"
+  >
+    Build AI agents that answer questions from your knowledge base, handle multi-turn conversations, and escalate to humans when needed -- deployed across Slack, Teams, or your website.
+  </Card>
+  <Card
+    title="Internal Knowledge Assistant"
+    icon="magnifying-glass"
+  >
+    Ingest company documents into the Knowledge Base and let employees query policies, procedures, and technical documentation through natural language chat.
+  </Card>
+  <Card
+    title="Multi-Channel Chatbot"
+    icon="comments"
+  >
+    Design a single AI workflow and deploy it simultaneously to Slack, Discord, Telegram, KakaoTalk, and WhatsApp with channel-specific formatting.
+  </Card>
+  <Card
+    title="Document Processing Pipeline"
+    icon="file-lines"
+  >
+    Build workflows that ingest documents, extract structured data with AI, validate results, and route to downstream systems.
+  </Card>
+  <Card
+    title="AI-Powered Data Analysis"
+    icon="chart-line"
+  >
+    Create agents that query databases, analyze data, generate visualizations, and produce reports using Code Executor and AI Agent nodes.
+  </Card>
+  <Card
+    title="Workflow Automation"
+    icon="gears"
+  >
+    Chain together HTTP Request, Condition, and AI Agent nodes to automate complex business processes with intelligent decision-making.
+  </Card>
+</CardGroup>
 
-    subgraph "Core Services"
-        E[Flow Core Engine]
-        F[Sandbox Service]
-        G[Plugin Registry]
-        H[Agent Runtime]
-    end
-
-    subgraph "Execution Layer"
-        I[Workflow Orchestration]
-        J[Docker Containers]
-        K[Custom Tools]
-        L[LLM Integration]
-    end
-
-    subgraph "Infrastructure"
-        M[Redis Cache]
-        N[PostgreSQL DB]
-        O[Message Queue]
-        P[Monitoring]
-    end
-
-    A --> E
-    B --> E
-    B --> F
-    C --> E
-    D --> G
-
-    E --> I
-    F --> J
-    G --> K
-    E --> L
-
-    I --> M
-    I --> N
-    I --> O
-    J --> P
-    K --> L
-
-    style A fill:#e1f5fe
-    style B fill:#e1f5fe
-    style C fill:#e1f5fe
-    style D fill:#e1f5fe
-    style E fill:#4fc3f7
-    style F fill:#4fc3f7
-    style G fill:#4fc3f7
-    style H fill:#4fc3f7
-    style I fill:#29b6f6
-    style J fill:#29b6f6
-    style K fill:#29b6f6
-    style L fill:#29b6f6
-```
-
-
-## Community & Support
+## Community and Support
 
 <CardGroup cols={2}>
   <Card title="GitHub" icon="github" href="https://github.com/nadoo-ai">
-    Star us on GitHub and contribute
+    Star the repository and contribute to the project
   </Card>
   <Card title="Discord" icon="discord" href="https://discord.gg/9gCsxSn6">
-    Join our developer community
+    Join the developer community for questions and discussions
   </Card>
 </CardGroup>
 
 ## Ready to Build?
 
-<CardGroup cols={2}>
+<CardGroup cols={3}>
   <Card
-    title="Build Workflows"
-    icon="cube"
-    href="/flow-core/overview"
+    title="Quick Start"
+    icon="play"
+    href="/getting-started/quickstart"
   >
-    Start with Flow Core Python framework
+    Get the platform running in 5 minutes
   </Card>
   <Card
-    title="Create Plugins"
-    icon="puzzle-piece"
-    href="/plugin-sdk/overview"
+    title="Core Concepts"
+    icon="lightbulb"
+    href="/getting-started/concepts"
   >
-    Extend Nadoo with custom tools using Plugin SDK
+    Understand the domain model and key abstractions
   </Card>
   <Card
-    title="Execute Code Securely"
-    icon="shield"
-    href="/sandbox/overview"
+    title="Architecture"
+    icon="sitemap"
+    href="/getting-started/architecture"
   >
-    Run multi-language code in isolated containers
-  </Card>
-  <Card
-    title="Visual Builder"
-    icon="palette"
-    href="/builder/overview"
-  >
-    Design AI agents without coding (Coming Soon)
+    Explore the technical architecture and system design
   </Card>
 </CardGroup>
 
 <Note>
-  **Latest Update:** v0.1.0 (beta) includes Flow Core with resilience patterns, Plugin SDK, and Sandbox service. Visual Builder coming in v1.0.
+  **Current Version:** v0.5.0 -- Nadoo AI Agent Builder Platform includes the visual workflow engine with 18+ node types, Knowledge Base with RAG, 12+ AI provider integrations, multi-channel messaging, Plugin SDK, and Skills system.
 </Note>
 
 ---
 
 <sub>
-Built with love by the Nadoo AI team and contributors worldwide.
+Built with care by the Nadoo AI team and contributors worldwide.
 </sub>

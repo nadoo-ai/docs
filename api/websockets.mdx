@@ -1,0 +1,551 @@
+---
+title: 'WebSocket API'
+description: 'Real-time communication with WebSocket endpoints'
+sidebarTitle: 'WebSocket API'
+'og:title': 'WebSocket API - Nadoo AI'
+icon: 'plug'
+---
+
+## Overview
+
+Nadoo AI provides WebSocket endpoints for **bidirectional real-time communication**. While [SSE](/api/sse-events) handles unidirectional server-to-client streaming, WebSocket connections enable interactive scenarios such as live chat with streaming responses, workspace collaboration, user notifications, and plugin debugging.
+
+<CardGroup cols={2}>
+  <Card title="Chat" icon="comments">
+    Real-time bidirectional chat with token-by-token AI response streaming, typing indicators, and message cancellation.
+  </Card>
+  <Card title="Notifications" icon="bell">
+    Push notifications to connected users for system events, workflow completions, and workspace activity.
+  </Card>
+  <Card title="Workspace Collaboration" icon="users">
+    Real-time workspace events -- document updates, application changes, and member activity broadcasts.
+  </Card>
+  <Card title="Plugin Debug" icon="bug">
+    Live debug streaming during plugin execution with step-by-step traces, variable inspection, and API call logs.
+  </Card>
+</CardGroup>
+
+---
+
+## Endpoints
+
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| `ws://.../ws/chat/{session_id}` | Real-time chat streaming | JWT token (query param) |
+| `ws://.../ws/notifications/{user_id}` | User notifications | JWT token (required) |
+| `ws://.../ws/workspaces/{workspace_id}` | Workspace collaboration | JWT token (required) |
+| `ws://.../api/v1/ws/plugin/debug/{execution_id}` | Plugin debug console | None (execution ID scoped) |
+
+---
+
+## Authentication
+
+WebSocket connections authenticate via a `token` query parameter containing a valid JWT access token. The server decodes the token before accepting the connection.
+
+```
+ws://localhost:8000/ws/chat/session-abc?token=eyJhbGciOiJIUzI1NiIs...
+```
+
+<Warning>
+  If the token is invalid or expired, the server closes the connection immediately with code `1008` (Policy Violation) and the reason `"Invalid token"`. Ensure the token is refreshed before establishing the WebSocket connection.
+</Warning>
+
+---
+
+## Chat WebSocket
+
+The chat WebSocket provides real-time bidirectional communication for interactive AI conversations.
+
+### Connection
+
+<Steps>
+  <Step title="Open connection">
+    Connect with a session ID and optional JWT token:
+
+    ```
+    ws://localhost:8000/ws/chat/{session_id}?token={jwt_token}
+    ```
+  </Step>
+  <Step title="Receive confirmation">
+    The server sends a connection confirmation:
+
+    ```json
+    {
+      "type": "connected",
+      "session_id": "session-abc",
+      "user_id": "user-123",
+      "timestamp": "2025-01-15T10:30:00Z"
+    }
+    ```
+  </Step>
+  <Step title="Send and receive messages">
+    Send chat messages and receive streamed AI responses in real time.
+  </Step>
+</Steps>
+
+### Client-to-Server Messages
+
+<AccordionGroup>
+  <Accordion title="chat -- Send a message" icon="paper-plane">
+    Send a chat message to the AI agent:
+
+    ```json
+    {
+      "type": "chat",
+      "content": "Summarize the Q4 report",
+      "application_id": "app-uuid-123",
+      "chat_id": "chat-uuid-456",
+      "user_id": "user-uuid-789",
+      "timestamp": "2025-01-15T10:30:00Z"
+    }
+    ```
+
+    If `chat_id` is omitted, a new chat session is created automatically.
+  </Accordion>
+
+  <Accordion title="typing -- Typing indicator" icon="keyboard">
+    Broadcast a typing indicator to other participants in the session:
+
+    ```json
+    {
+      "type": "typing"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="ping -- Keep alive" icon="heart-pulse">
+    Send a ping to keep the connection alive:
+
+    ```json
+    {
+      "type": "ping"
+    }
+    ```
+
+    The server responds with:
+
+    ```json
+    {
+      "type": "pong",
+      "timestamp": "2025-01-15T10:30:05Z"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Server-to-Client Messages
+
+| Message Type | Description |
+|-------------|-------------|
+| `connected` | Connection established successfully |
+| `response_start` | AI response generation has begun |
+| `text-delta` | A chunk of the AI response text |
+| `sources` | Knowledge base sources used in the response |
+| `response_end` | AI response is complete, includes full text and token usage |
+| `typing` | Another user is typing |
+| `user_disconnected` | A user left the session |
+| `error` | An error occurred processing the message |
+
+### Streaming Response Flow
+
+When the server receives a `chat` message, it streams the AI response as a sequence of events:
+
+```json
+// 1. Response starts
+{"type": "response_start", "message_id": "msg_1234", "timestamp": "..."}
+
+// 2. Text chunks arrive incrementally
+{"type": "text-delta", "text": "Based on the Q4 report, ", "index": 0, "timestamp": "..."}
+{"type": "text-delta", "text": "revenue increased by 15%.", "index": 1, "timestamp": "..."}
+
+// 3. Knowledge base sources (if applicable)
+{"type": "sources", "sources": [...], "timestamp": "..."}
+
+// 4. Response complete
+{"type": "response_end", "full_response": "Based on the Q4 report, revenue increased by 15%.", "tokens_used": 12, "response_time": 2.3, "timestamp": "..."}
+```
+
+### Client Example
+
+<Tabs>
+  <Tab title="JavaScript">
+    ```javascript
+    const sessionId = 'session-abc-123';
+    const token = 'eyJhbGciOiJIUzI1NiIs...';
+
+    const ws = new WebSocket(
+      `ws://localhost:8000/ws/chat/${sessionId}?token=${token}`
+    );
+
+    ws.onopen = () => {
+      console.log('Connected to chat');
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      switch (data.type) {
+        case 'connected':
+          console.log('Session ready:', data.session_id);
+          break;
+
+        case 'response_start':
+          console.log('AI is responding...');
+          break;
+
+        case 'text-delta':
+          // Append each text chunk to the UI
+          appendToResponse(data.text);
+          break;
+
+        case 'sources':
+          showSources(data.sources);
+          break;
+
+        case 'response_end':
+          console.log(`Done. Tokens: ${data.tokens_used}`);
+          break;
+
+        case 'typing':
+          showTypingIndicator(data.user_id);
+          break;
+
+        case 'error':
+          console.error('Error:', data.message);
+          break;
+      }
+    };
+
+    // Send a message
+    ws.send(JSON.stringify({
+      type: 'chat',
+      content: 'What were the key Q4 metrics?',
+      application_id: 'app-uuid-123'
+    }));
+
+    // Send typing indicator
+    ws.send(JSON.stringify({ type: 'typing' }));
+
+    // Keep alive
+    setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 30000);
+    ```
+  </Tab>
+  <Tab title="Python">
+    ```python
+    import asyncio
+    import json
+    import websockets
+
+    async def chat_client():
+        session_id = "session-abc-123"
+        token = "eyJhbGciOiJIUzI1NiIs..."
+        uri = f"ws://localhost:8000/ws/chat/{session_id}?token={token}"
+
+        async with websockets.connect(uri) as ws:
+            # Wait for connection confirmation
+            response = await ws.recv()
+            data = json.loads(response)
+            print(f"Connected: {data}")
+
+            # Send a message
+            await ws.send(json.dumps({
+                "type": "chat",
+                "content": "Summarize the Q4 report",
+                "application_id": "app-uuid-123"
+            }))
+
+            # Receive streamed response
+            full_response = ""
+            async for message in ws:
+                data = json.loads(message)
+
+                if data["type"] == "text-delta":
+                    full_response += data["text"]
+                    print(data["text"], end="", flush=True)
+
+                elif data["type"] == "response_end":
+                    print(f"\n\nTokens used: {data['tokens_used']}")
+                    break
+
+                elif data["type"] == "error":
+                    print(f"Error: {data['message']}")
+                    break
+
+    asyncio.run(chat_client())
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Notifications WebSocket
+
+The notifications endpoint delivers real-time push notifications to authenticated users.
+
+### Connection
+
+```
+ws://localhost:8000/ws/notifications/{user_id}?token={jwt_token}
+```
+
+<Info>
+  The `user_id` in the URL must match the `sub` claim in the JWT token. Mismatched values result in an immediate connection close with code `1008`.
+</Info>
+
+### Message Format
+
+```json
+{
+  "type": "notification",
+  "notification": {
+    "title": "Workflow completed",
+    "body": "Your data extraction workflow finished successfully.",
+    "action_url": "/workflows/wf-123/results"
+  },
+  "timestamp": "2025-01-15T10:30:00Z"
+}
+```
+
+---
+
+## Workspace Collaboration WebSocket
+
+The workspace endpoint enables real-time collaboration features within a shared workspace.
+
+### Connection
+
+```
+ws://localhost:8000/ws/workspaces/{workspace_id}?token={jwt_token}
+```
+
+### Events
+
+When you join the workspace, all other connected users receive a `user_joined` event. When you disconnect, they receive `user_left`.
+
+Supported broadcast event types:
+
+| Event Type | Description |
+|-----------|-------------|
+| `user_joined` | A user connected to the workspace |
+| `user_left` | A user disconnected from the workspace |
+| `document_updated` | A document in the knowledge base was modified |
+| `application_changed` | An application's configuration was updated |
+| `member_added` | A new member was added to the workspace |
+
+### Example
+
+```javascript
+const ws = new WebSocket(
+  `ws://localhost:8000/ws/workspaces/${workspaceId}?token=${token}`
+);
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+
+  if (data.type === 'user_joined') {
+    showToast(`${data.user_id} joined the workspace`);
+  }
+
+  if (data.type === 'document_updated') {
+    refreshDocumentList();
+  }
+};
+
+// Broadcast a document update to other workspace members
+ws.send(JSON.stringify({
+  type: 'document_updated',
+  document_id: 'doc-456',
+  action: 'edited'
+}));
+```
+
+---
+
+## Plugin Debug WebSocket
+
+The plugin debug endpoint streams real-time execution data during plugin runs, enabling live debugging.
+
+### Connection
+
+```
+ws://localhost:8000/api/v1/ws/plugin/debug/{execution_id}
+```
+
+<Note>
+  This endpoint does not require a JWT token. Access is scoped by the `execution_id`, which must correspond to an existing plugin execution record.
+</Note>
+
+### Message Types
+
+| Type | Description |
+|------|-------------|
+| `execution_info` | Initial execution metadata (plugin ID, tool name, status) |
+| `debug_data` | Previously recorded debug data (sent if execution has historical data) |
+| `log` | Log output from the plugin |
+| `trace` | Execution trace data |
+| `step` | A discrete execution step |
+| `variable` | Variable state snapshot |
+| `api_call` | An external API call made by the plugin |
+| `execution_complete` | Plugin execution finished successfully |
+| `execution_error` | Plugin execution failed |
+| `error` | Connection or validation error |
+
+### Example
+
+```javascript
+const execId = 'exec-uuid-123';
+const ws = new WebSocket(
+  `ws://localhost:8000/api/v1/ws/plugin/debug/${execId}`
+);
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+
+  switch (data.type) {
+    case 'execution_info':
+      console.log(`Debugging: ${data.data.tool_name}`);
+      break;
+    case 'log':
+      appendToDebugConsole(data.data);
+      break;
+    case 'step':
+      highlightStep(data.data);
+      break;
+    case 'variable':
+      updateVariableInspector(data.data);
+      break;
+    case 'execution_complete':
+      console.log('Execution finished:', data.data.result);
+      break;
+    case 'execution_error':
+      console.error('Execution failed:', data.data.error);
+      break;
+  }
+};
+
+// Keep-alive ping
+setInterval(() => {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send('ping');  // Server responds with 'pong'
+  }
+}, 30000);
+```
+
+---
+
+## Connection Management
+
+### Reconnection Strategy
+
+WebSocket connections do not auto-reconnect like SSE. Implement reconnection logic in your client:
+
+<Steps>
+  <Step title="Detect disconnect">
+    Listen for the `onclose` event on the WebSocket.
+  </Step>
+  <Step title="Apply backoff">
+    Wait with exponential backoff: 1s, 2s, 4s, 8s, up to a maximum of 30s.
+  </Step>
+  <Step title="Reconnect">
+    Open a new WebSocket connection with a fresh JWT token if the previous one expired.
+  </Step>
+  <Step title="Restore state">
+    After reconnecting, re-fetch any missed messages from the REST API (e.g., `GET /api/v1/chat/{app_id}/messages`).
+  </Step>
+</Steps>
+
+```javascript
+function createReconnectingWebSocket(url, maxRetries = 10) {
+  let retries = 0;
+  let ws;
+
+  function connect() {
+    ws = new WebSocket(url);
+
+    ws.onopen = () => {
+      retries = 0; // Reset on successful connection
+    };
+
+    ws.onclose = (event) => {
+      if (retries < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, retries), 30000);
+        console.log(`Reconnecting in ${delay}ms...`);
+        setTimeout(connect, delay);
+        retries++;
+      }
+    };
+
+    return ws;
+  }
+
+  return connect();
+}
+```
+
+### Connection Statistics
+
+Monitor active WebSocket connections via the stats endpoint:
+
+```bash
+GET /ws/stats
+```
+
+```json
+{
+  "total_connections": 42,
+  "active_sessions": 15,
+  "active_users": 12,
+  "details": {
+    "sessions": {
+      "session-abc": 2,
+      "workspace_ws-123": 5
+    },
+    "users": {
+      "user-1": 3,
+      "user-2": 1
+    }
+  }
+}
+```
+
+---
+
+## WebSocket vs SSE
+
+<Info>
+  For most chatbot and streaming use cases, **SSE is the recommended protocol**. It is simpler to implement, reconnects automatically, and works reliably through HTTP proxies and load balancers. Use WebSocket only when you need bidirectional communication.
+</Info>
+
+| Feature | SSE | WebSocket |
+|---------|-----|-----------|
+| Direction | Server to client | Bidirectional |
+| Protocol | HTTP (`text/event-stream`) | `ws://` or `wss://` |
+| Reconnection | Built-in auto-reconnect | Manual implementation required |
+| Mid-stream input | Not supported | Supported (cancel, interrupt, new messages) |
+| Typing indicators | Not supported | Supported |
+| Browser support | Native `EventSource` API | Native `WebSocket` API |
+| Proxy compatibility | Excellent (standard HTTP) | May require proxy configuration |
+| Best for | Chat streaming, workflow progress | Interactive chat, collaboration, debugging |
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="SSE Events" icon="bolt" href="/api/sse-events">
+    Server-Sent Events for unidirectional streaming
+  </Card>
+  <Card title="Error Handling" icon="circle-exclamation" href="/api/errors">
+    API error codes and response format
+  </Card>
+  <Card title="Authentication" icon="lock" href="/api/authentication">
+    JWT tokens and API key authentication
+  </Card>
+  <Card title="Chat Streaming" icon="comments" href="/chat/streaming">
+    Frontend integration for real-time chat
+  </Card>
+</CardGroup>

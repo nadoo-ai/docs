@@ -1,386 +1,161 @@
 ---
-title: 'Frequently Asked Questions'
-description: 'Common questions about Nadoo AI'
+title: 'FAQ'
+description: 'Frequently asked questions about Nadoo AI Agent Builder Platform'
 sidebarTitle: 'FAQ'
 'og:title': 'FAQ - Nadoo AI'
-icon: 'question'
+icon: 'circle-question'
 ---
 
-## General Questions
+## Frequently Asked Questions
+
+<AccordionGroup>
+  <Accordion title="What is Nadoo AI?" icon="circle-info">
+    Nadoo AI is an **open-source AI Agent Builder Platform** for creating, deploying, and managing intelligent AI agents. It provides:
 
-### What is Nadoo AI?
+    - A **visual workflow engine** (powered by LangGraph) with 18+ node types and 6 agent strategies
+    - A **RAG-powered Knowledge Base** with hybrid search (vector + BM25) and reranking
+    - Support for **12+ AI model providers** through a unified API
+    - **Multi-channel messaging** to deploy agents across Slack, Discord, Telegram, KakaoTalk, Teams, and WhatsApp
+    - An **extensibility layer** with the Plugin SDK and Skills system
 
-Nadoo AI is a platform for building AI agents and workflows, consisting of:
-- **Flow Core**: Open-source Python framework for workflow orchestration
-- **Builder**: Visual no-code platform for creating AI applications (enterprise preview)
+    Nadoo AI is designed for teams that need to build production-ready AI agents without vendor lock-in.
+  </Accordion>
 
-### Is Nadoo AI open source?
+  <Accordion title="Is Nadoo AI free to use?" icon="dollar-sign">
+    Yes. Nadoo AI is released under the **BUSL-1.1 (Business Source License 1.1)**. It is free to use for development, testing, and internal business use. The license allows you to run the platform on your own infrastructure without licensing fees.
+
+    For specific licensing terms regarding commercial redistribution, refer to the `LICENSE` file in the repository.
+  </Accordion>
 
-**Flow Core** is fully open source and available on [GitHub](https://github.com/nadoo-ai).
+  <Accordion title="What AI models are supported?" icon="microchip-ai">
+    Nadoo AI supports **12+ AI model providers** through a unified provider abstraction:
 
-**Builder** is currently in enterprise preview and will have its source code organized and released publicly in the future.
+    | Provider | Models |
+    |----------|--------|
+    | **OpenAI** | GPT-4o, GPT-4, GPT-3.5 Turbo |
+    | **Anthropic** | Claude 4, Claude 3.5 Sonnet, Claude 3 Haiku |
+    | **Google** | Gemini 1.5 Pro, Gemini 1.5 Flash |
+    | **Azure OpenAI** | Enterprise-hosted OpenAI models |
+    | **AWS Bedrock** | Claude, Titan, Mistral, and more |
+    | **Google Vertex AI** | Gemini models via Google Cloud |
+    | **Ollama** | Llama, Mistral, Phi, and other local open-source models |
+    | **vLLM** | High-throughput inference for any supported model |
+    | **Custom endpoints** | Any OpenAI-compatible API |
 
-### What license does Nadoo Flow Core use?
+    You can configure multiple providers per workspace and select the model at the node level in your workflows.
 
-Nadoo Flow Core uses an MIT open source license, allowing free commercial use.
+    <Info>
+      See the [AI Models](/models/overview) page for detailed configuration instructions for each provider.
+    </Info>
+  </Accordion>
 
-### How does Nadoo compare to LangChain?
+  <Accordion title="Do I need coding skills to use Nadoo AI?" icon="code">
+    **It depends on what you want to do:**
 
-Nadoo Flow Core is:
-- **Lighter**: Minimal dependencies (5 vs 47+ packages)
-- **Faster**: Async-native throughout
-- **Simpler**: Cleaner, more predictable API
-- **Focused**: Production-ready workflows vs rapid prototyping
+    - **No coding required:** The visual workflow builder lets you design AI agent logic by dragging and connecting nodes. You can build complete agents, configure knowledge bases, and deploy to messaging channels entirely through the web UI.
+    - **Coding required:** Developing custom plugins with the [Plugin SDK](/extend/plugin-sdk/overview) requires Python knowledge. Building custom skills requires writing `SKILL.md` manifests and supporting scripts.
 
-See our [comparison guide](/resources/comparison) for details.
+    The platform is designed to be accessible to both non-technical users and developers.
+  </Accordion>
 
-### Do I need to know Python to use Nadoo?
+  <Accordion title="What databases are required?" icon="database">
+    Nadoo AI requires two databases:
 
-- **Flow Core**: Yes, requires Python knowledge
-- **Builder**: No, provides visual no-code interface (coming soon)
+    - **PostgreSQL 15+** with the [pgvector](https://github.com/pgvector/pgvector) extension -- stores all application data and vector embeddings for the Knowledge Base
+    - **Redis 7+** -- used for task queuing (Celery), caching, real-time messaging (WebSocket), and session management
 
-## Technical Questions
+    Both are included in the Docker Compose configuration and start automatically when you run `npm run start`.
 
-### What Python version is required?
+    <Tip>
+      For production deployments, we recommend using managed database services (e.g., AWS RDS for PostgreSQL, Amazon ElastiCache for Redis) for reliability and automated backups.
+    </Tip>
+  </Accordion>
 
-Python 3.11 or higher is required for Nadoo Flow Core.
+  <Accordion title="Can I deploy Nadoo AI on my own servers?" icon="server">
+    Yes. Nadoo AI is designed for self-hosted deployment. The repository includes Docker Compose configurations for multiple environments:
 
-```bash
-python --version  # Should be 3.11+
-```
+    - **Local development** -- single-machine setup with hot-reload
+    - **Development/staging** -- multi-container setup with production-like settings
+    - **Production** -- optimized configuration with security hardening, TLS, and resource limits
 
-### Can I use Nadoo with async/await?
+    See the [Self-Hosting Guide](/self-hosting/overview) and [Docker Compose Local](/self-hosting/docker-compose-local) for step-by-step deployment instructions.
+  </Accordion>
 
-Yes! Nadoo Flow Core is async-native by design. All node executions use `async`/`await`:
+  <Accordion title="What document formats does the Knowledge Base support?" icon="file-lines">
+    The Knowledge Base supports ingestion of the following document formats:
 
-```python
-result = await workflow.execute(data)
-```
+    - **PDF** -- including scanned documents with OCR
+    - **Microsoft Word** (DOCX)
+    - **Plain text** (TXT)
+    - **Markdown** (MD)
+    - **Microsoft Excel** (XLSX) -- tabular data extraction
+    - **Web pages** -- URL-based scraping and ingestion
 
-### Which LLM providers are supported?
+    Documents are automatically chunked, embedded, and indexed for hybrid search (vector similarity + BM25 keyword matching). Optional reranking further improves retrieval relevance.
 
-Currently supported:
-- OpenAI (GPT-3.5, GPT-4)
-- Anthropic Claude
-- Google Gemini
+    <Info>
+      Custom data loaders can be built using the [Plugin SDK](/extend/plugin-sdk/overview) to support additional formats.
+    </Info>
+  </Accordion>
 
-Coming soon:
-- Azure OpenAI
-- Local models (Ollama, LM Studio)
-- Custom providers
+  <Accordion title="How do channels work?" icon="comments">
+    Channels connect your AI agents to external messaging platforms. Each channel integration is handled by a dedicated **adapter** that manages authentication, message formatting, and bidirectional communication.
 
-### Can I use Nadoo without LLMs?
+    **Supported channels:**
+    - **Slack** -- Bot integration with slash commands and thread support
+    - **Discord** -- Bot with channel and DM support
+    - **Telegram** -- Bot API integration
+    - **KakaoTalk** -- Channel and chatbot integration
+    - **Microsoft Teams** -- Bot Framework integration
+    - **WhatsApp** -- Business API integration
 
-Absolutely! Nadoo Flow Core is a general workflow orchestration framework. You can build workflows using only custom nodes without any LLM calls.
+    You configure channels at the workspace level. Each channel is linked to an application (AI agent), so messages received on that channel are routed to the corresponding workflow for processing and response.
 
-### Does Nadoo support streaming?
+    See the [Channels Overview](/channels/overview) for setup instructions.
+  </Accordion>
 
-Yes, Nadoo supports streaming responses:
+  <Accordion title="Is there an API?" icon="code">
+    Yes. Nadoo AI provides a comprehensive **REST API** at `/api/v1/` with **530+ endpoints** covering:
 
-```python
-from nadoo_flow import StreamingNode
+    - Workspace and user management
+    - Application (agent) CRUD and execution
+    - Workflow creation and management
+    - Knowledge base operations (upload, search, manage documents)
+    - Chat and conversation history
+    - Channel configuration
+    - Model provider management
+    - Plugin and skill administration
 
-async for chunk in streaming_node.stream_execute(data):
-    print(chunk["content"], end="", flush=True)
-```
+    The API uses JWT-based authentication and supports both API key and OAuth2 access. Interactive API documentation is available at `http://localhost:8000/api/docs` (Swagger UI) when the backend is running.
 
-### Can I deploy Nadoo workflows in production?
+    See the [API Overview](/api/overview) and [Authentication](/api/authentication) pages for details.
+  </Accordion>
 
-Yes! Nadoo is designed for production use with:
-- Async-first architecture
-- Minimal overhead
-- Error handling and retries
-- Monitoring and metrics support
+  <Accordion title="How can I contribute?" icon="heart">
+    Nadoo AI is an open-source project and contributions are welcome. Here is how to get involved:
 
-### Does Nadoo work with FastAPI?
+    1. **Read the contributing guide** -- See `CONTRIBUTING.md` in the repository for coding standards, PR process, and development setup
+    2. **Browse GitHub issues** -- Look for issues labeled `good first issue` or `help wanted` at [github.com/nadoo-ai](https://github.com/nadoo-ai)
+    3. **Join the community** -- Connect with other contributors on [Discord](https://discord.gg/9gCsxSn6) in the `#contributing` channel
+    4. **Submit pull requests** -- Fork the repository, make your changes, and open a PR against the `main` branch
 
-Yes, Nadoo integrates seamlessly with FastAPI:
-
-```python
-from fastapi import FastAPI
-from nadoo_flow import LLMNode
-
-app = FastAPI()
-workflow = LLMNode(model="gpt-4")
-
-@app.post("/chat")
-async def chat(message: str):
-    result = await workflow.execute({"message": message})
-    return {"response": result["content"]}
-```
-
-## Flow Core Questions
-
-### How do I create a custom node?
-
-Extend `ChainableNode` and implement the `execute` method:
-
-```python
-from nadoo_flow import ChainableNode
-
-class MyCustomNode(ChainableNode):
-    async def execute(self, data):
-        # Your logic here
-        return {"result": "processed"}
-```
-
-### How do I chain nodes together?
-
-Use the pipe operator (`|`):
-
-```python
-workflow = NodeA() | NodeB() | NodeC()
-result = await workflow.execute(input_data)
-```
-
-### How do I execute nodes in parallel?
-
-Use `ParallelNode`:
-
-```python
-from nadoo_flow import ParallelNode
-
-parallel = ParallelNode([NodeA(), NodeB(), NodeC()])
-results = await parallel.execute(data)
-```
-
-### Can I use conditional logic in workflows?
-
-Yes, use `ConditionalNode`:
-
-```python
-from nadoo_flow import ConditionalNode
-
-router = ConditionalNode()
-router.add_path("condition_a", PathA())
-router.add_path("condition_b", PathB())
-```
-
-### How do I handle errors?
-
-Use `ErrorHandlerNode` or try/except:
-
-```python
-from nadoo_flow import ErrorHandlerNode
-
-workflow = ErrorHandlerNode(
-    node=RiskyNode(),
-    fallback={"status": "failed"}
-)
-```
-
-### Can I retry failed operations?
-
-Yes, use `RetryNode`:
-
-```python
-from nadoo_flow import RetryNode
-
-workflow = RetryNode(
-    node=UnreliableNode(),
-    max_retries=3,
-    backoff_factor=2.0
-)
-```
-
-## Builder Questions
-
-### When will Builder be publicly available?
-
-Builder is currently in enterprise preview. Public release timeline will be announced once the platform reaches feature completeness. Join our [Discord](https://discord.gg/9gCsxSn6) for updates.
-
-### How do I get access to Builder?
-
-For enterprise access, contact: enterprise@nadoo.ai
-
-### Will Builder be open source?
-
-The plan is to organize and release Builder's source code publicly in the future, following the enterprise preview period.
-
-### Can I export workflows from Builder to Flow Core code?
-
-Yes! Builder workflows compile to Flow Core Python code, which you can export and customize.
-
-### Does Builder support version control?
-
-Yes, Builder includes:
-- Workflow versioning
-- Change tracking
-- Rollback capabilities
-- Git integration (planned)
-
-## Migration Questions
-
-### Can I migrate from LangChain?
-
-Yes! See our [migration guide](/resources/migration) for detailed instructions and code examples.
-
-### Is migration from CrewAI possible?
-
-Yes, CrewAI workflows can be migrated to Nadoo. The migration guide covers this.
-
-### Will my existing code break if I migrate?
-
-Migration requires code changes, but you can:
-- Migrate incrementally
-- Keep both frameworks during transition
-- Use compatibility layers
-
-### How long does migration typically take?
-
-Depends on complexity:
-- Simple workflows: Hours to days
-- Medium complexity: 1-2 weeks
-- Large applications: Weeks to months
-
-## Performance Questions
-
-### Is Nadoo faster than LangChain?
-
-In our benchmarks:
-- Simple LLM chain: 27% faster
-- Parallel execution (5 tasks): 72% faster
-- Memory usage: 65% lower
-
-See [comparison guide](/resources/comparison) for details.
-
-### What's the maximum throughput?
-
-Depends on your infrastructure and LLM provider rate limits. Flow Core itself adds minimal overhead.
-
-### Does Nadoo support caching?
-
-Yes, you can implement caching at multiple levels:
-- LLM response caching
-- Function result caching
-- Database query caching
-
-### Can I scale Nadoo horizontally?
-
-Yes, Nadoo workflows are stateless and can run across multiple instances.
-
-## Integration Questions
-
-### Which databases are supported?
-
-Flow Core works with any database through custom nodes. Common integrations:
-- PostgreSQL
-- MySQL
-- MongoDB
-- Redis
-- Vector databases (Pinecone, Weaviate, etc.)
-
-### Can I integrate with external APIs?
-
-Yes, easily integrate any REST or GraphQL API:
-
-```python
-from nadoo_flow import APICallNode
-
-api_node = APICallNode(
-    url="https://api.example.com",
-    method="POST"
-)
-```
-
-### Does Nadoo support webhooks?
-
-Yes, you can trigger workflows via webhooks using FastAPI or similar frameworks.
-
-### Can I use Nadoo with Kubernetes?
-
-Yes, Nadoo works great in Kubernetes:
-- Stateless execution
-- Horizontal scaling
-- Health check support
-
-## Security Questions
-
-### How does Nadoo handle API keys?
-
-We recommend using environment variables:
-
-```python
-import os
-api_key = os.getenv("OPENAI_API_KEY")
-```
-
-Never hardcode keys in your code.
-
-### Is my data secure?
-
-Nadoo Flow Core runs entirely in your infrastructure. Your data never leaves your environment unless you explicitly send it to external APIs (like OpenAI).
-
-### Does Nadoo log sensitive information?
-
-Nadoo doesn't log data by default. Implement your own logging with appropriate filters for sensitive information.
-
-### Is Nadoo compliant with GDPR/HIPAA?
-
-Since Flow Core runs in your infrastructure, compliance depends on your implementation and deployment. Builder (enterprise) includes compliance features.
-
-## Community Questions
-
-### How can I contribute?
-
-Contributions are welcome!
-1. Check [GitHub Issues](https://github.com/nadoo-ai)
-2. Fork the repository
-3. Submit pull requests
-4. Join [Discord](https://discord.gg/9gCsxSn6) discussions
-
-### Where can I get help?
-
-- **Documentation**: [docs.nadoo.ai](https://docs.nadoo.ai)
-- **Discord**: [discord.gg/9gCsxSn6](https://discord.gg/9gCsxSn6)
-- **GitHub**: [github.com/nadoo-ai](https://github.com/nadoo-ai)
-- **Email**: support@nadoo.ai
-
-### Is there a community forum?
-
-Join our [Discord server](https://discord.gg/9gCsxSn6) for discussions, questions, and updates.
-
-### Are there any example projects?
-
-Yes! Check out:
-- [Examples](/examples/overview) in documentation
-- GitHub repository examples
-- Community Discord for shared projects
-
-## Roadmap Questions
-
-### What features are planned?
-
-See our [roadmap](/builder/roadmap) for details. Key items:
-- Additional LLM provider support
-- Multi-agent frameworks
-- Visual debugging tools
-- Enhanced monitoring
-
-### Can I request features?
-
-Yes! Submit feature requests via:
-- GitHub Issues
-- Discord feedback channel
-- Email: feedback@nadoo.ai
-
-### When will X feature be released?
-
-Check the [roadmap](/builder/roadmap) for planned features and estimated timelines.
+    All contributions -- code, documentation, bug reports, and feature suggestions -- are appreciated.
+  </Accordion>
+</AccordionGroup>
 
 ## Still Have Questions?
 
 <CardGroup cols={2}>
   <Card title="Discord Community" icon="discord" href="https://discord.gg/9gCsxSn6">
-    Join our Discord for real-time help
+    Join our Discord for real-time help and discussions
   </Card>
-  <Card title="GitHub Discussions" icon="github" href="https://github.com/nadoo-ai">
-    Browse and start discussions
+  <Card title="GitHub" icon="github" href="https://github.com/nadoo-ai">
+    Browse source code and open issues
   </Card>
-  <Card title="Documentation" icon="book" href="/getting-started">
-    Read the full documentation
+  <Card title="Troubleshooting" icon="wrench" href="/resources/troubleshooting">
+    Solutions to common technical issues
   </Card>
-  <Card title="Contact Us" icon="envelope" href="mailto:support@nadoo.ai">
-    Email our support team
+  <Card title="Glossary" icon="book" href="/resources/glossary">
+    Definitions of terms used throughout the platform
   </Card>
 </CardGroup>

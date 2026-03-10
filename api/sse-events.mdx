@@ -1,0 +1,804 @@
+---
+title: 'SSE Events'
+description: 'Server-Sent Events for real-time streaming'
+sidebarTitle: 'SSE Events'
+'og:title': 'SSE Events - Nadoo AI'
+icon: 'bolt'
+---
+
+## Overview
+
+Nadoo AI uses **Server-Sent Events (SSE)** as the primary protocol for streaming real-time data from the server to the client. As an AI agent generates tokens, calls tools, retrieves documents, and reasons through steps, each action is emitted as a typed event that clients render incrementally. This provides a transparent, responsive experience where users see the agent's work as it happens.
+
+SSE is a standard HTTP-based protocol where the client opens a single long-lived connection and the server pushes a sequence of typed events. It is simpler than WebSocket, reconnects automatically, and works reliably through HTTP proxies and load balancers.
+
+---
+
+## Connecting to the SSE Stream
+
+### Chat Streaming
+
+```bash
+POST /api/v1/chat/completions
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "session_id": "session-uuid",
+  "message": "Summarize the Q4 report",
+  "stream": true
+}
+```
+
+### Workflow Execution Streaming
+
+```bash
+POST /api/v1/workflows/{workflow_id}/execute/stream
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "inputs": {
+    "query": "Analyze sales trends"
+  }
+}
+```
+
+Both endpoints return a `text/event-stream` response. Each event follows the SSE format:
+
+```
+event: <event_type>
+data: <json_payload>
+
+```
+
+<Info>
+  Set `"stream": true` in the chat completions request body to receive an SSE stream. Without this flag, the endpoint returns a standard JSON response after the full completion is generated.
+</Info>
+
+---
+
+## Event Types Reference
+
+Nadoo AI defines **19 SSE event types** organized into four categories. Each event carries a JSON payload with context-specific data.
+
+### Workflow Events
+
+Emitted during workflow execution to mark the lifecycle of the entire workflow run. These events are only present when the application is a Workflow App.
+
+<AccordionGroup>
+  <Accordion title="workflow_start" icon="play">
+    Emitted when a workflow execution begins.
+
+    ```json
+    {
+      "workflow_id": "wf-uuid-123",
+      "execution_id": "exec-uuid-456"
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `workflow_id` | `string` | The workflow being executed |
+    | `execution_id` | `string` | Unique ID for this execution run |
+  </Accordion>
+
+  <Accordion title="workflow_end" icon="flag-checkered">
+    Emitted when a workflow execution completes successfully.
+
+    ```json
+    {
+      "execution_id": "exec-uuid-456",
+      "duration_ms": 3421
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `execution_id` | `string` | The execution run ID |
+    | `duration_ms` | `integer` | Total execution time in milliseconds |
+  </Accordion>
+
+  <Accordion title="workflow_error" icon="circle-xmark">
+    Emitted when a workflow execution fails with an error.
+
+    ```json
+    {
+      "execution_id": "exec-uuid-456",
+      "error": "Node 'ai-agent-1' failed: Context window exceeded"
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `execution_id` | `string` | The execution run ID |
+    | `error` | `string` | Human-readable error description |
+  </Accordion>
+</AccordionGroup>
+
+### Node Events
+
+Emitted as individual nodes within a workflow execute. Each node (AI Agent, Condition, Search Knowledge, etc.) produces start, end, and optionally error events.
+
+<AccordionGroup>
+  <Accordion title="node_start" icon="circle-play">
+    Emitted when a node begins execution.
+
+    ```json
+    {
+      "node_id": "ai-agent-1",
+      "node_type": "ai_agent",
+      "node_name": "Classify Intent"
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `node_id` | `string` | Unique node identifier within the workflow |
+    | `node_type` | `string` | The node type (e.g., `ai_agent`, `condition`, `search_knowledge`) |
+    | `node_name` | `string` | Human-readable node label |
+  </Accordion>
+
+  <Accordion title="node_end" icon="circle-check">
+    Emitted when a node finishes execution successfully.
+
+    ```json
+    {
+      "node_id": "ai-agent-1",
+      "output": {
+        "response": "The user is asking about sales data.",
+        "confidence": 0.95
+      },
+      "duration_ms": 1230
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `node_id` | `string` | The node that completed |
+    | `output` | `object` | The node's output data |
+    | `duration_ms` | `integer` | Node execution time in milliseconds |
+  </Accordion>
+
+  <Accordion title="node_error" icon="circle-exclamation">
+    Emitted when a node encounters an error during execution.
+
+    ```json
+    {
+      "node_id": "search-kb-1",
+      "error": "Knowledge base 'kb-123' not found"
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `node_id` | `string` | The node that failed |
+    | `error` | `string` | Error description |
+  </Accordion>
+</AccordionGroup>
+
+### Agent Events
+
+Emitted by the AI Agent node to provide visibility into the agent's reasoning process, tool usage, and self-reflection behavior. These events are essential for building transparent AI interfaces.
+
+<AccordionGroup>
+  <Accordion title="agent_iteration" icon="arrows-rotate">
+    Emitted at the start of each reasoning iteration in ReAct, Reflection, or Tree of Thoughts modes. Tracks how many iterations the agent has performed.
+
+    ```json
+    {
+      "iteration": 1,
+      "max_iterations": 5
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `iteration` | `integer` | Current iteration number (1-based) |
+    | `max_iterations` | `integer` | Maximum allowed iterations |
+  </Accordion>
+
+  <Accordion title="agent_tool_call" icon="screwdriver-wrench">
+    Emitted when the agent decides to invoke a tool.
+
+    ```json
+    {
+      "tool_name": "web_search",
+      "arguments": {
+        "query": "Q4 2024 revenue figures"
+      }
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `tool_name` | `string` | Name of the tool being called |
+    | `arguments` | `object` | Arguments passed to the tool |
+  </Accordion>
+
+  <Accordion title="agent_tool_result" icon="square-check">
+    Emitted when a tool returns its result to the agent.
+
+    ```json
+    {
+      "tool_name": "web_search",
+      "result": "Q4 revenue was $12.3M, up 15% year-over-year..."
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `tool_name` | `string` | Name of the tool that completed |
+    | `result` | `string` | The tool's output |
+  </Accordion>
+
+  <Accordion title="agent_reflection" icon="lightbulb">
+    Emitted in Reflection mode when the agent critiques and refines its own output.
+
+    ```json
+    {
+      "critique": "The summary lacks specific revenue numbers.",
+      "refinement": "I should include the exact figures from the knowledge base."
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `critique` | `string` | The agent's self-critique |
+    | `refinement` | `string` | The planned improvement |
+  </Accordion>
+
+  <Accordion title="agent_thinking" icon="brain">
+    Emitted when the agent enters a reasoning phase, providing visibility into its thought process.
+
+    ```json
+    {
+      "content": "Let me analyze the quarterly data step by step. First, I need to compare Q3 and Q4 figures."
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `content` | `string` | The agent's reasoning text |
+  </Accordion>
+
+  <Accordion title="cot_step" icon="list-ol">
+    Emitted in Chain of Thought mode for each discrete reasoning step.
+
+    ```json
+    {
+      "step": 1,
+      "thought": "First, I need to identify the key metrics from the Q4 report."
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `step` | `integer` | Step number (1-based) |
+    | `thought` | `string` | The reasoning content for this step |
+  </Accordion>
+</AccordionGroup>
+
+### System Events
+
+Emitted to provide metadata, resource usage information, and system-level error reporting throughout the streaming session.
+
+<AccordionGroup>
+  <Accordion title="token_usage" icon="coins">
+    Reports token consumption for the current LLM call or response.
+
+    ```json
+    {
+      "prompt_tokens": 850,
+      "completion_tokens": 62,
+      "total_tokens": 912
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `prompt_tokens` | `integer` | Tokens in the input prompt |
+    | `completion_tokens` | `integer` | Tokens in the generated response |
+    | `total_tokens` | `integer` | Sum of prompt and completion tokens |
+  </Accordion>
+
+  <Accordion title="cost_update" icon="dollar-sign">
+    Reports the estimated monetary cost for the current response based on the model's pricing.
+
+    ```json
+    {
+      "cost_usd": 0.0048,
+      "model": "gpt-4o"
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `cost_usd` | `float` | Estimated cost in USD |
+    | `model` | `string` | The model used for this call |
+  </Accordion>
+
+  <Accordion title="context_trimmed" icon="scissors">
+    Emitted when the conversation context was trimmed to fit within the model's context window.
+
+    ```json
+    {
+      "original_tokens": 12000,
+      "trimmed_tokens": 8000
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `original_tokens` | `integer` | Token count before trimming |
+    | `trimmed_tokens` | `integer` | Token count after trimming |
+
+    <Note>
+      Context trimming uses the strategy configured on the application: `truncate` (drop oldest messages), `summarize` (condense history), or `error` (fail if context exceeds limit). The default strategy is `truncate` with a 4096-token limit.
+    </Note>
+  </Accordion>
+
+  <Accordion title="llm_call_start" icon="tower-broadcast">
+    Emitted when an LLM API call is initiated.
+
+    ```json
+    {
+      "model": "gpt-4o",
+      "provider": "openai"
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `model` | `string` | The model being called |
+    | `provider` | `string` | The AI provider (openai, anthropic, google, etc.) |
+  </Accordion>
+
+  <Accordion title="llm_call_end" icon="tower-broadcast">
+    Emitted when an LLM API call completes.
+
+    ```json
+    {
+      "model": "gpt-4o",
+      "latency_ms": 890
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `model` | `string` | The model that was called |
+    | `latency_ms` | `integer` | Round-trip latency in milliseconds |
+  </Accordion>
+
+  <Accordion title="memory_update" icon="database">
+    Emitted when the conversation memory is updated (e.g., messages trimmed from the buffer, summary regenerated).
+
+    ```json
+    {
+      "type": "buffer",
+      "messages_retained": 20
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `type` | `string` | Memory type: `buffer`, `summary`, or `knowledge_graph` |
+    | `messages_retained` | `integer` | Number of messages kept in memory |
+  </Accordion>
+
+  <Accordion title="error" icon="circle-exclamation">
+    Emitted when a system-level error occurs during streaming.
+
+    ```json
+    {
+      "code": "rate_limit",
+      "message": "OpenAI rate limit exceeded. Retrying in 5 seconds."
+    }
+    ```
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `code` | `string` | Machine-readable error code |
+    | `message` | `string` | Human-readable error description |
+
+    See the [Error Handling](/api/errors) page for the full list of error codes.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Event Summary Table
+
+| # | Event | Category | Description |
+|---|-------|----------|-------------|
+| 1 | `workflow_start` | Workflow | Workflow execution has begun |
+| 2 | `workflow_end` | Workflow | Workflow completed successfully |
+| 3 | `workflow_error` | Workflow | Workflow failed with an error |
+| 4 | `node_start` | Node | A node has started executing |
+| 5 | `node_end` | Node | A node has finished executing |
+| 6 | `node_error` | Node | A node encountered an error |
+| 7 | `agent_iteration` | Agent | An agent reasoning iteration occurred |
+| 8 | `agent_tool_call` | Agent | The agent is invoking a tool |
+| 9 | `agent_tool_result` | Agent | A tool returned its result |
+| 10 | `agent_reflection` | Agent | The agent is reflecting on its output |
+| 11 | `agent_thinking` | Agent | The agent is in a reasoning phase |
+| 12 | `cot_step` | Agent | A chain-of-thought reasoning step |
+| 13 | `token_usage` | System | Token consumption for the response |
+| 14 | `cost_update` | System | Estimated cost for the response |
+| 15 | `context_trimmed` | System | Context was trimmed to fit the model window |
+| 16 | `llm_call_start` | System | An LLM API call has been initiated |
+| 17 | `llm_call_end` | System | An LLM API call has completed |
+| 18 | `memory_update` | System | Conversation memory was updated |
+| 19 | `error` | System | A system-level error occurred |
+
+---
+
+## Example SSE Stream
+
+Below is a complete SSE stream from a Chat App with tool use and knowledge base retrieval:
+
+```
+event: llm_call_start
+data: {"model": "gpt-4o", "provider": "openai"}
+
+event: agent_tool_call
+data: {"tool_name": "search_knowledge", "arguments": {"query": "Q4 revenue figures"}}
+
+event: agent_tool_result
+data: {"tool_name": "search_knowledge", "result": "Q4 revenue was $12.3M, up 15% YoY..."}
+
+event: agent_thinking
+data: {"content": "The knowledge base contains the Q4 figures. Let me summarize the key points."}
+
+event: text_chunk
+data: {"content": "Based on the Q4 report, "}
+
+event: text_chunk
+data: {"content": "revenue reached $12.3 million, "}
+
+event: text_chunk
+data: {"content": "representing a 15% year-over-year increase."}
+
+event: llm_call_end
+data: {"model": "gpt-4o", "latency_ms": 1240}
+
+event: token_usage
+data: {"prompt_tokens": 850, "completion_tokens": 62, "total_tokens": 912}
+
+event: cost_update
+data: {"cost_usd": 0.0048, "model": "gpt-4o"}
+
+event: done
+data: {}
+```
+
+---
+
+## Client Implementation
+
+<Tabs>
+  <Tab title="JavaScript">
+    ```javascript
+    async function streamChat(sessionId, message, token) {
+      const response = await fetch('/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          message: message,
+          stream: true,
+        }),
+      });
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // Keep incomplete line in buffer
+
+        let eventType = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            eventType = line.slice(7);
+          } else if (line.startsWith('data: ') && eventType) {
+            const data = JSON.parse(line.slice(6));
+            handleEvent(eventType, data);
+            eventType = '';
+          }
+        }
+      }
+    }
+
+    function handleEvent(eventType, data) {
+      switch (eventType) {
+        case 'text_chunk':
+          appendToResponse(data.content);
+          break;
+
+        case 'agent_tool_call':
+          showToolCall(data.tool_name, data.arguments);
+          break;
+
+        case 'agent_tool_result':
+          showToolResult(data.tool_name, data.result);
+          break;
+
+        case 'agent_thinking':
+          showThinkingStep(data.content);
+          break;
+
+        case 'cot_step':
+          showReasoningStep(data.step, data.thought);
+          break;
+
+        case 'agent_reflection':
+          showReflection(data.critique, data.refinement);
+          break;
+
+        case 'node_start':
+          updateNodeStatus(data.node_id, 'running');
+          break;
+
+        case 'node_end':
+          updateNodeStatus(data.node_id, 'completed');
+          break;
+
+        case 'token_usage':
+          updateTokenCounter(data);
+          break;
+
+        case 'cost_update':
+          updateCostDisplay(data.cost_usd);
+          break;
+
+        case 'error':
+          showError(data.code, data.message);
+          break;
+
+        case 'done':
+          finalizeResponse();
+          break;
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Python">
+    ```python
+    import json
+    import httpx
+
+    async def stream_chat(session_id: str, message: str, token: str):
+        """Stream chat completions using SSE."""
+        url = "http://localhost:8000/api/v1/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        }
+        payload = {
+            "session_id": session_id,
+            "message": message,
+            "stream": True,
+        }
+
+        async with httpx.AsyncClient() as client:
+            async with client.stream(
+                "POST", url, json=payload, headers=headers
+            ) as response:
+                event_type = ""
+                async for line in response.aiter_lines():
+                    if line.startswith("event: "):
+                        event_type = line[7:]
+                    elif line.startswith("data: ") and event_type:
+                        data = json.loads(line[6:])
+                        handle_event(event_type, data)
+                        event_type = ""
+
+    def handle_event(event_type: str, data: dict):
+        """Handle individual SSE events."""
+        if event_type == "text_chunk":
+            print(data["content"], end="", flush=True)
+
+        elif event_type == "agent_tool_call":
+            print(f"\n[Tool] {data['tool_name']}({data['arguments']})")
+
+        elif event_type == "agent_tool_result":
+            print(f"[Result] {data['result'][:100]}...")
+
+        elif event_type == "agent_thinking":
+            print(f"\n[Thinking] {data['content']}")
+
+        elif event_type == "cot_step":
+            print(f"  Step {data['step']}: {data['thought']}")
+
+        elif event_type == "agent_reflection":
+            print(f"\n[Reflection] {data['critique']}")
+            print(f"[Refinement] {data['refinement']}")
+
+        elif event_type == "node_start":
+            print(f"\n>> Node started: {data['node_name']} ({data['node_type']})")
+
+        elif event_type == "node_end":
+            print(f">> Node completed: {data['node_id']} ({data['duration_ms']}ms)")
+
+        elif event_type == "token_usage":
+            print(f"\n[Tokens] {data['total_tokens']} total "
+                  f"({data['prompt_tokens']} prompt + "
+                  f"{data['completion_tokens']} completion)")
+
+        elif event_type == "cost_update":
+            print(f"[Cost] ${data['cost_usd']:.4f} ({data['model']})")
+
+        elif event_type == "error":
+            print(f"\n[ERROR] {data['code']}: {data['message']}")
+
+        elif event_type == "done":
+            print("\n--- Stream complete ---")
+    ```
+  </Tab>
+  <Tab title="cURL">
+    ```bash
+    curl -N -X POST http://localhost:8000/api/v1/chat/completions \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..." \
+      -d '{
+        "session_id": "session-uuid",
+        "message": "Summarize the Q4 report",
+        "stream": true
+      }'
+    ```
+
+    The `-N` flag disables output buffering, allowing you to see events as they arrive.
+  </Tab>
+</Tabs>
+
+---
+
+## Events by Agent Mode
+
+Different agent modes emit different combinations of events. Use this table to understand which events to expect based on your application's configuration.
+
+| Event | Standard | Chain of Thought | ReAct | Function Calling | Reflection | Tree of Thoughts |
+|-------|:--------:|:----------------:|:-----:|:----------------:|:----------:|:----------------:|
+| `agent_thinking` | -- | Yes | Yes | -- | Yes | Yes |
+| `cot_step` | -- | Yes | -- | -- | -- | -- |
+| `agent_iteration` | -- | -- | Yes | -- | Yes | Yes |
+| `agent_tool_call` | -- | -- | Yes | Yes | -- | -- |
+| `agent_tool_result` | -- | -- | Yes | Yes | -- | -- |
+| `agent_reflection` | -- | -- | -- | -- | Yes | -- |
+| `llm_call_start/end` | Yes | Yes | Yes | Yes | Yes | Yes |
+| `token_usage` | Yes | Yes | Yes | Yes | Yes | Yes |
+| `cost_update` | Yes | Yes | Yes | Yes | Yes | Yes |
+
+---
+
+## Error Handling
+
+### Reconnection Strategy
+
+SSE connections may drop due to network issues. The browser's native `EventSource` API automatically reconnects, but when using `fetch` for POST-based SSE streams, implement reconnection manually:
+
+<Steps>
+  <Step title="Detect connection loss">
+    Monitor the `fetch` stream for read errors or unexpected stream termination.
+  </Step>
+  <Step title="Wait with exponential backoff">
+    Start at 1 second and double the wait time on each retry, up to a maximum of 30 seconds.
+  </Step>
+  <Step title="Reconnect">
+    Re-establish the SSE connection. If your server supports `Last-Event-ID`, include it in the request header to resume from the last received event.
+  </Step>
+  <Step title="Inform the user">
+    Display a reconnection indicator in the UI so the user knows the stream is temporarily interrupted.
+  </Step>
+</Steps>
+
+### Common Error Codes
+
+| Code | Description | Recommended Action |
+|------|-------------|--------------------|
+| `rate_limit` | AI provider rate limit exceeded | Wait and retry (server may auto-retry) |
+| `context_overflow` | Input exceeded model's context window | Reduce message history or input size |
+| `tool_error` | A tool invocation failed | Check tool configuration and inputs |
+| `timeout` | Request or LLM call timed out | Retry with a simpler prompt or lower `max_tokens` |
+| `provider_error` | AI provider returned an unexpected error | Check provider status; retry after a delay |
+| `auth_error` | Authentication failure mid-stream | Refresh token and reconnect |
+
+<Warning>
+  When using SSE for workflow execution, a `workflow_error` event indicates that the entire workflow failed. Check the `node_error` events emitted before it to identify which specific node caused the failure.
+</Warning>
+
+---
+
+## Frontend Integration
+
+Nadoo AI provides built-in React components for SSE integration.
+
+### useAgentSSE Hook
+
+The `useAgentSSE` hook manages the SSE connection lifecycle, parses events, and exposes reactive state:
+
+```tsx
+import { useAgentSSE } from '@/hooks/useAgentSSE';
+
+function ChatPanel({ sessionId }) {
+  const {
+    sendMessage,
+    response,             // Accumulated response text
+    isStreaming,           // Whether a response is in progress
+    toolCalls,            // List of tool calls with results
+    tokenUsage,           // { prompt_tokens, completion_tokens, total_tokens }
+    suggestedQuestions,    // Follow-up suggestions
+    error,                // Current error state
+  } = useAgentSSE(sessionId);
+
+  return (
+    <div>
+      <MessageList messages={response} />
+      {isStreaming && <StreamingIndicator />}
+      {toolCalls.map(tc => <ToolCallCard key={tc.id} {...tc} />)}
+      {suggestedQuestions && (
+        <SuggestionChips questions={suggestedQuestions} />
+      )}
+      <MessageInput onSend={sendMessage} disabled={isStreaming} />
+    </div>
+  );
+}
+```
+
+### AgentExecutionMonitor Component
+
+For Workflow Apps, the `AgentExecutionMonitor` renders a visual timeline of workflow execution:
+
+```tsx
+import { AgentExecutionMonitor } from '@/components/AgentExecutionMonitor';
+
+function WorkflowChat({ sessionId }) {
+  return (
+    <div>
+      <ChatPanel sessionId={sessionId} />
+      <AgentExecutionMonitor
+        sessionId={sessionId}
+        showNodeDetails={true}
+        showTokenUsage={true}
+        collapsible={true}
+      />
+    </div>
+  );
+}
+```
+
+The monitor displays:
+
+- **Node execution timeline** with status indicators (running, completed, failed)
+- **Expandable node details** showing input, output, and duration
+- **Tool call cards** with arguments and results
+- **Thinking/reasoning steps** from CoT and ReAct strategies
+- **Token usage and cost** per node and overall
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="WebSocket API" icon="plug" href="/api/websockets">
+    Bidirectional real-time communication for interactive workflows
+  </Card>
+  <Card title="Error Handling" icon="circle-exclamation" href="/api/errors">
+    API error codes, streaming errors, and best practices
+  </Card>
+  <Card title="Chat Streaming" icon="comments" href="/chat/streaming">
+    Full streaming guide with frontend integration
+  </Card>
+  <Card title="AI Agent Strategies" icon="brain" href="/workflow/strategies/overview">
+    Agent modes that produce different event patterns
+  </Card>
+</CardGroup>

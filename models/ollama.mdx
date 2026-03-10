@@ -1,0 +1,194 @@
+---
+title: 'Ollama'
+description: 'Run open-source AI models locally with Ollama for privacy, offline use, and zero API costs'
+sidebarTitle: 'Ollama'
+'og:title': 'Ollama Provider - Nadoo AI'
+icon: 'server'
+---
+
+## Overview
+
+**Ollama** is a local model runtime that lets you run open-source AI models on your own hardware. With Ollama, your data never leaves your network -- there are no API costs, no rate limits, and no external dependencies. This makes it the ideal provider for privacy-sensitive environments, air-gapped deployments, and development workflows where you want fast, free model access.
+
+Key benefits:
+
+- **Complete privacy** -- No data sent to external APIs; all inference runs locally
+- **Zero cost** -- No per-token charges; pay only for your hardware
+- **Offline capable** -- Works without internet once models are downloaded
+- **Wide model selection** -- Run Llama 3, Mistral, CodeLlama, Phi, Gemma, and many more
+- **Embedding support** -- Generate embeddings locally for knowledge base indexing
+
+## Setup
+
+<Steps>
+  <Step title="Install Ollama">
+    Download and install Ollama from [ollama.com](https://ollama.com).
+
+    **macOS:**
+    ```bash
+    brew install ollama
+    ```
+
+    **Linux:**
+    ```bash
+    curl -fsSL https://ollama.com/install.sh | sh
+    ```
+
+    **Windows:**
+    Download the installer from [ollama.com/download](https://ollama.com/download/windows).
+  </Step>
+  <Step title="Start Ollama">
+    Start the Ollama service:
+
+    ```bash
+    ollama serve
+    ```
+
+    By default, Ollama listens on `http://localhost:11434`.
+  </Step>
+  <Step title="Pull Models">
+    Download the models you want to use:
+
+    ```bash
+    # Pull a chat model
+    ollama pull llama3.1
+
+    # Pull an embedding model
+    ollama pull nomic-embed-text
+
+    # List downloaded models
+    ollama list
+    ```
+  </Step>
+  <Step title="Configure in Nadoo">
+    Go to **Admin > Model Providers > Ollama** and enter:
+
+    | Field | Required | Description |
+    |-------|----------|-------------|
+    | Base URL | Yes | The Ollama server URL (default: `http://localhost:11434`) |
+  </Step>
+  <Step title="Test Connection">
+    Click **Test** to verify the connection. Nadoo will discover all models available on your Ollama instance and list them for selection.
+  </Step>
+</Steps>
+
+## Available Models
+
+Ollama supports hundreds of open-source models. Here are the most commonly used ones:
+
+### Chat / LLM
+
+| Model | Parameters | Context Window | Best For |
+|-------|-----------|---------------|----------|
+| `llama3.1` | 8B / 70B | 128K tokens | General-purpose chat and reasoning |
+| `llama3.2` | 1B / 3B | 128K tokens | Lightweight, fast responses |
+| `mistral` | 7B | 32K tokens | Strong performance for its size |
+| `mixtral` | 8x7B | 32K tokens | Mixture-of-experts, wide knowledge |
+| `codellama` | 7B / 13B / 34B | 16K tokens | Code generation and understanding |
+| `phi3` | 3.8B / 14B | 128K tokens | Compact yet capable |
+| `gemma2` | 9B / 27B | 8K tokens | Google's open model family |
+| `qwen2.5` | 7B / 72B | 128K tokens | Strong multilingual and coding |
+| `deepseek-r1` | 7B / 70B | 64K tokens | Reasoning and math |
+
+### Embedding
+
+| Model | Dimensions | Best For |
+|-------|-----------|----------|
+| `nomic-embed-text` | 768 | General-purpose embeddings |
+| `mxbai-embed-large` | 1024 | High-quality embeddings |
+| `all-minilm` | 384 | Fast, lightweight embeddings |
+| `snowflake-arctic-embed` | 1024 | Strong retrieval performance |
+
+<Info>
+  Browse all available models at [ollama.com/library](https://ollama.com/library). Pull any model with `ollama pull <model-name>`.
+</Info>
+
+## Capabilities
+
+<CardGroup cols={2}>
+  <Card title="Chat Completion" icon="comments">
+    Conversational AI with streaming support for all chat-capable models.
+  </Card>
+  <Card title="Embeddings" icon="vector-square">
+    Local embedding generation for knowledge base indexing and semantic search.
+  </Card>
+  <Card title="Privacy" icon="lock">
+    All data stays on your hardware. No network calls to external services.
+  </Card>
+  <Card title="No Rate Limits" icon="infinity">
+    Run as many requests as your hardware can handle -- no quotas or throttling.
+  </Card>
+</CardGroup>
+
+## Hardware Requirements
+
+Model performance depends on your hardware. Here are general guidelines:
+
+| Model Size | Minimum RAM | Recommended GPU | Inference Speed |
+|-----------|-------------|----------------|----------------|
+| 1B -- 3B | 4 GB | Not required (CPU) | Fast |
+| 7B -- 8B | 8 GB | 8 GB VRAM | Moderate |
+| 13B -- 14B | 16 GB | 16 GB VRAM | Moderate |
+| 34B | 32 GB | 24 GB VRAM | Slower |
+| 70B | 64 GB | 48 GB VRAM (or 2x 24 GB) | Slow |
+
+<Tip>
+  For development and testing, **Llama 3.1 8B** or **Mistral 7B** on a machine with 16 GB RAM provides a good balance of quality and speed. For production use with demanding workloads, consider the 70B models on GPU-equipped servers.
+</Tip>
+
+## Connecting Remote Ollama
+
+If Ollama runs on a different machine (e.g., a GPU server), set the base URL to that machine's address:
+
+```
+Base URL: http://gpu-server.internal:11434
+```
+
+Ensure the Ollama server is configured to accept external connections by setting:
+
+```bash
+OLLAMA_HOST=0.0.0.0:11434
+```
+
+<Warning>
+  When exposing Ollama over a network, ensure it is only accessible within your trusted network or behind a reverse proxy with authentication. Ollama does not have built-in authentication.
+</Warning>
+
+## Environment Variable
+
+When self-hosting Nadoo AI, configure Ollama via environment variable:
+
+```bash
+OLLAMA_BASE_URL=http://localhost:11434
+```
+
+If both the environment variable and the admin UI configuration are set, the admin UI value takes precedence.
+
+## Recommended Models by Use Case
+
+| Use Case | Recommended Model | Reason |
+|----------|------------------|--------|
+| General chatbot | `llama3.1:8b` | Best all-around open-source model |
+| Complex reasoning | `llama3.1:70b` | Highest quality open-source |
+| Code assistant | `codellama:34b` | Purpose-built for code tasks |
+| Fast responses | `phi3:3.8b` | Small, fast, and capable |
+| Knowledge base search | `nomic-embed-text` | Strong embedding quality |
+| Multilingual | `qwen2.5:7b` | Excellent multilingual support |
+| Development / testing | `llama3.2:3b` | Fast iteration, low resource usage |
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Connection refused" icon="plug">
+    Ollama is not running or is listening on a different port. Start it with `ollama serve` and verify the base URL matches the configured address.
+  </Accordion>
+  <Accordion title="Model not found" icon="circle-xmark">
+    The model has not been pulled yet. Run `ollama pull <model-name>` to download it. Check available models with `ollama list`.
+  </Accordion>
+  <Accordion title="Slow inference" icon="gauge-high">
+    The model may be too large for your hardware. Try a smaller model (e.g., 8B instead of 70B) or ensure GPU acceleration is enabled. Check `ollama ps` to see resource usage.
+  </Accordion>
+  <Accordion title="Out of memory" icon="memory">
+    The model requires more RAM or VRAM than available. Use a smaller model or a quantized version (e.g., `llama3.1:8b-q4_0` for 4-bit quantization).
+  </Accordion>
+</AccordionGroup>

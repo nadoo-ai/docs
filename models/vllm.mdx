@@ -1,0 +1,214 @@
+---
+title: 'vLLM'
+description: 'High-throughput self-hosted inference with vLLM for production-scale open-source model serving'
+sidebarTitle: 'vLLM'
+'og:title': 'vLLM Provider - Nadoo AI'
+icon: 'bolt'
+---
+
+## Overview
+
+**vLLM** is a high-throughput, memory-efficient inference engine for large language models. It uses advanced techniques like PagedAttention, continuous batching, and speculative decoding to serve open-source models at significantly higher throughput than standard inference frameworks. vLLM exposes an **OpenAI-compatible API**, making it a drop-in replacement for OpenAI in Nadoo AI.
+
+Key benefits:
+
+- **High throughput** -- Serves 2--4x more requests per second than naive inference
+- **Memory efficient** -- PagedAttention reduces GPU memory waste by up to 60%
+- **OpenAI-compatible API** -- Standard `/v1/chat/completions` and `/v1/completions` endpoints
+- **Any HuggingFace model** -- Deploy any model from the HuggingFace Hub
+- **Production ready** -- Continuous batching, tensor parallelism, and streaming support
+
+## When to Use vLLM
+
+vLLM is the best choice when you need:
+
+- **High-volume production serving** of open-source models
+- **Maximum GPU utilization** for cost-effective inference
+- **Custom or fine-tuned models** from HuggingFace
+- **Self-hosted inference** with no data leaving your infrastructure
+- **Consistent low latency** under concurrent load
+
+<Info>
+  For development and small-scale use, [Ollama](/models/ollama) is simpler to set up. Use vLLM when you need production-grade throughput and GPU efficiency.
+</Info>
+
+## Setup
+
+<Steps>
+  <Step title="Install vLLM">
+    Install vLLM on a GPU-equipped server:
+
+    ```bash
+    pip install vllm
+    ```
+
+    **Requirements:**
+    - NVIDIA GPU with CUDA 11.8+
+    - Python 3.9+
+    - Sufficient GPU VRAM for your chosen model
+  </Step>
+  <Step title="Start the vLLM Server">
+    Launch vLLM with your chosen model:
+
+    ```bash
+    python -m vllm.entrypoints.openai.api_server \
+      --model meta-llama/Meta-Llama-3.1-8B-Instruct \
+      --port 8080 \
+      --tensor-parallel-size 1
+    ```
+
+    The server starts an OpenAI-compatible API at `http://localhost:8080`.
+  </Step>
+  <Step title="Configure in Nadoo">
+    Go to **Admin > Model Providers > vLLM** and enter:
+
+    | Field | Required | Description |
+    |-------|----------|-------------|
+    | Server URL | Yes | The vLLM server address (e.g., `http://gpu-server:8080`) |
+    | Model Name | Yes | The model identifier used when starting vLLM (e.g., `meta-llama/Meta-Llama-3.1-8B-Instruct`) |
+    | API Key | No | Optional API key if your vLLM server requires authentication |
+  </Step>
+  <Step title="Test Connection">
+    Click **Test** to verify the connection. The model will appear as an available LLM in your workspace.
+  </Step>
+</Steps>
+
+## Deployment Examples
+
+### Single GPU
+
+Serve a 7B--8B parameter model on a single GPU:
+
+```bash
+python -m vllm.entrypoints.openai.api_server \
+  --model meta-llama/Meta-Llama-3.1-8B-Instruct \
+  --port 8080 \
+  --max-model-len 8192
+```
+
+### Multi-GPU (Tensor Parallelism)
+
+Serve a 70B parameter model across multiple GPUs:
+
+```bash
+python -m vllm.entrypoints.openai.api_server \
+  --model meta-llama/Meta-Llama-3.1-70B-Instruct \
+  --port 8080 \
+  --tensor-parallel-size 4 \
+  --max-model-len 4096
+```
+
+### Docker
+
+Run vLLM in a Docker container:
+
+```bash
+docker run --gpus all \
+  -p 8080:8080 \
+  vllm/vllm-openai:latest \
+  --model meta-llama/Meta-Llama-3.1-8B-Instruct \
+  --port 8080
+```
+
+### Custom or Fine-Tuned Models
+
+Serve a fine-tuned model from a local path or HuggingFace:
+
+```bash
+# From HuggingFace
+python -m vllm.entrypoints.openai.api_server \
+  --model your-org/your-fine-tuned-model \
+  --port 8080
+
+# From local path
+python -m vllm.entrypoints.openai.api_server \
+  --model /path/to/model \
+  --port 8080
+```
+
+## Popular Models
+
+| Model | Parameters | GPU VRAM Required | Best For |
+|-------|-----------|-------------------|----------|
+| `meta-llama/Meta-Llama-3.1-8B-Instruct` | 8B | 16 GB | General-purpose chat |
+| `meta-llama/Meta-Llama-3.1-70B-Instruct` | 70B | 4x 24 GB | High-quality reasoning |
+| `mistralai/Mistral-7B-Instruct-v0.3` | 7B | 16 GB | Efficient general tasks |
+| `mistralai/Mixtral-8x7B-Instruct-v0.1` | 46.7B | 2x 24 GB | Mixture-of-experts |
+| `codellama/CodeLlama-34b-Instruct-hf` | 34B | 2x 24 GB | Code generation |
+| `deepseek-ai/DeepSeek-R1-Distill-Llama-8B` | 8B | 16 GB | Reasoning and math |
+
+## Capabilities
+
+<CardGroup cols={2}>
+  <Card title="Chat Completion" icon="comments">
+    OpenAI-compatible chat completions with streaming support and function calling.
+  </Card>
+  <Card title="High Throughput" icon="gauge-high">
+    Continuous batching and PagedAttention enable 2--4x more requests per second than naive serving.
+  </Card>
+  <Card title="Any HuggingFace Model" icon="cube">
+    Deploy any compatible model from the HuggingFace Hub, including your fine-tuned models.
+  </Card>
+  <Card title="GPU Efficient" icon="microchip">
+    PagedAttention reduces GPU memory waste, allowing you to serve larger models or more concurrent requests.
+  </Card>
+</CardGroup>
+
+## Performance Tuning
+
+### Key Server Parameters
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `--max-model-len` | Maximum sequence length (reduce to save memory) | Model default |
+| `--tensor-parallel-size` | Number of GPUs for tensor parallelism | 1 |
+| `--gpu-memory-utilization` | Fraction of GPU memory to use (0.0 -- 1.0) | 0.9 |
+| `--max-num-seqs` | Maximum concurrent sequences | 256 |
+| `--enable-prefix-caching` | Cache common prefixes to speed up similar requests | Disabled |
+| `--quantization` | Weight quantization method (`awq`, `gptq`, `squeezellm`) | None |
+
+### Optimization Tips
+
+<AccordionGroup>
+  <Accordion title="Reduce max-model-len for memory savings" icon="memory">
+    If your use case does not need the model's full context window, set `--max-model-len` to a smaller value (e.g., 4096 or 8192). This significantly reduces GPU memory usage.
+  </Accordion>
+  <Accordion title="Use quantization for larger models" icon="compress">
+    AWQ and GPTQ quantization let you run larger models on fewer GPUs with minimal quality loss. Use `--quantization awq` with pre-quantized model variants.
+  </Accordion>
+  <Accordion title="Enable prefix caching for repeated prompts" icon="bolt">
+    If many requests share the same system prompt or prefix, enable `--enable-prefix-caching` to avoid recomputing those tokens for each request.
+  </Accordion>
+  <Accordion title="Scale with tensor parallelism" icon="arrows-left-right">
+    For models too large for a single GPU, increase `--tensor-parallel-size` to distribute the model across multiple GPUs. Use NVLink-connected GPUs for best inter-GPU bandwidth.
+  </Accordion>
+</AccordionGroup>
+
+## Environment Variables
+
+When self-hosting Nadoo AI, configure vLLM via environment variables:
+
+```bash
+VLLM_SERVER_URL=http://gpu-server:8080
+VLLM_MODEL_NAME=meta-llama/Meta-Llama-3.1-8B-Instruct
+VLLM_API_KEY=optional-api-key
+```
+
+If both environment variables and the admin UI configuration are set, the admin UI values take precedence.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="CUDA out of memory" icon="memory">
+    The model requires more GPU VRAM than available. Reduce `--max-model-len`, use a quantized model, or distribute across more GPUs with `--tensor-parallel-size`.
+  </Accordion>
+  <Accordion title="Connection refused" icon="plug">
+    The vLLM server is not running or is on a different port. Verify the server is started and the URL in Nadoo matches the server's address and port.
+  </Accordion>
+  <Accordion title="Slow first response" icon="hourglass">
+    The first request after server startup may be slow due to model loading and CUDA kernel compilation. Subsequent requests will be fast.
+  </Accordion>
+  <Accordion title="Model not supported" icon="circle-xmark">
+    Not all HuggingFace models are supported by vLLM. Check the [vLLM supported models list](https://docs.vllm.ai/en/latest/models/supported_models.html) for compatibility.
+  </Accordion>
+</AccordionGroup>

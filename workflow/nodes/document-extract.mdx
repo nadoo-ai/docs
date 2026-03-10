@@ -1,0 +1,223 @@
+---
+title: 'Document Extract Node'
+description: 'Extract text, tables, and structured data from PDFs, DOCX files, and other document formats within workflows'
+sidebarTitle: 'Document Extract'
+'og:title': 'Document Extract Node - Nadoo AI'
+'og:description': 'Process uploaded documents in real time -- extract text, tables, and images from PDF, DOCX, and more'
+icon: 'file-lines'
+---
+
+## Overview
+
+The **Document Extract Node** processes uploaded documents within a running workflow, extracting text content, tables, and images into structured data that downstream nodes can consume. Unlike the Knowledge Base ingestion pipeline (which processes documents asynchronously for long-term storage), the Document Extract Node operates **synchronously** during workflow execution, making it ideal for on-the-fly document processing.
+
+## Supported Formats
+
+| Format | Extensions | Extraction Capabilities |
+|---|---|---|
+| PDF | `.pdf` | Full text, tables, embedded images, page-level metadata |
+| Microsoft Word | `.docx`, `.doc` | Text, tables, inline images, heading structure |
+| Plain Text | `.txt`, `.md` | Raw text content |
+| Spreadsheets | `.xlsx`, `.csv` | Tabular data with headers and cell values |
+| HTML | `.html`, `.htm` | Parsed text content with structural information |
+
+## How It Works
+
+<Steps>
+  <Step title="Receive Document">
+    The node reads a file reference from the workflow context. This is typically a file uploaded by the user through the Start Node or a Form Node.
+  </Step>
+  <Step title="Detect Format">
+    The document format is detected from the file extension and MIME type. The appropriate extraction engine is selected.
+  </Step>
+  <Step title="Extract Content">
+    Text, tables, and images are extracted from the document. For multi-page documents, content is organized by page.
+  </Step>
+  <Step title="Structure Output">
+    The extracted data is written to the workflow context as a structured object, ready for downstream nodes to process.
+  </Step>
+</Steps>
+
+## Configuration
+
+```json
+{
+  "type": "document-extract-node",
+  "config": {
+    "input_variable": "{{uploaded_file}}",
+    "extract_text": true,
+    "extract_tables": true,
+    "extract_images": false,
+    "page_range": null,
+    "output_variable": "extracted_content"
+  }
+}
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `input_variable` | string | -- | Reference to the uploaded file in the workflow context |
+| `extract_text` | boolean | `true` | Extract text content from the document |
+| `extract_tables` | boolean | `true` | Extract tables as structured arrays |
+| `extract_images` | boolean | `false` | Extract embedded images (increases processing time) |
+| `page_range` | string \| null | `null` | Page range to process (e.g., `"1-5"`, `"3,7,10"`). `null` processes all pages. |
+| `output_variable` | string | `"extracted_content"` | Context variable to store the extraction results |
+
+## Output Structure
+
+The node produces a structured extraction result:
+
+```json
+{
+  "extracted_content": {
+    "text": "Full extracted text content of the document...",
+    "pages": [
+      {
+        "page_number": 1,
+        "text": "Page 1 text content...",
+        "tables": [
+          {
+            "headers": ["Name", "Role", "Department"],
+            "rows": [
+              ["Alice Kim", "Engineer", "Platform"],
+              ["Bob Park", "Designer", "Product"]
+            ]
+          }
+        ]
+      },
+      {
+        "page_number": 2,
+        "text": "Page 2 text content..."
+      }
+    ],
+    "metadata": {
+      "filename": "quarterly-report.pdf",
+      "format": "pdf",
+      "page_count": 12,
+      "file_size_bytes": 245760
+    }
+  }
+}
+```
+
+| Field | Description |
+|---|---|
+| `text` | Concatenated text from all processed pages |
+| `pages` | Array of page-level extraction results |
+| `pages[].page_number` | 1-based page index |
+| `pages[].text` | Text content of the page |
+| `pages[].tables` | Array of tables found on the page |
+| `metadata` | File-level metadata including name, format, and size |
+
+## Example: Document Q&A Workflow
+
+A workflow that lets users upload a document and ask questions about its content:
+
+```mermaid
+graph LR
+    A[Start Node] --> B[Document Extract]
+    B --> C[AI Agent\n"Answer based on document"]
+    C --> D[End Node]
+
+    style A fill:#e1f5fe
+    style B fill:#fff3e0
+    style C fill:#fff9c4
+    style D fill:#c8e6c9
+```
+
+1. The user uploads a PDF and asks a question.
+2. **Document Extract Node** extracts the full text content.
+3. **AI Agent Node** receives both the user's question and the extracted text as context, then generates an answer.
+4. **End Node** delivers the response.
+
+### AI Agent System Prompt
+
+```
+You are a document analysis assistant. Answer the user's question based solely on the following document content:
+
+---
+{{extracted_content.text}}
+---
+
+If the answer is not found in the document, say so clearly.
+```
+
+## Example: Invoice Processing
+
+Extract structured data from uploaded invoices:
+
+```mermaid
+graph LR
+    A[Start] --> B[Document Extract]
+    B --> C[AI Agent\n"Extract invoice fields"]
+    C --> D[Python Code\n"Validate & format"]
+    D --> E[End]
+
+    style B fill:#fff3e0
+    style C fill:#fff9c4
+    style D fill:#e8f5e9
+```
+
+The AI Agent Node is configured to extract specific fields (invoice number, date, line items, total) from the extracted text, and the Python Code Node validates and formats the structured output.
+
+## Working with Tables
+
+When `extract_tables` is enabled, tables are extracted as structured arrays with headers and rows. This is particularly useful for spreadsheets and PDF documents containing tabular data.
+
+Access table data in downstream nodes:
+
+```
+{{extracted_content.pages[0].tables[0].headers}}  // ["Name", "Role", "Department"]
+{{extracted_content.pages[0].tables[0].rows[0]}}   // ["Alice Kim", "Engineer", "Platform"]
+```
+
+<Info>
+  Table extraction quality depends on the document format. PDF tables with clear grid lines extract most reliably. Complex merged cells or borderless tables may require post-processing with an AI Agent Node.
+</Info>
+
+## Page Range Selection
+
+For large documents, use `page_range` to process only the pages you need:
+
+| Syntax | Behavior |
+|---|---|
+| `"1-5"` | Pages 1 through 5 |
+| `"3,7,10"` | Only pages 3, 7, and 10 |
+| `"1-3,8-10"` | Pages 1-3 and 8-10 |
+| `null` | All pages (default) |
+
+This reduces processing time and keeps the extracted content focused on the relevant sections.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Limit page ranges for large documents">
+    Processing a 200-page PDF will be slow and produce a very large context. Use `page_range` or a preceding Question Node to ask the user which section they need.
+  </Accordion>
+  <Accordion title="Disable image extraction unless needed">
+    Image extraction significantly increases processing time. Only enable it when the workflow specifically needs to analyze embedded images (e.g., with an Image Understand Node downstream).
+  </Accordion>
+  <Accordion title="Use the full text for LLM context">
+    For Q&A workflows, pass `extracted_content.text` to the AI Agent Node's system prompt or user context. The LLM can then answer questions about the entire document.
+  </Accordion>
+  <Accordion title="Validate extraction quality">
+    For critical workflows, add a Condition Node after extraction to check `metadata.page_count` or text length, and route to an error handler if the extraction seems incomplete.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Search Knowledge" icon="magnifying-glass-chart" href="/workflow/nodes/search-knowledge">
+    Search pre-indexed knowledge bases for RAG
+  </Card>
+  <Card title="Database Node" icon="database" href="/workflow/nodes/database">
+    Query structured data from relational databases
+  </Card>
+  <Card title="Python Code Node" icon="python" href="/workflow/nodes/python-code">
+    Post-process extracted content with custom logic
+  </Card>
+  <Card title="AI Agent Node" icon="robot" href="/workflow/nodes/ai-agent">
+    Analyze extracted content with LLM reasoning
+  </Card>
+</CardGroup>

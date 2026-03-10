@@ -1,0 +1,327 @@
+---
+title: 'KakaoTalk'
+description: 'Deploy AI agents to KakaoTalk with skill-based chatbot configuration and rich card responses'
+sidebarTitle: 'KakaoTalk'
+'og:title': 'KakaoTalk Integration - Nadoo AI'
+'og:description': 'Register on Kakao Developers, configure skills for chatbot responses, and deploy Nadoo AI agents to KakaoTalk'
+---
+
+## Overview
+
+The KakaoTalk integration lets you deploy Nadoo AI agents as KakaoTalk chatbots through the Kakao i Open Builder platform. Users interact with the agent through the KakaoTalk messaging app, receiving text messages, carousel cards, quick replies, and link-based responses. KakaoTalk is the dominant messaging platform in South Korea with over 50 million active users.
+
+## Setup
+
+<Steps>
+  <Step title="Create a Kakao Channel">
+    1. Go to [Kakao Business](https://business.kakao.com) and log in with your Kakao account.
+    2. Navigate to **Kakao Talk Channel** and click **Create Channel**.
+    3. Fill in the channel information:
+       - **Channel name** -- The public-facing name of your chatbot
+       - **Channel ID** -- A unique identifier
+       - **Category** -- Select the category that best matches your use case
+    4. Complete the verification process if required for your channel type.
+  </Step>
+  <Step title="Set Up a Chatbot in Kakao i Open Builder">
+    1. Go to the [Kakao i Open Builder](https://i.kakao.com) and log in.
+    2. Click **Create Bot** and link it to the KakaoTalk Channel you created.
+    3. In the bot's dashboard, you will configure **Scenarios** and **Skills** that connect to Nadoo AI.
+  </Step>
+  <Step title="Create a Skill">
+    Skills in Kakao i Open Builder are webhook endpoints that the chatbot calls to generate dynamic responses.
+
+    1. In the Open Builder, navigate to **Skills** and click **Create**.
+    2. Configure the skill:
+
+    | Field | Value |
+    |---|---|
+    | **Skill Name** | Nadoo AI Agent |
+    | **Callback URL** | `https://your-instance.example.com/api/v1/webhooks/handle/kakaotalk` |
+    | **Method** | POST |
+
+    3. Click **Save**.
+  </Step>
+  <Step title="Map Skills to Scenario Blocks">
+    1. In the Open Builder, navigate to **Scenarios**.
+    2. Create or edit a scenario block (e.g., the **Fallback Block** to handle all unrecognized messages).
+    3. In the block's response settings, select **Skill Response** and choose the Nadoo AI skill you created.
+    4. This routes all matching user messages to your Nadoo AI webhook.
+
+    You can create multiple scenario blocks for different intents, each mapped to different workflows.
+  </Step>
+  <Step title="Configure in Nadoo AI">
+    In the Nadoo AI platform:
+
+    1. Navigate to your workspace and open **Channels**.
+    2. Click **Add Channel** and select **KakaoTalk**.
+    3. Enter the following:
+
+    | Field | Value |
+    |---|---|
+    | **Bot ID** | The bot ID from Kakao i Open Builder |
+    | **API Key** | The REST API key from your Kakao app settings |
+    | **Workflow** | Select the workflow to handle KakaoTalk messages |
+
+    4. Click **Save** and toggle the channel to **Active**.
+  </Step>
+  <Step title="Deploy and Test">
+    1. In the Kakao i Open Builder, click **Deploy** to make your chatbot live.
+    2. Open KakaoTalk, search for your channel, and add it as a friend.
+    3. Send a test message. The bot should respond using the configured workflow.
+  </Step>
+</Steps>
+
+## Skill Configuration
+
+KakaoTalk chatbots use a **Skill** architecture where the Open Builder sends user messages to your callback URL and expects a structured JSON response.
+
+### Incoming Request Format
+
+When a user sends a message, Kakao i Open Builder sends a POST request to your skill callback URL:
+
+```json
+{
+  "intent": {
+    "id": "intent_id",
+    "name": "Default Fallback"
+  },
+  "userRequest": {
+    "timezone": "Asia/Seoul",
+    "utterance": "What is your refund policy?",
+    "lang": "ko",
+    "user": {
+      "id": "user_unique_id",
+      "type": "botUserKey",
+      "properties": {}
+    }
+  },
+  "bot": {
+    "id": "bot_id",
+    "name": "Nadoo AI Agent"
+  },
+  "action": {
+    "name": "nadoo_ai_skill",
+    "clientExtra": {},
+    "params": {},
+    "detailParams": {}
+  }
+}
+```
+
+### Response Format
+
+Nadoo AI returns a response in Kakao's SkillResponse format:
+
+```json
+{
+  "version": "2.0",
+  "template": {
+    "outputs": [
+      {
+        "simpleText": {
+          "text": "Our refund policy allows returns within 30 days of purchase..."
+        }
+      }
+    ],
+    "quickReplies": [
+      {
+        "messageText": "Tell me more about refund exceptions",
+        "action": "message",
+        "label": "Refund Exceptions"
+      },
+      {
+        "messageText": "How do I request a refund?",
+        "action": "message",
+        "label": "Request Refund"
+      }
+    ]
+  }
+}
+```
+
+## Supported Features
+
+### Text Messages
+
+Standard text responses are the simplest response type.
+
+```json
+{
+  "template": {
+    "outputs": [
+      {
+        "simpleText": {
+          "text": "Your response text here. Supports up to 1000 characters."
+        }
+      }
+    ]
+  }
+}
+```
+
+### Carousel Cards
+
+Display a horizontal scrollable list of cards, each with an image, title, description, and buttons.
+
+```json
+{
+  "template": {
+    "outputs": [
+      {
+        "carousel": {
+          "type": "basicCard",
+          "items": [
+            {
+              "title": "Getting Started Guide",
+              "description": "Learn the basics of using our platform",
+              "thumbnail": {
+                "imageUrl": "https://example.com/image1.png"
+              },
+              "buttons": [
+                {
+                  "action": "webLink",
+                  "label": "Read Guide",
+                  "webLinkUrl": "https://docs.example.com/getting-started"
+                }
+              ]
+            },
+            {
+              "title": "API Reference",
+              "description": "Full API documentation for developers",
+              "thumbnail": {
+                "imageUrl": "https://example.com/image2.png"
+              },
+              "buttons": [
+                {
+                  "action": "webLink",
+                  "label": "View API Docs",
+                  "webLinkUrl": "https://docs.example.com/api"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+```
+
+### Quick Replies
+
+Quick replies appear as tappable buttons below the message, allowing users to respond with a single tap.
+
+```json
+{
+  "template": {
+    "quickReplies": [
+      {
+        "messageText": "Check order status",
+        "action": "message",
+        "label": "Order Status"
+      },
+      {
+        "messageText": "Contact support",
+        "action": "message",
+        "label": "Support"
+      },
+      {
+        "messageText": "Browse products",
+        "action": "message",
+        "label": "Products"
+      }
+    ]
+  }
+}
+```
+
+### Image and Link Cards
+
+Send rich cards with images and action buttons.
+
+```json
+{
+  "template": {
+    "outputs": [
+      {
+        "basicCard": {
+          "title": "Monthly Report - March 2026",
+          "description": "Your monthly usage report is ready",
+          "thumbnail": {
+            "imageUrl": "https://example.com/report-preview.png"
+          },
+          "buttons": [
+            {
+              "action": "webLink",
+              "label": "Download Report",
+              "webLinkUrl": "https://example.com/reports/march-2026"
+            },
+            {
+              "action": "message",
+              "label": "Summarize Report",
+              "messageText": "Summarize the March 2026 report"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+```
+
+## Response Configuration
+
+The KakaoTalk adapter in Nadoo AI converts your workflow's text output into the appropriate Kakao SkillResponse format. You can configure the response behavior in the channel settings.
+
+| Setting | Default | Description |
+|---|---|---|
+| `response_format` | `simpleText` | Default output type: `simpleText`, `basicCard`, or `carousel` |
+| `enable_quick_replies` | `true` | Include AI-generated quick reply suggestions |
+| `max_text_length` | 1000 | Maximum characters per text response (Kakao limit) |
+| `fallback_message` | "I'm sorry, I couldn't process your request." | Message shown when the workflow fails |
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use quick replies for guided conversations" icon="hand-pointer">
+    Quick replies reduce friction and guide users toward common actions. Configure your workflow to include relevant quick reply options with each response.
+  </Accordion>
+  <Accordion title="Respect the 5-second timeout" icon="clock">
+    Kakao i Open Builder expects a skill response within 5 seconds. For longer processing, return an immediate acknowledgment and use a follow-up message pattern. Configure your workflow to prioritize fast initial responses.
+  </Accordion>
+  <Accordion title="Use carousel cards for lists" icon="images">
+    When presenting multiple options or search results, use carousel cards instead of long text lists. Cards are more visually appealing and easier to navigate on mobile.
+  </Accordion>
+  <Accordion title="Handle Korean language properly" icon="language">
+    KakaoTalk is primarily used by Korean-speaking users. Configure your AI agent's system prompt to respond in Korean when the user's language is detected as Korean. Test with Korean text input to verify proper handling.
+  </Accordion>
+  <Accordion title="Map multiple scenarios to different workflows" icon="route">
+    Create separate scenario blocks in the Open Builder for different intents (e.g., FAQ, order status, support). Map each to a different Nadoo AI workflow for specialized handling.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+| Issue | Solution |
+|---|---|
+| Skill timeout (no response) | Check that your Nadoo AI instance is reachable and the workflow completes within 5 seconds |
+| "Skill callback error" in Open Builder | Verify the callback URL is correct and returns a valid SkillResponse JSON |
+| Bot does not respond to messages | Check that the scenario block is mapped to the correct skill and the bot is deployed |
+| Korean text garbled | Ensure your Nadoo AI instance handles UTF-8 encoding correctly |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Channels Overview" icon="comments" href="/channels/overview">
+    Multi-channel messaging architecture
+  </Card>
+  <Card title="Telegram" icon="paper-plane" href="/channels/telegram">
+    Set up the Telegram integration
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/channels/webhooks">
+    Webhook delivery, verification, and monitoring
+  </Card>
+  <Card title="Workflow Engine" icon="diagram-project" href="/workflow/overview">
+    Build the workflows that power your KakaoTalk bot
+  </Card>
+</CardGroup>

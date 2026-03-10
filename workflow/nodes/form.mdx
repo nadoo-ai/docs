@@ -1,0 +1,359 @@
+---
+title: 'Form Node'
+description: 'Collect structured data from users with validated form fields, supporting text, number, select, checkbox, and more'
+sidebarTitle: 'Form'
+'og:title': 'Form Node - Nadoo AI'
+'og:description': 'Build interactive forms within Nadoo AI workflows to collect structured user input with validation'
+icon: 'rectangle-list'
+---
+
+## Overview
+
+The **Form Node** presents a structured form to the user, collects validated input across multiple fields, and writes the responses to the workflow context. Unlike the Question Node (which collects a single free-text response), the Form Node supports multiple typed fields with validation rules, making it ideal for gathering structured data like registration details, configuration options, or multi-field requests.
+
+When the workflow reaches a Form Node, execution pauses with an `INTERRUPTED` status until the user submits the form.
+
+## How It Works
+
+<Steps>
+  <Step title="Present Form">
+    The workflow reaches the Form Node and emits a `form_requested` SSE event containing the form definition. The chat interface renders the form fields.
+  </Step>
+  <Step title="User Fills Form">
+    The user fills in the form fields. Client-side validation runs as they type.
+  </Step>
+  <Step title="Submit and Validate">
+    The user submits the form. Server-side validation checks all required fields and type constraints.
+  </Step>
+  <Step title="Resume Execution">
+    The validated form data is written to the workflow context, and execution continues from the Form Node's output edge.
+  </Step>
+</Steps>
+
+## Configuration
+
+```json
+{
+  "type": "form-node",
+  "config": {
+    "title": "Project Details",
+    "description": "Please provide the details for your new project.",
+    "fields": [
+      {
+        "name": "project_name",
+        "type": "text",
+        "label": "Project Name",
+        "required": true,
+        "placeholder": "e.g., Website Redesign"
+      },
+      {
+        "name": "priority",
+        "type": "select",
+        "label": "Priority",
+        "required": true,
+        "options": ["Low", "Medium", "High", "Critical"]
+      },
+      {
+        "name": "team_size",
+        "type": "number",
+        "label": "Team Size",
+        "required": false,
+        "default": 3,
+        "min": 1,
+        "max": 50
+      },
+      {
+        "name": "description",
+        "type": "textarea",
+        "label": "Project Description",
+        "required": false,
+        "max_length": 500
+      },
+      {
+        "name": "notify_slack",
+        "type": "checkbox",
+        "label": "Send notifications to Slack",
+        "default": true
+      }
+    ],
+    "output_variable": "form_data"
+  }
+}
+```
+
+<Info>
+  The `config` value must be a JSON **object**. If the config is provided as a JSON string, it is automatically parsed into an object before the node executes.
+</Info>
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `title` | string | `""` | Form title displayed to the user |
+| `description` | string | `""` | Optional description text below the title |
+| `fields` | array | -- | List of form field definitions (required) |
+| `output_variable` | string | `"form_data"` | Context variable to store the submitted form data |
+
+## Field Types
+
+### Text
+
+Single-line text input.
+
+```json
+{
+  "name": "company_name",
+  "type": "text",
+  "label": "Company Name",
+  "required": true,
+  "placeholder": "Enter company name",
+  "min_length": 2,
+  "max_length": 100,
+  "pattern": "^[A-Za-z0-9 ]+$"
+}
+```
+
+| Property | Type | Description |
+|---|---|---|
+| `placeholder` | string | Hint text shown when the field is empty |
+| `min_length` | number | Minimum character count |
+| `max_length` | number | Maximum character count |
+| `pattern` | string | Regex pattern for validation |
+
+### Textarea
+
+Multi-line text input.
+
+```json
+{
+  "name": "notes",
+  "type": "textarea",
+  "label": "Additional Notes",
+  "required": false,
+  "max_length": 1000,
+  "rows": 4
+}
+```
+
+### Number
+
+Numeric input with optional range constraints.
+
+```json
+{
+  "name": "budget",
+  "type": "number",
+  "label": "Budget (USD)",
+  "required": true,
+  "min": 0,
+  "max": 1000000,
+  "step": 100,
+  "default": 5000
+}
+```
+
+### Select
+
+Dropdown selection from predefined options.
+
+```json
+{
+  "name": "department",
+  "type": "select",
+  "label": "Department",
+  "required": true,
+  "options": ["Engineering", "Design", "Marketing", "Sales", "Operations"],
+  "default": "Engineering"
+}
+```
+
+### Checkbox
+
+Boolean toggle.
+
+```json
+{
+  "name": "agree_terms",
+  "type": "checkbox",
+  "label": "I agree to the terms and conditions",
+  "required": true,
+  "default": false
+}
+```
+
+### Date
+
+Date picker.
+
+```json
+{
+  "name": "deadline",
+  "type": "date",
+  "label": "Deadline",
+  "required": true,
+  "min_date": "2026-03-09",
+  "max_date": "2026-12-31"
+}
+```
+
+### Email
+
+Email input with built-in format validation.
+
+```json
+{
+  "name": "contact_email",
+  "type": "email",
+  "label": "Contact Email",
+  "required": true
+}
+```
+
+## Output Structure
+
+When the user submits the form, the collected data is written to the workflow context as an object keyed by field names:
+
+```json
+{
+  "form_data": {
+    "project_name": "Website Redesign",
+    "priority": "High",
+    "team_size": 5,
+    "description": "Complete overhaul of the company website with new design system.",
+    "notify_slack": true
+  }
+}
+```
+
+Access individual fields in downstream nodes with `{{form_data.project_name}}`, `{{form_data.priority}}`, etc.
+
+## INTERRUPTED Status
+
+When the Form Node executes, the workflow enters the `INTERRUPTED` status. This is a special state that indicates the workflow is waiting for external input (in this case, user form submission).
+
+Key behaviors during `INTERRUPTED` status:
+
+- The workflow engine preserves the full execution state
+- No downstream nodes execute until the form is submitted
+- The client receives the `form_requested` SSE event with the form definition
+- The workflow resumes automatically when the form submission is received
+
+This mechanism also supports **asynchronous workflows** where the user may submit the form minutes or hours later -- the workflow state is persisted and will resume correctly.
+
+## Standalone vs. Post-Start Usage
+
+The Form Node can be placed in two positions:
+
+### After Start Node (Common)
+
+The user sends an initial message, the Start Node processes it, and then the Form Node collects additional structured details.
+
+```mermaid
+graph LR
+    A[Start] --> B[Form Node\n"Collect details"]
+    B --> C[AI Agent]
+    C --> D[End]
+
+    style A fill:#e1f5fe
+    style B fill:#fff9c4
+```
+
+### As the First Interaction
+
+The Form Node can also serve as the workflow's initial interaction point, presenting a form immediately without requiring an initial message.
+
+```mermaid
+graph LR
+    A[Start] --> B[Form Node\n"Initial intake form"]
+    B --> C[Condition]
+    C --> D[...]
+
+    style A fill:#e1f5fe
+    style B fill:#fff9c4
+```
+
+## Example: Support Ticket Intake
+
+A workflow that collects ticket details before routing to the appropriate handler:
+
+```json
+{
+  "type": "form-node",
+  "config": {
+    "title": "Support Request",
+    "description": "Help us route your request to the right team.",
+    "fields": [
+      {
+        "name": "category",
+        "type": "select",
+        "label": "Issue Category",
+        "required": true,
+        "options": ["Billing", "Technical", "Account", "Feature Request", "Other"]
+      },
+      {
+        "name": "severity",
+        "type": "select",
+        "label": "Severity",
+        "required": true,
+        "options": ["Low", "Medium", "High", "Critical"]
+      },
+      {
+        "name": "subject",
+        "type": "text",
+        "label": "Subject",
+        "required": true,
+        "max_length": 200
+      },
+      {
+        "name": "description",
+        "type": "textarea",
+        "label": "Description",
+        "required": true,
+        "placeholder": "Describe your issue in detail...",
+        "max_length": 2000
+      },
+      {
+        "name": "allow_followup",
+        "type": "checkbox",
+        "label": "Allow follow-up via email",
+        "default": true
+      }
+    ],
+    "output_variable": "ticket"
+  }
+}
+```
+
+After submission, a Condition Node branches on `{{ticket.category}}` to route the request to the appropriate AI Agent or team.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep forms concise">
+    Limit forms to 5-7 fields. If you need more information, consider splitting into multiple Form Nodes across the workflow, collecting data progressively.
+  </Accordion>
+  <Accordion title="Use appropriate field types">
+    Choose the most specific field type for each piece of data. A `select` is better than a `text` field when options are known. A `number` field prevents non-numeric input at the client level.
+  </Accordion>
+  <Accordion title="Provide sensible defaults">
+    Pre-populate fields with reasonable default values to reduce user effort. This is especially important for optional fields.
+  </Accordion>
+  <Accordion title="Mark only essential fields as required">
+    Every required field adds friction. Mark a field as required only when the workflow truly cannot proceed without it.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Start & End Nodes" icon="play" href="/workflow/nodes/start-end">
+    Configure entry points that lead to form collection
+  </Card>
+  <Card title="Condition Node" icon="code-branch" href="/workflow/nodes/condition">
+    Branch based on form responses
+  </Card>
+  <Card title="Direct Reply Node" icon="reply" href="/workflow/nodes/direct-reply">
+    Confirm form submission with an acknowledgment message
+  </Card>
+  <Card title="AI Agent Node" icon="robot" href="/workflow/nodes/ai-agent">
+    Process form data with LLM reasoning
+  </Card>
+</CardGroup>

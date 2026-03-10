@@ -1,0 +1,219 @@
+---
+title: 'Authentication'
+description: 'Authentication methods for the Nadoo AI API'
+sidebarTitle: 'Authentication'
+'og:title': 'API Authentication - Nadoo AI'
+icon: 'lock'
+---
+
+## Overview
+
+The Nadoo AI API supports three authentication methods. Choose the one that best fits your integration scenario.
+
+<CardGroup cols={3}>
+  <Card title="JWT Bearer" icon="key">
+    Token-based auth for user-scoped access. Best for frontend apps and user-facing integrations.
+  </Card>
+  <Card title="API Key" icon="shield">
+    Static key for server-to-server calls. Best for backend integrations and CI/CD.
+  </Card>
+  <Card title="Cookie Session" icon="cookie">
+    Browser-managed session cookie. Automatically used by the Nadoo AI frontend.
+  </Card>
+</CardGroup>
+
+---
+
+## JWT Bearer Token
+
+JWT (JSON Web Token) authentication provides user-scoped access with short-lived access tokens and long-lived refresh tokens.
+
+### Login Flow
+
+<Steps>
+  <Step title="Authenticate">
+    Send credentials to the login endpoint:
+
+    ```bash
+    POST /api/v1/auth/login
+    Content-Type: application/json
+
+    {
+      "email": "user@example.com",
+      "password": "your-password"
+    }
+    ```
+  </Step>
+  <Step title="Receive Tokens">
+    The response contains an access token and a refresh token:
+
+    ```json
+    {
+      "data": {
+        "access_token": "eyJhbGciOiJIUzI1NiIs...",
+        "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
+        "token_type": "bearer",
+        "expires_in": 1800
+      },
+      "status": "success",
+      "code": 200,
+      "message": "Login successful"
+    }
+    ```
+  </Step>
+  <Step title="Use the Access Token">
+    Include the access token in the `Authorization` header for all subsequent requests:
+
+    ```bash
+    GET /api/v1/applications
+    Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+    ```
+  </Step>
+</Steps>
+
+### Token Refresh
+
+Access tokens expire after a configurable period (default: 30 minutes). Use the refresh token to obtain a new access token without re-authenticating:
+
+```bash
+POST /api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+Response:
+
+```json
+{
+  "data": {
+    "access_token": "eyJhbGciOiJIUzI1NiIs...",
+    "expires_in": 1800
+  },
+  "status": "success",
+  "code": 200,
+  "message": "Token refreshed"
+}
+```
+
+<Info>
+  Refresh tokens have a longer lifetime (default: 7 days). When a refresh token expires, the user must log in again. Both lifetimes are configurable via environment variables `ACCESS_TOKEN_EXPIRE_MINUTES` and `REFRESH_TOKEN_EXPIRE_DAYS`.
+</Info>
+
+---
+
+## API Key
+
+API keys provide a simple authentication method for programmatic access. They are scoped to a specific workspace and do not expire unless manually revoked.
+
+### Creating an API Key
+
+1. Navigate to **Workspace Settings > API Keys**
+2. Click **Create New Key**
+3. Give the key a descriptive name
+4. Copy the key immediately -- it will not be shown again
+
+Or via the API:
+
+```bash
+POST /api/v1/api-keys
+Authorization: Bearer {your-access-token}
+
+{
+  "name": "CI/CD Pipeline Key"
+}
+```
+
+### Using an API Key
+
+Include the key in the `X-API-Key` header:
+
+```bash
+GET /api/v1/applications
+X-API-Key: nai-your-api-key-here
+```
+
+### API Key Management
+
+| Operation | Endpoint | Description |
+|-----------|----------|-------------|
+| Create | `POST /api/v1/api-keys` | Generate a new API key |
+| List | `GET /api/v1/api-keys` | List all keys in the workspace |
+| Delete | `DELETE /api/v1/api-keys/{id}` | Revoke a key permanently |
+
+<Warning>
+  API keys grant full access to the workspace they are scoped to. Store them securely, rotate them regularly, and never expose them in client-side code or version control.
+</Warning>
+
+---
+
+## Cookie Session
+
+Cookie-based authentication is used automatically by the Nadoo AI web frontend. When a user logs in through the browser, the server sets an HTTP-only session cookie.
+
+- The cookie is set automatically by the `POST /api/v1/auth/login` endpoint when called from a browser
+- The frontend includes the cookie in all subsequent requests automatically
+- The cookie is HTTP-only and Secure (in production), preventing client-side JavaScript access
+
+<Note>
+  You do not need to manage cookie authentication manually. It is handled transparently by the browser and the Nadoo AI frontend. Use JWT Bearer or API Key for custom integrations.
+</Note>
+
+---
+
+## Authentication Priority
+
+When multiple authentication methods are present in a request, Nadoo AI evaluates them in the following order:
+
+1. **JWT Bearer token** (highest priority)
+2. **API Key**
+3. **Cookie Session**
+
+If none are present, the request is treated as unauthenticated and receives a `401 Unauthorized` response (unless the endpoint is public).
+
+---
+
+## Rate Limits
+
+Rate limits are applied per authentication identity:
+
+| Scope | Limit | Description |
+|-------|-------|-------------|
+| **IP-based** | 300 requests/min | Applied to unauthenticated requests and as a baseline for all traffic |
+| **User-based** | 600 requests/min | Applied per authenticated user (JWT or API Key) |
+
+When rate-limited, the API returns:
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 12
+Content-Type: application/json
+
+{
+  "data": null,
+  "status": "error",
+  "code": 429,
+  "message": "Rate limit exceeded. Retry after 12 seconds."
+}
+```
+
+---
+
+## Security Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always use HTTPS in production" icon="lock">
+    Never transmit tokens or API keys over unencrypted HTTP. Configure TLS in your Nginx reverse proxy or load balancer.
+  </Accordion>
+  <Accordion title="Rotate API keys regularly" icon="rotate">
+    Set a rotation schedule (e.g., every 90 days). Nadoo AI allows you to create a new key before revoking the old one for zero-downtime rotation.
+  </Accordion>
+  <Accordion title="Use the principle of least privilege" icon="user-shield">
+    Assign the minimum workspace role needed for each user. Use Viewer roles for read-only access and reserve Admin/Owner roles for administrators.
+  </Accordion>
+  <Accordion title="Store secrets securely" icon="vault">
+    Use a secrets manager (AWS Secrets Manager, HashiCorp Vault, etc.) for API keys and tokens. Never hardcode them in source code.
+  </Accordion>
+</AccordionGroup>

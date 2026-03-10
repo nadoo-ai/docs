@@ -1,0 +1,255 @@
+---
+title: 'Discord'
+description: 'Deploy AI agents to Discord with bot token authentication, slash commands, and rich embeds'
+sidebarTitle: 'Discord'
+'og:title': 'Discord Integration - Nadoo AI'
+'og:description': 'Set up a Discord bot, configure permissions, and deploy Nadoo AI agents to your Discord server'
+---
+
+## Overview
+
+The Discord integration lets you deploy Nadoo AI agents as Discord bots in your server. Users interact with the bot through channel messages, direct messages, slash commands, and interactive components. The integration supports rich embeds, reactions, button interactions, and file attachments.
+
+## Setup
+
+<Steps>
+  <Step title="Create a Discord Application">
+    1. Go to the [Discord Developer Portal](https://discord.com/developers/applications) and click **New Application**.
+    2. Give your application a name (e.g., "Nadoo AI Agent") and click **Create**.
+    3. Note the **Application ID** from the General Information page.
+  </Step>
+  <Step title="Create a Bot">
+    1. Navigate to the **Bot** section in the left sidebar.
+    2. Click **Add Bot** and confirm.
+    3. Under the bot's username, click **Reset Token** to generate a new token. Copy and save it securely -- you will not be able to see it again.
+    4. Under **Privileged Gateway Intents**, enable:
+       - **Message Content Intent** -- Required for reading message text
+       - **Server Members Intent** -- Optional, for user lookup features
+  </Step>
+  <Step title="Configure Bot Permissions">
+    Navigate to **OAuth2** > **URL Generator** and select the following:
+
+    **Scopes:**
+    - `bot`
+    - `applications.commands`
+
+    **Bot Permissions:**
+
+    | Permission | Purpose |
+    |---|---|
+    | Send Messages | Reply to user messages |
+    | Read Message History | Access conversation context |
+    | Embed Links | Send rich embed responses |
+    | Attach Files | Share files with users |
+    | Use Slash Commands | Register and respond to slash commands |
+    | Add Reactions | React to messages |
+    | Manage Messages | Edit or delete bot messages (optional) |
+
+    Copy the generated URL at the bottom of the page.
+  </Step>
+  <Step title="Invite the Bot to Your Server">
+    1. Open the generated URL in your browser.
+    2. Select the server where you want to add the bot.
+    3. Authorize the requested permissions.
+    4. Complete the CAPTCHA if prompted.
+  </Step>
+  <Step title="Configure in Nadoo AI">
+    In the Nadoo AI platform:
+
+    1. Navigate to your workspace and open **Channels**.
+    2. Click **Add Channel** and select **Discord**.
+    3. Enter the following credentials:
+
+    | Field | Value |
+    |---|---|
+    | **Bot Token** | The bot token from Step 2 |
+    | **Application ID** | The application ID from Step 1 |
+    | **Guild ID** | Your Discord server ID (right-click server name > Copy Server ID) |
+    | **Workflow** | Select the workflow to handle Discord messages |
+
+    4. Click **Save** and toggle the channel to **Active**.
+  </Step>
+  <Step title="Test the Integration">
+    Open Discord, navigate to a channel where the bot has been added, and send a message mentioning the bot or use a slash command. The bot should respond using the configured workflow.
+  </Step>
+</Steps>
+
+## Supported Features
+
+### Channel Messages and DMs
+
+| Feature | Description |
+|---|---|
+| **Channel messages** | The bot responds when mentioned (@bot) or when configured to listen to all messages in specific channels |
+| **Direct messages** | Users can DM the bot for private conversations |
+| **Thread support** | The bot can create and reply within Discord threads |
+| **Conversation history** | Previous messages in the channel or DM are included as context |
+
+### Slash Commands
+
+Discord slash commands provide a structured way for users to interact with the bot. Nadoo AI automatically registers slash commands when you configure them.
+
+```
+/ask question:How does authentication work?
+/search query:refund policy document:policies
+/summarize channel:#engineering
+```
+
+**Slash command configuration:**
+
+```json
+{
+  "slash_commands": [
+    {
+      "name": "ask",
+      "description": "Ask the AI agent a question",
+      "options": [
+        {
+          "name": "question",
+          "type": "string",
+          "description": "Your question",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "search",
+      "description": "Search the knowledge base",
+      "options": [
+        {
+          "name": "query",
+          "type": "string",
+          "description": "Search query",
+          "required": true
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Rich Embeds
+
+The bot sends responses as rich embeds with custom formatting, colors, and fields.
+
+```json
+{
+  "embed": {
+    "title": "Authentication Token Lifecycle",
+    "description": "Access tokens expire after 15 minutes. Refresh tokens are rotated on each use.",
+    "color": 3447003,
+    "fields": [
+      { "name": "Access Token TTL", "value": "15 minutes", "inline": true },
+      { "name": "Refresh Token TTL", "value": "7 days", "inline": true }
+    ],
+    "footer": { "text": "Source: auth-architecture.md" }
+  }
+}
+```
+
+The Discord adapter automatically converts Markdown responses from your workflow into embed format. You can also configure the embed style (color, footer, thumbnail) in the channel settings.
+
+### Interactive Components
+
+| Component | Description |
+|---|---|
+| **Buttons** | Action buttons for user choices (e.g., "Yes / No", "Show more") |
+| **Select menus** | Dropdown menus for selecting from a list of options |
+| **Reactions** | The bot can add reactions to messages and respond to user reactions |
+
+### File Handling
+
+| Feature | Description |
+|---|---|
+| **File attachments** | Users can attach files. The bot can process documents, images, and other supported formats. |
+| **File responses** | The bot can send files back to the user (reports, exports, generated content) |
+
+## Guild Permissions
+
+Control which channels and roles can interact with the bot using Discord's native permission system.
+
+### Channel Restrictions
+
+Restrict the bot to specific channels by configuring channel permissions in Discord:
+
+1. Go to the channel's settings > **Permissions**.
+2. Add the bot role and set the desired permissions.
+3. Deny permissions in channels where the bot should not operate.
+
+Alternatively, configure allowed channels in the Nadoo AI channel settings:
+
+```json
+{
+  "allowed_channels": ["general", "support", "engineering"],
+  "ignored_channels": ["random", "off-topic"]
+}
+```
+
+### Role-Based Access
+
+Restrict bot interactions to specific Discord roles:
+
+```json
+{
+  "allowed_roles": ["Team Member", "Admin"],
+  "admin_roles": ["Admin"]
+}
+```
+
+Users with `admin_roles` can access additional commands like `/config` and `/status`.
+
+## Rate Limits and Best Practices
+
+### Discord API Rate Limits
+
+Discord enforces rate limits per route. Nadoo AI's delivery queue handles these automatically.
+
+| Route | Rate Limit |
+|---|---|
+| Send message (per channel) | 5 messages per 5 seconds |
+| Edit message | 5 edits per 5 seconds |
+| Global | 50 requests per second |
+| Slash command registration | 200 per day per guild |
+
+### Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use slash commands for structured input" icon="terminal">
+    Slash commands provide autocomplete, parameter validation, and a better user experience than parsing free-form messages. Define commands for your most common agent interactions.
+  </Accordion>
+  <Accordion title="Use ephemeral responses for private data" icon="eye-slash">
+    For sensitive information, configure the bot to send ephemeral messages that are only visible to the requesting user. Set `ephemeral: true` in the response configuration.
+  </Accordion>
+  <Accordion title="Use embeds for structured responses" icon="table-columns">
+    Embeds are more readable than plain text for structured data. Use fields for key-value pairs, footers for source citations, and color coding for response categories.
+  </Accordion>
+  <Accordion title="Set up a dedicated bot channel" icon="hashtag">
+    Create a dedicated channel for bot interactions (e.g., #ai-assistant) to avoid cluttering other channels. Users who want to interact with the bot can go to that channel.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+| Issue | Solution |
+|---|---|
+| Bot is offline in Discord | Verify the bot token is correct and the channel is **Active** in Nadoo AI |
+| "Missing Permissions" error | Check that the bot has the required permissions in the target channel |
+| Slash commands not showing | Commands can take up to 1 hour to propagate globally. Use guild-specific commands for instant registration. |
+| Message Content Intent error | Enable the **Message Content Intent** in the Discord Developer Portal under Bot > Privileged Gateway Intents |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Channels Overview" icon="comments" href="/channels/overview">
+    Multi-channel messaging architecture
+  </Card>
+  <Card title="Slack" icon="slack" href="/channels/slack">
+    Set up the Slack integration
+  </Card>
+  <Card title="Telegram" icon="paper-plane" href="/channels/telegram">
+    Set up the Telegram integration
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/channels/webhooks">
+    Webhook delivery, verification, and monitoring
+  </Card>
+</CardGroup>

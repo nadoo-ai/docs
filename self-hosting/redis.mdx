@@ -1,0 +1,275 @@
+---
+title: 'Redis'
+description: 'Redis configuration for caching and task queuing'
+sidebarTitle: 'Redis'
+'og:title': 'Redis - Nadoo AI Self-Hosting'
+icon: 'bolt'
+---
+
+## Overview
+
+Nadoo AI uses **Redis 7** as a multi-purpose in-memory data store. A single Redis instance serves several roles across the platform:
+
+| Role | Description |
+|------|-------------|
+| **Celery Broker** | Message broker for background task queuing (document processing, embeddings, cleanup) |
+| **Celery Result Backend** | Stores task results and status for monitoring |
+| **WebSocket Pub/Sub** | Enables horizontal scaling of real-time chat by broadcasting messages across backend workers |
+| **Permission Cache** | Optional Redis-backed permission cache for multi-server / HA deployments |
+| **Celery Beat (RedBeat)** | Distributed scheduler storage for periodic tasks via RedBeat |
+
+## Docker Configuration
+
+The production Docker Compose includes a Redis service with AOF persistence enabled:
+
+```yaml
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: nadoo-redis
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis_data:/data
+    ports:
+      - "36379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: on-failure:5
+```
+
+Start Redis independently:
+
+```bash
+docker-compose -f infrastructure/docker-compose.prod.yml up -d redis
+```
+
+## Environment Variables
+
+All Redis-related variables use the `NADOO_` prefix:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NADOO_REDIS_HOST` | `localhost` | Redis server hostname |
+| `NADOO_REDIS_PORT` | `6379` | Redis server port |
+| `NADOO_REDIS_PASSWORD` | `null` | Redis authentication password |
+| `NADOO_REDIS_DB` | `0` | Redis database number for general use |
+| `NADOO_PERMISSION_CACHE_REDIS_ENABLED` | `false` | Enable Redis-backed permission caching |
+| `NADOO_PERMISSION_CACHE_REDIS_DB` | `1` | Redis DB number for permission cache |
+| `NADOO_PERMISSION_CACHE_TTL` | `300` | Permission cache TTL in seconds |
+| `NADOO_CELERY_BROKER_URL` | (auto) | Override Celery broker URL. Auto-derived from Redis settings if not set. |
+| `NADOO_CELERY_RESULT_BACKEND` | (auto) | Override Celery result backend URL. Auto-derived from Redis settings if not set. |
+
+The Redis URL is constructed automatically:
+
+```
+# Without password
+redis://localhost:6379/0
+
+# With password
+redis://:your_password@localhost:6379/0
+```
+
+<Tip>
+  You do not need to set `NADOO_CELERY_BROKER_URL` or `NADOO_CELERY_RESULT_BACKEND` in most deployments. The backend automatically builds these from `NADOO_REDIS_HOST`, `NADOO_REDIS_PORT`, `NADOO_REDIS_PASSWORD`, and `NADOO_REDIS_DB`.
+</Tip>
+
+## How Redis Is Used
+
+<AccordionGroup>
+  <Accordion title="Celery Task Broker" icon="list-check">
+    Redis serves as the message broker for Celery workers. When the backend enqueues a task (e.g., document ingestion), Redis stores the message until a worker picks it up.
+
+    Key broker transport options configured in the application:
+
+    ```python
+    broker_transport_options = {
+        "visibility_timeout": 3600,    # 1 hour (must exceed task_time_limit)
+        "socket_keepalive": True,
+        "socket_connect_timeout": 30,
+        "retry_on_timeout": True,
+    }
+    ```
+
+    The `visibility_timeout` ensures that if a worker crashes mid-task, the message becomes visible again for another worker to pick up after 1 hour.
+  </Accordion>
+  <Accordion title="WebSocket Pub/Sub" icon="tower-broadcast">
+    Real-time chat uses Redis pub/sub for broadcasting messages across multiple backend processes. When a user sends a chat message, the response stream is published to a Redis channel so that every connected WebSocket client receives updates regardless of which backend worker handles the connection.
+
+    This is essential for horizontal scaling with multiple Uvicorn workers or multiple backend containers.
+  </Accordion>
+  <Accordion title="Permission Cache" icon="shield-halved">
+    For multi-server deployments, enable Redis-backed permission caching to avoid redundant database queries:
+
+    ```bash
+    NADOO_PERMISSION_CACHE_REDIS_ENABLED=true
+    NADOO_PERMISSION_CACHE_REDIS_DB=1
+    NADOO_PERMISSION_CACHE_TTL=300
+    ```
+
+    This stores computed user permissions in Redis DB 1 with a 5-minute TTL. Single-server deployments can leave this disabled (the default) and use in-process caching instead.
+  </Accordion>
+  <Accordion title="RedBeat Scheduler" icon="clock">
+    Celery Beat uses RedBeat to store periodic task schedules in Redis. This allows user-defined scheduled jobs to persist across restarts without a separate database table.
+
+    The RedBeat keys are stored with the prefix `nadoo:redbeat:` and use a distributed lock at `nadoo:redbeat:lock` with a 25-second timeout.
+  </Accordion>
+</AccordionGroup>
+
+## Persistence and Durability
+
+Redis is configured with **AOF (Append Only File)** persistence:
+
+```
+redis-server --appendonly yes --appendfsync everysec
+```
+
+| Setting | Value | Meaning |
+|---------|-------|---------|
+| `appendonly` | `yes` | Every write operation is logged to an append-only file |
+| `appendfsync` | `everysec` | Fsync the AOF file once per second (good balance of durability and performance) |
+
+Data is stored in the Docker volume `redis_data` (mounted at `/data` in the container).
+
+<Tip>
+  AOF persistence prevents task loss if Redis restarts unexpectedly. Queued Celery messages and pending results are recovered from the AOF log on startup.
+</Tip>
+
+## Production Hardening
+
+For production deployments, consider adding a `redis.conf` file with these settings:
+
+```conf
+# Authentication
+requirepass your_strong_redis_password
+
+# Memory management
+maxmemory 512mb
+maxmemory-policy allkeys-lru
+
+# Disable dangerous commands
+rename-command FLUSHALL ""
+rename-command FLUSHDB ""
+rename-command DEBUG ""
+
+# Logging
+loglevel notice
+logfile /data/redis.log
+
+# Network
+bind 0.0.0.0
+protected-mode yes
+tcp-keepalive 300
+timeout 0
+```
+
+Mount this config in your Docker Compose:
+
+```yaml
+redis:
+  image: redis:7-alpine
+  command: redis-server /usr/local/etc/redis/redis.conf
+  volumes:
+    - redis_data:/data
+    - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+```
+
+When using a password, set `NADOO_REDIS_PASSWORD` accordingly:
+
+```bash
+NADOO_REDIS_PASSWORD=your_strong_redis_password
+```
+
+## Backup and Restore
+
+### Backup
+
+```bash
+# Trigger an RDB snapshot
+docker exec nadoo-redis redis-cli BGSAVE
+
+# Copy the dump file from the container
+docker cp nadoo-redis:/data/dump.rdb ./redis_backup_$(date +%Y%m%d).rdb
+
+# Copy the AOF file
+docker cp nadoo-redis:/data/appendonly.aof ./redis_aof_backup_$(date +%Y%m%d).aof
+```
+
+### Restore
+
+```bash
+# Stop Redis
+docker-compose -f infrastructure/docker-compose.prod.yml stop redis
+
+# Copy backup into the volume
+docker cp ./redis_backup.rdb nadoo-redis:/data/dump.rdb
+
+# Restart Redis
+docker-compose -f infrastructure/docker-compose.prod.yml start redis
+```
+
+## Monitoring
+
+### Redis CLI
+
+```bash
+# Connect to Redis
+docker exec -it nadoo-redis redis-cli
+
+# With authentication
+docker exec -it nadoo-redis redis-cli -a your_password
+
+# Check memory usage
+docker exec nadoo-redis redis-cli INFO memory
+
+# Monitor commands in real time
+docker exec -it nadoo-redis redis-cli MONITOR
+
+# Check connected clients
+docker exec nadoo-redis redis-cli CLIENT LIST
+```
+
+### Redis Commander (Optional)
+
+The production Docker Compose includes an optional Redis Commander web UI:
+
+```bash
+# Start with the tools profile
+docker-compose -f infrastructure/docker-compose.all.yml --profile tools up -d redis-commander
+```
+
+Access the UI at `http://localhost:38081`.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Celery workers cannot connect to Redis" icon="plug">
+    Verify Redis is running and reachable from the worker container:
+
+    ```bash
+    docker exec nadoo-celery-prod redis-cli -h redis -p 6379 PING
+    ```
+
+    If using a password, ensure `NADOO_REDIS_PASSWORD` is set identically on all services (backend, celery, celery-beat).
+  </Accordion>
+  <Accordion title="Redis memory usage keeps growing" icon="memory">
+    Set a `maxmemory` limit and eviction policy:
+
+    ```bash
+    docker exec nadoo-redis redis-cli CONFIG SET maxmemory 512mb
+    docker exec nadoo-redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
+    ```
+
+    Also verify that `result_expires` is set in Celery config (default: 3600 seconds) so task results are cleaned up automatically.
+  </Accordion>
+  <Accordion title="Tasks reappearing after completion" icon="rotate">
+    This is usually caused by a `visibility_timeout` that is shorter than the task execution time. The Nadoo default is 3600 seconds (1 hour). If you have tasks that run longer, increase the timeout:
+
+    ```bash
+    NADOO_CELERY_BROKER_URL="redis://redis:6379/0?visibility_timeout=7200"
+    ```
+  </Accordion>
+</AccordionGroup>

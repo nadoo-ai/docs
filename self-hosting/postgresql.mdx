@@ -1,0 +1,266 @@
+---
+title: 'PostgreSQL'
+description: 'Database configuration with pgvector for embeddings'
+sidebarTitle: 'PostgreSQL'
+'og:title': 'PostgreSQL - Nadoo AI Self-Hosting'
+icon: 'database'
+---
+
+## Overview
+
+Nadoo AI uses **PostgreSQL 16** with the [pgvector](https://github.com/pgvector/pgvector) extension as its primary data store. PostgreSQL handles relational data, user accounts, documents, and vector embeddings for semantic search -- all in a single database.
+
+The official Docker image `pgvector/pgvector:pg16` ships with the `vector` extension pre-installed.
+
+## Required Extensions
+
+The initialization script creates the following extensions automatically:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";   -- UUID primary key generation
+CREATE EXTENSION IF NOT EXISTS "vector";       -- Vector similarity search
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";      -- Trigram-based text search
+```
+
+## Installation
+
+<Tabs>
+  <Tab title="Docker (Recommended)">
+    The production Docker Compose file includes a fully configured PostgreSQL service:
+
+    ```yaml
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        container_name: nadoo-postgres
+        environment:
+          POSTGRES_DB: nadoo
+          POSTGRES_USER: nadoo
+          POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+        command:
+          - "postgres"
+          - "-c"
+          - "max_connections=300"
+          - "-c"
+          - "shared_buffers=256MB"
+          - "-c"
+          - "effective_cache_size=1GB"
+          - "-c"
+          - "idle_in_transaction_session_timeout=60000"
+        volumes:
+          - postgres_data:/var/lib/postgresql/data
+          - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+        ports:
+          - "35432:5432"
+        healthcheck:
+          test: ["CMD-SHELL", "pg_isready -U nadoo"]
+          interval: 10s
+          timeout: 5s
+          retries: 5
+          start_period: 30s
+    ```
+
+    Start the service:
+
+    ```bash
+    docker-compose -f infrastructure/docker-compose.prod.yml up -d postgres
+    ```
+  </Tab>
+  <Tab title="Standalone">
+    If you run PostgreSQL outside of Docker, install pgvector manually:
+
+    ```bash
+    # Ubuntu / Debian
+    sudo apt install postgresql-16 postgresql-16-pgvector
+
+    # macOS (Homebrew)
+    brew install postgresql@16
+    brew install pgvector
+    ```
+
+    After installation, connect as a superuser and run the init script:
+
+    ```sql
+    CREATE DATABASE nadoo;
+    CREATE USER nadoo WITH PASSWORD 'your_secure_password';
+    GRANT ALL PRIVILEGES ON DATABASE nadoo TO nadoo;
+
+    \c nadoo
+
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE EXTENSION IF NOT EXISTS "vector";
+    CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+
+    CREATE SCHEMA IF NOT EXISTS nadoo;
+    GRANT ALL ON SCHEMA nadoo TO nadoo;
+    GRANT ALL ON SCHEMA public TO nadoo;
+    ```
+  </Tab>
+</Tabs>
+
+## Environment Variables
+
+The backend connects to PostgreSQL using these variables (all prefixed with `NADOO_`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NADOO_DB_HOST` | `localhost` | Database host |
+| `NADOO_DB_PORT` | `5432` | Database port |
+| `NADOO_DB_NAME` | `nadoo` | Database name |
+| `NADOO_DB_USER` | `nadoo` | Database user |
+| `NADOO_DB_PASSWORD` | `nadoo_local` | Database password |
+| `NADOO_DB_POOL_SIZE` | `5` | Connection pool size per worker |
+| `NADOO_DB_MAX_OVERFLOW` | `10` | Max overflow connections per worker |
+| `NADOO_DB_POOL_RECYCLE` | `1800` | Recycle connections after N seconds |
+| `NADOO_DB_POOL_PRE_PING` | `true` | Test connections before use |
+| `NADOO_DB_POOL_TIMEOUT` | `30` | Timeout for acquiring a connection from the pool |
+
+The resulting connection URL is built automatically:
+
+```
+postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}
+```
+
+<Warning>
+  Never use the default development password (`nadoo_local` or `4432646294A404D6351`) in production. Set a strong `NADOO_DB_PASSWORD` through environment variables or a `.env` file.
+</Warning>
+
+## Performance Tuning
+
+### Production PostgreSQL Parameters
+
+The production Docker Compose applies these tuning parameters via the `command` directive:
+
+| Parameter | Value | Purpose |
+|-----------|-------|---------|
+| `max_connections` | `300` | Supports 4 backend workers x 30 connections + scheduler + Celery overhead |
+| `shared_buffers` | `256MB` | Dedicated memory for caching frequently accessed data |
+| `effective_cache_size` | `1GB` | Optimizer hint for OS file-system cache size |
+| `idle_in_transaction_session_timeout` | `60000` | Kills idle transactions after 60 seconds to prevent connection leaks |
+
+### Vector Search Optimization
+
+For large-scale embedding workloads, add these settings:
+
+```sql
+-- Increase work_mem for vector similarity operations
+ALTER SYSTEM SET work_mem = '64MB';
+
+-- Create an IVFFlat index for faster approximate nearest-neighbor search
+CREATE INDEX ON embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+
+-- Or use HNSW for higher recall (PostgreSQL 16+ with pgvector 0.5+)
+CREATE INDEX ON embeddings USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
+```
+
+<Tip>
+  The backend configuration also exposes `NADOO_EMBEDDING_DIMENSION` (default `1536`) and `NADOO_VECTOR_STORE_TYPE` (default `pgvector`). Make sure the index dimension matches your embedding model's output dimension.
+</Tip>
+
+### Connection Pool Sizing
+
+The total number of database connections is approximately:
+
+```
+total = (WORKERS * DB_POOL_SIZE) + (WORKERS * DB_MAX_OVERFLOW) + scheduler + celery
+      = (4 * 5) + (4 * 10) + 30 + 30
+      = 120 connections (peak)
+```
+
+Set `max_connections` in PostgreSQL to at least 1.5x your expected peak to leave headroom for admin connections and pgAdmin.
+
+## Backup and Restore
+
+### Backup
+
+```bash
+# Full database dump (from Docker)
+docker exec nadoo-postgres pg_dump -U nadoo nadoo > backup_$(date +%Y%m%d).sql
+
+# Compressed backup
+docker exec nadoo-postgres pg_dump -U nadoo -Fc nadoo > backup_$(date +%Y%m%d).dump
+
+# Data-only backup (skip schema, useful before migrations)
+docker exec nadoo-postgres pg_dump -U nadoo --data-only nadoo > data_backup.sql
+```
+
+### Restore
+
+```bash
+# Restore from SQL dump
+docker exec -i nadoo-postgres psql -U nadoo nadoo < backup_20250101.sql
+
+# Restore from compressed dump
+docker exec -i nadoo-postgres pg_restore -U nadoo -d nadoo backup_20250101.dump
+```
+
+<Warning>
+  Always test your backup files in a separate environment before relying on them for disaster recovery. Restoring a backup into an existing database may cause conflicts with Alembic migration state.
+</Warning>
+
+### Automated Backups
+
+For production, set up a cron job to take nightly backups:
+
+```bash
+# /etc/cron.d/nadoo-backup
+0 2 * * * root docker exec nadoo-postgres pg_dump -U nadoo -Fc nadoo > /backups/nadoo_$(date +\%Y\%m\%d).dump && find /backups -name "nadoo_*.dump" -mtime +7 -delete
+```
+
+This runs every night at 2:00 AM and keeps backups for 7 days.
+
+## Database Migrations
+
+Nadoo AI uses **Alembic** for schema migrations. After any model change, migrations must be created and applied through the CLI:
+
+```bash
+# Generate a new migration from model changes
+alembic revision --autogenerate -m "describe your change"
+
+# Apply all pending migrations
+alembic upgrade head
+
+# Roll back the last migration
+alembic downgrade -1
+```
+
+<Warning>
+  Never create migration files manually or edit existing revision IDs. Always use `alembic revision --autogenerate` and review the generated file before applying.
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="pgvector extension not found" icon="puzzle-piece">
+    Ensure you are using the `pgvector/pgvector:pg16` Docker image, not the standard `postgres:16` image. The pgvector image ships with the extension pre-compiled.
+
+    For standalone installs, verify the extension is available:
+
+    ```sql
+    SELECT * FROM pg_available_extensions WHERE name = 'vector';
+    ```
+  </Accordion>
+  <Accordion title="Too many connections" icon="link-slash">
+    If you see `FATAL: too many connections for role`, increase `max_connections` or reduce the backend pool size:
+
+    ```bash
+    # Check current connection count
+    docker exec nadoo-postgres psql -U nadoo -c "SELECT count(*) FROM pg_stat_activity;"
+    ```
+
+    Adjust `NADOO_DB_POOL_SIZE` and `NADOO_DB_MAX_OVERFLOW` in your environment variables to match available connections.
+  </Accordion>
+  <Accordion title="Slow vector search queries" icon="clock">
+    Create an appropriate index for your embedding dimension:
+
+    ```sql
+    -- Check if an index exists
+    SELECT indexname FROM pg_indexes WHERE tablename = 'embeddings';
+
+    -- Create HNSW index (recommended for pgvector 0.5+)
+    CREATE INDEX CONCURRENTLY ON embeddings
+      USING hnsw (embedding vector_cosine_ops)
+      WITH (m = 16, ef_construction = 64);
+    ```
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,241 @@
+---
+title: 'Chat Application'
+description: 'Build conversational AI agents with direct LLM interaction, knowledge base RAG, and tool integration'
+sidebarTitle: 'Chat App'
+'og:title': 'Chat Application - Nadoo AI'
+icon: 'comments'
+---
+
+## Overview
+
+The **Chat Application** is the simplest application type in Nadoo AI. It wraps a single AI model with optional knowledge bases and tools into a conversational agent that responds to user messages in real time. Chat Apps are ideal for customer support bots, internal Q&A assistants, and any use case where a direct conversation with an LLM is the core interaction.
+
+```
+User Message → [Memory Recall] → [Knowledge Retrieval] → [LLM + Tools] → Streaming Response
+```
+
+## Creating a Chat App
+
+<Steps>
+  <Step title="Navigate to Applications">
+    Open your workspace and click **New Application** from the dashboard.
+  </Step>
+  <Step title="Select Chat Type">
+    Choose **Chat** as the application type. Give it a name and optional description.
+  </Step>
+  <Step title="Configure the Model">
+    Select an AI model and tune generation parameters to match your use case.
+  </Step>
+  <Step title="Write a System Prompt">
+    Define the agent's persona, instructions, and behavioral guidelines in the system prompt.
+  </Step>
+  <Step title="Attach Knowledge Bases (Optional)">
+    Connect one or more knowledge bases to enable retrieval-augmented generation.
+  </Step>
+  <Step title="Test in Sandbox">
+    Use the built-in chat sandbox to test and iterate on your configuration.
+  </Step>
+</Steps>
+
+## Model Configuration
+
+The model configuration controls how the LLM generates responses. These settings are available in the application's **Model** tab.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| **Model** | -- | The AI model to use (e.g., `gpt-4o`, `claude-3.5-sonnet`, `gemini-pro`) |
+| **System Prompt** | -- | Instructions that define the agent's persona, tone, and behavior |
+| **Temperature** | 0.7 | Controls randomness. `0` = deterministic, `1` = highly creative |
+| **Max Tokens** | 4096 | Maximum number of tokens the model can generate per response |
+| **Top P** | 1.0 | Nucleus sampling threshold. Lower values restrict the token pool for more focused output |
+
+<Tip>
+  Start with **temperature 0.3 -- 0.5** for factual Q&A applications and **0.7 -- 0.9** for creative or conversational agents.
+</Tip>
+
+## System Prompt
+
+The system prompt is the most important configuration for a Chat App. It defines who the agent is, what it should do, and how it should behave.
+
+```text
+You are a helpful customer support agent for Acme Corp.
+
+Rules:
+- Always be polite and professional
+- Only answer questions about Acme products
+- If you don't know the answer, say so and offer to connect the user with a human agent
+- Use the knowledge base to look up product information before answering
+```
+
+Best practices for system prompts:
+
+- **Be specific** -- clearly state the agent's role, domain, and boundaries
+- **Set guardrails** -- define what the agent should and should not do
+- **Reference tools** -- if you attach tools, explain when the agent should use them
+- **Structure with sections** -- use headers and bullet points for complex instructions
+
+## Conversation Memory
+
+Memory allows the agent to recall earlier messages in the conversation. Nadoo AI supports two memory strategies for Chat Apps.
+
+### Buffer Memory
+
+Retains the last **N** messages in their original form. Simple and effective for short to medium conversations.
+
+```
+memory_type: "buffer"
+window_size: 20
+```
+
+The agent receives the 20 most recent messages as context for each response.
+
+### Summary Memory
+
+Condenses older messages into a running summary while keeping recent messages intact. Effective for long conversations where full history would exceed the model's context window.
+
+```
+memory_type: "summary"
+window_size: 10
+```
+
+Messages beyond the window are summarized by the LLM and prepended as context.
+
+<Info>
+  Choose **Buffer Memory** for most use cases. Switch to **Summary Memory** when conversations routinely exceed 30+ turns or when you need to preserve context over long sessions.
+</Info>
+
+## Knowledge Base Integration
+
+Attach one or more knowledge bases to enable **retrieval-augmented generation (RAG)**. When a user sends a message, the system retrieves relevant documents from the knowledge base and includes them in the LLM's context before generating a response.
+
+### How RAG Works in Chat Apps
+
+```
+User Message
+  → Embedding generation
+  → Similarity search across attached knowledge bases
+  → Top-K relevant chunks retrieved
+  → Chunks injected into LLM context alongside system prompt and memory
+  → LLM generates a grounded response
+```
+
+### Attaching a Knowledge Base
+
+1. Go to the Chat App's **Knowledge** tab
+2. Click **Add Knowledge Base**
+3. Select one or more knowledge bases from your workspace
+4. Configure retrieval parameters:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| **Top K** | 5 | Number of document chunks to retrieve per query |
+| **Score Threshold** | 0.5 | Minimum similarity score to include a chunk |
+| **Search Mode** | Hybrid | `vector`, `keyword`, or `hybrid` (vector + BM25) |
+
+<Warning>
+  Attaching too many knowledge bases or setting Top K too high can consume a large portion of the model's context window. Monitor token usage and adjust retrieval parameters accordingly.
+</Warning>
+
+## Tool Integration
+
+Attach tools (plugins) that the agent can invoke during conversation. Tools extend the agent beyond text generation -- enabling web search, API calls, calculations, database queries, and more.
+
+### Attaching Tools
+
+1. Go to the Chat App's **Tools** tab
+2. Click **Add Tool**
+3. Select from available plugins in your workspace (e.g., Web Search, Calculator, custom plugins)
+
+The agent decides when to invoke a tool based on the conversation context and tool descriptions. Tool calls and results are streamed in real time via SSE events.
+
+<Info>
+  Tools work best with models that support function calling, such as GPT-4o, Claude 3.5 Sonnet, and Gemini Pro.
+</Info>
+
+## Streaming Responses
+
+Chat Apps deliver responses in real time using **Server-Sent Events (SSE)**. As the LLM generates tokens, they are streamed to the client immediately -- providing a responsive, typewriter-style experience.
+
+Key SSE events for Chat Apps:
+
+| Event | Description |
+|-------|-------------|
+| `message_start` | Response generation has begun |
+| `text_chunk` | A chunk of the response text |
+| `text_end` | Text generation is complete |
+| `tool_call_start` | The model is invoking a tool |
+| `tool_result` | Result returned from the tool |
+| `retrieval_result` | Documents retrieved from knowledge base |
+| `suggested_questions` | AI-generated follow-up questions |
+| `usage` | Token usage statistics |
+| `done` | Stream is complete |
+
+See [Real-time Streaming](/chat/streaming) for the full event reference.
+
+## Suggested Questions
+
+Enable AI-powered follow-up question generation to guide users toward productive next interactions. After each response, the agent generates 2--3 suggested questions based on the conversation context.
+
+```
+event: suggested_questions
+data: {"questions": ["How do I configure this?", "What are the pricing details?", "Can you show me an example?"]}
+```
+
+Enable this feature in the application settings under **Chat > Suggested Questions**.
+
+## Testing in the Chat Sandbox
+
+Every Chat App includes a built-in sandbox for testing. The sandbox provides:
+
+- **Real-time chat** with your configured agent
+- **Message history** to review conversation flow
+- **Token usage display** showing prompt and completion token counts
+- **Debug panel** with raw SSE events, tool calls, and retrieved documents
+- **Parameter overrides** to temporarily adjust temperature, max tokens, and other settings
+
+<Tip>
+  Use the sandbox to iterate quickly on your system prompt. Try edge cases, test tool invocations, and verify knowledge base retrieval before deploying.
+</Tip>
+
+## API Access
+
+Chat Apps are accessible through the REST API for programmatic integration:
+
+```bash
+# Send a message with streaming
+POST /api/v1/chat/completions
+{
+  "session_id": "session-uuid",
+  "message": "What products do you offer?",
+  "stream": true
+}
+```
+
+```bash
+# Send a message without streaming
+POST /api/v1/chat/completions
+{
+  "session_id": "session-uuid",
+  "message": "What products do you offer?",
+  "stream": false
+}
+```
+
+See the [API Reference](/api/overview) for full endpoint documentation.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Real-time Streaming" icon="bolt" href="/chat/streaming">
+    Deep dive into SSE event types and frontend integration
+  </Card>
+  <Card title="Canvas" icon="pen-to-square" href="/chat/canvas">
+    Rich content editing within the chat interface
+  </Card>
+  <Card title="Workflow App" icon="diagram-project" href="/applications/workflow-app">
+    Build complex multi-step logic with the visual workflow editor
+  </Card>
+  <Card title="AI Models" icon="brain" href="/models/overview">
+    Configure and choose the right model for your Chat App
+  </Card>
+</CardGroup>

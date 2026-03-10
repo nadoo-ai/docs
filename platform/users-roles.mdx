@@ -1,0 +1,220 @@
+---
+title: 'Users & Roles'
+description: 'Role-based access control (RBAC) for workspaces'
+sidebarTitle: 'Users & Roles'
+'og:title': 'Users & Roles - Nadoo AI'
+icon: 'users'
+---
+
+## Overview
+
+Nadoo AI implements a two-level role-based access control (RBAC) system. **System roles** govern platform-wide capabilities, while **workspace roles** control what a user can do within a specific workspace. Together they ensure that every user has the minimum privileges needed for their tasks.
+
+<CardGroup cols={2}>
+  <Card title="System Roles" icon="globe">
+    Platform-level roles that determine administrative access across the entire Nadoo AI instance.
+  </Card>
+  <Card title="Workspace Roles" icon="building">
+    Per-workspace roles that control resource-level permissions within a single workspace.
+  </Card>
+</CardGroup>
+
+---
+
+## System Roles
+
+System roles are assigned at the platform level and determine a user's global capabilities.
+
+| Role | Priority | Description |
+|------|----------|-------------|
+| **Super Admin** | 100 | Full control over the entire platform. Can manage all users, workspaces, and system settings. |
+| **Admin** | 80 | Can manage users, create and update applications, knowledge bases, models, tools, and workspaces. Cannot access super-admin-only settings. |
+| **User** | 50 | Standard platform user. Can read applications, knowledge bases, models, tools, and workspaces they have access to. |
+| **Guest** | 10 | Minimal read-only access. Can view applications and knowledge bases only. |
+
+<Info>
+  Every new account is assigned the **User** system role by default. Only an existing Super Admin can promote a user to Admin or Super Admin.
+</Info>
+
+---
+
+## Workspace Roles
+
+Within each workspace, members are assigned one of three roles that govern resource-level permissions.
+
+| Role | Priority | Description |
+|------|----------|-------------|
+| **Owner** | 100 | Full control over the workspace, including member management, all resources, and workspace deletion. |
+| **Admin** | 80 | Can manage all resources (applications, knowledge bases, models, tools, workflows) and workspace members. Cannot delete the workspace or transfer ownership. |
+| **Member** | 50 | Can read, create, and update most resources. Cannot delete resources, manage members, or change workspace settings. |
+
+### Permission Matrix
+
+The table below shows exactly which actions each workspace role can perform.
+
+| Action | Owner | Admin | Member |
+|--------|:-----:|:-----:|:------:|
+| Create applications | Yes | Yes | Yes |
+| Update applications | Yes | Yes | Yes |
+| Delete applications | Yes | Yes | No |
+| Execute applications | Yes | Yes | Yes |
+| Create knowledge bases | Yes | Yes | Yes |
+| Update knowledge bases | Yes | Yes | Yes |
+| Delete knowledge bases | Yes | Yes | No |
+| Register models | Yes | Yes | Yes |
+| Update models | Yes | Yes | No |
+| Delete models | Yes | Yes | No |
+| Create tools | Yes | Yes | Yes |
+| Delete tools | Yes | Yes | No |
+| Create workflows | Yes | Yes | Yes |
+| Update workflows | Yes | Yes | Yes |
+| Delete workflows | Yes | Yes | No |
+| Manage members | Yes | Yes | No |
+| Manage workspace roles | Yes | Yes | No |
+| Update workspace settings | Yes | Yes | No |
+| Delete workspace | Yes | No | No |
+
+<Warning>
+  The **Owner** role is automatically assigned to the user who creates the workspace. Ownership transfer is not available through the UI -- contact a Super Admin if you need to change the workspace owner.
+</Warning>
+
+---
+
+## Permission Groups
+
+Permissions are organized into groups that map to major platform features. Each permission combines a **group** with an **action** (Create, Read, Update, Delete, Execute, Export, Import, Share, or Manage).
+
+<AccordionGroup>
+  <Accordion title="Application Permissions" icon="robot">
+    Controls access to applications, their configurations, chat users, and chat logs. Sub-groups include:
+    - `APPLICATION` -- Core CRUD operations
+    - `APPLICATION_OVERVIEW` -- Dashboard and analytics
+    - `APPLICATION_ACCESS` -- Access control settings
+    - `APPLICATION_CHAT_USER` -- Chat user management
+    - `APPLICATION_CHAT_LOG` -- Conversation history
+  </Accordion>
+  <Accordion title="Knowledge Base Permissions" icon="book">
+    Controls access to knowledge bases, documents, and search features. Sub-groups include:
+    - `KNOWLEDGE` -- Core CRUD operations
+    - `KNOWLEDGE_DOCUMENT` -- Document upload and management
+    - `KNOWLEDGE_PROBLEM` -- Problem detection and quality
+    - `KNOWLEDGE_HIT_TEST` -- Search testing and evaluation
+  </Accordion>
+  <Accordion title="Model & Tool Permissions" icon="microchip">
+    - `MODEL` -- AI model provider registration and configuration
+    - `TOOL` -- Custom tool creation and management
+    - `WORKFLOW` -- Workflow creation, editing, and execution
+  </Accordion>
+  <Accordion title="System & Workspace Permissions" icon="gear">
+    - `WORKSPACE` -- Workspace settings and configuration
+    - `WORKSPACE_ROLE` -- Role assignment within a workspace
+    - `USER_MANAGEMENT` -- Platform-level user administration
+    - `EMAIL_SETTING`, `DISPLAY_SETTINGS`, `LOGIN_AUTH` -- System configuration
+    - `OPERATION_LOG` -- Audit log access
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Inviting Users to a Workspace
+
+Workspace Owners and Admins can invite new members through the API or the workspace settings page.
+
+<Steps>
+  <Step title="Navigate to Workspace Settings">
+    Open **Workspace Settings > Members** in the Nadoo AI dashboard, or use the API directly.
+  </Step>
+  <Step title="Add a Member">
+    Provide the user's ID and the desired role. Via the API:
+
+    ```bash
+    POST /api/v1/workspaces/{workspace_id}/members
+    Authorization: Bearer {access-token}
+    Content-Type: application/json
+
+    {
+      "user_id": "a1b2c3d4-...",
+      "role": "member"
+    }
+    ```
+
+    Valid role values: `owner`, `admin`, `member`.
+  </Step>
+  <Step title="Verify Membership">
+    List workspace members to confirm the invitation was accepted:
+
+    ```bash
+    GET /api/v1/workspaces/{workspace_id}/members
+    Authorization: Bearer {access-token}
+    ```
+  </Step>
+</Steps>
+
+### Changing a Member's Role
+
+Owners and Admins can update a member's role at any time:
+
+```bash
+PUT /api/v1/workspaces/{workspace_id}/members/{user_id}/role
+Authorization: Bearer {access-token}
+Content-Type: application/json
+
+{
+  "role": "admin"
+}
+```
+
+### Removing a Member
+
+```bash
+DELETE /api/v1/workspaces/{workspace_id}/members/{user_id}
+Authorization: Bearer {access-token}
+```
+
+<Warning>
+  Removing a member revokes their access to all workspace resources immediately. Their previously created resources remain in the workspace.
+</Warning>
+
+---
+
+## User Profile & Authentication
+
+Each user account stores the following profile information:
+
+| Field | Description |
+|-------|-------------|
+| `email` | Unique email address (used for login) |
+| `username` | Optional unique display name |
+| `full_name` | User's display name |
+| `avatar_url` | Profile picture URL |
+| `language` | Preferred UI language (default: `en`) |
+| `timezone` | Preferred timezone (default: `UTC`) |
+| `is_verified` | Whether the email has been verified |
+| `is_active` | Whether the account is enabled |
+
+### Social Login
+
+Nadoo AI supports social account linking for streamlined authentication. Users can connect their accounts from supported OAuth providers (e.g., Google, GitHub) to enable single-click sign-in.
+
+<Tip>
+  Enterprise deployments can enable SSO/OIDC integration for centralized identity management. See the **Self-Hosting** section for SSO configuration details.
+</Tip>
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Apply the principle of least privilege" icon="shield">
+    Assign the **Member** role by default. Only promote users to Admin or Owner when they genuinely need elevated access. This limits the blast radius of compromised credentials.
+  </Accordion>
+  <Accordion title="Audit role changes regularly" icon="clipboard-list">
+    Use the audit log (`GET /api/v1/system/audit-logs`) to review role assignments. Look for unexpected privilege escalations.
+  </Accordion>
+  <Accordion title="Use workspace isolation for projects" icon="building">
+    Create separate workspaces for different teams or projects rather than sharing a single workspace with complex permission overrides.
+  </Accordion>
+  <Accordion title="Require email verification" icon="envelope">
+    Set `EMAIL_VERIFICATION_REQUIRED=true` in your environment to ensure all users verify their email before gaining access to workspace resources.
+  </Accordion>
+</AccordionGroup>

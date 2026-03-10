@@ -1,0 +1,243 @@
+---
+title: 'Telegram'
+description: 'Deploy AI agents to Telegram with BotFather setup, webhooks, and rich keyboard interactions'
+sidebarTitle: 'Telegram'
+'og:title': 'Telegram Integration - Nadoo AI'
+'og:description': 'Create a Telegram bot via BotFather, configure webhooks, and deploy Nadoo AI agents to Telegram'
+---
+
+## Overview
+
+The Telegram integration lets you deploy Nadoo AI agents as Telegram bots. Users interact through private chats, group chats, and inline commands. The integration supports inline keyboards, file attachments, location sharing, and rich media messages.
+
+## Setup
+
+<Steps>
+  <Step title="Create a Bot via BotFather">
+    1. Open Telegram and search for [@BotFather](https://t.me/BotFather).
+    2. Send the `/newbot` command.
+    3. Follow the prompts:
+       - Enter a **display name** for your bot (e.g., "Nadoo AI Agent")
+       - Enter a **username** for your bot (must end in `bot`, e.g., `nadoo_ai_agent_bot`)
+    4. BotFather will reply with your **Bot Token** (a string like `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`). Copy and save it securely.
+  </Step>
+  <Step title="Configure Bot Settings (Optional)">
+    While still in the BotFather chat, you can configure additional settings:
+
+    | Command | Purpose |
+    |---|---|
+    | `/setdescription` | Set the bot's description shown in its profile |
+    | `/setabouttext` | Set the "About" text shown when users view bot info |
+    | `/setuserpic` | Upload a profile picture for the bot |
+    | `/setcommands` | Define the command menu (see below) |
+
+    **Setting bot commands:**
+
+    Send `/setcommands` to BotFather, select your bot, and enter commands in this format:
+
+    ```
+    start - Start a conversation with the agent
+    ask - Ask a question
+    search - Search the knowledge base
+    help - Show available commands
+    ```
+  </Step>
+  <Step title="Configure in Nadoo AI">
+    In the Nadoo AI platform:
+
+    1. Navigate to your workspace and open **Channels**.
+    2. Click **Add Channel** and select **Telegram**.
+    3. Enter the following:
+
+    | Field | Value |
+    |---|---|
+    | **Bot Token** | The token from BotFather |
+    | **Workflow** | Select the workflow to handle Telegram messages |
+
+    4. Click **Save** and toggle the channel to **Active**.
+
+    Nadoo AI automatically registers the webhook URL with Telegram using the Bot API's `setWebhook` method. No manual webhook configuration is required.
+  </Step>
+  <Step title="Test the Integration">
+    Open Telegram, search for your bot by its username, and send `/start` or a test message. The bot should respond using the configured workflow.
+  </Step>
+</Steps>
+
+## Webhook Configuration
+
+When you activate the Telegram channel in Nadoo AI, the platform automatically calls the Telegram `setWebhook` API to register the webhook URL:
+
+```
+POST https://api.telegram.org/bot{token}/setWebhook
+{
+  "url": "https://your-instance.example.com/api/v1/webhooks/handle/telegram",
+  "allowed_updates": ["message", "callback_query", "inline_query"]
+}
+```
+
+### Webhook Details
+
+| Setting | Value |
+|---|---|
+| **Endpoint** | `POST /api/v1/webhooks/handle/telegram` |
+| **Verification** | Telegram sends updates only to the registered URL. Nadoo AI validates the request source. |
+| **Secret Token** | An optional secret token is set during webhook registration and verified in the `X-Telegram-Bot-Api-Secret-Token` header. |
+| **Auto-registration** | Webhook is registered automatically when the channel is activated. |
+
+<Info>
+  If you need to change the webhook URL (e.g., after a domain change), deactivate and reactivate the Telegram channel in Nadoo AI. The platform will re-register the webhook with the new URL.
+</Info>
+
+## Supported Features
+
+### Message Types
+
+| Feature | Description |
+|---|---|
+| **Text messages** | Standard text messages in private and group chats |
+| **Bot commands** | Messages starting with `/` (e.g., `/ask`, `/search`) |
+| **Replies** | Users can reply to bot messages to continue a conversation thread |
+| **Group chats** | The bot responds when mentioned or when commands are used in group chats |
+| **Forwarded messages** | Users can forward messages to the bot for processing |
+
+### Interactive Keyboards
+
+Telegram supports two types of keyboards for interactive responses.
+
+<Tabs>
+  <Tab title="Inline Keyboards">
+    Inline keyboards appear directly below a bot message and allow users to interact without typing.
+
+    ```json
+    {
+      "reply_markup": {
+        "inline_keyboard": [
+          [
+            { "text": "Yes", "callback_data": "confirm_yes" },
+            { "text": "No", "callback_data": "confirm_no" }
+          ],
+          [
+            { "text": "Learn More", "url": "https://docs.example.com" }
+          ]
+        ]
+      }
+    }
+    ```
+
+    When a user clicks a button, Telegram sends a `callback_query` update to the webhook. The workflow receives the `callback_data` value and can branch accordingly.
+  </Tab>
+  <Tab title="Reply Keyboards">
+    Reply keyboards replace the user's default keyboard with predefined response options.
+
+    ```json
+    {
+      "reply_markup": {
+        "keyboard": [
+          [{ "text": "Check order status" }, { "text": "Contact support" }],
+          [{ "text": "Browse products" }]
+        ],
+        "resize_keyboard": true,
+        "one_time_keyboard": true
+      }
+    }
+    ```
+
+    Reply keyboards are useful for guided conversations where you want to present a fixed set of choices.
+  </Tab>
+</Tabs>
+
+### File Attachments
+
+| Feature | Description |
+|---|---|
+| **Photo messages** | Users can send photos. The bot can process images using multimodal AI models. |
+| **Document messages** | Users can send files (PDF, DOCX, etc.) for processing by the knowledge base. |
+| **Voice messages** | Users can send voice recordings. The bot can transcribe audio using STT. |
+| **Location sharing** | Users can share their location. The bot receives coordinates. |
+| **Contact sharing** | Users can share contact cards. |
+
+### Bot Responses
+
+| Feature | Description |
+|---|---|
+| **Text with Markdown** | Responses support Telegram's MarkdownV2 formatting |
+| **Photos** | The bot can send images as responses |
+| **Documents** | The bot can send files (reports, exports) |
+| **Typing indicator** | The bot shows "typing..." while processing the request |
+
+## Bot Commands
+
+Define the commands that appear in Telegram's command menu. Users can tap the `/` button to see available commands.
+
+### Recommended Commands
+
+| Command | Description |
+|---|---|
+| `/start` | Begin a conversation with the bot |
+| `/help` | Show available commands and usage instructions |
+| `/ask [question]` | Ask the AI agent a question |
+| `/search [query]` | Search the knowledge base |
+| `/reset` | Clear conversation history and start fresh |
+
+### Command Handling
+
+Commands are detected by the Telegram adapter and routed to the configured workflow. The command name and arguments are passed as structured input:
+
+```json
+{
+  "command": "ask",
+  "arguments": "How does the refund policy work?",
+  "user_id": "123456789",
+  "chat_id": "987654321",
+  "chat_type": "private"
+}
+```
+
+## Group Chat Configuration
+
+When used in group chats, the bot can be configured to respond only to specific triggers.
+
+| Mode | Behavior |
+|---|---|
+| **Mention only** | Bot responds only when mentioned by @username |
+| **Command only** | Bot responds only to `/` commands |
+| **All messages** | Bot responds to every message in the group (use with caution) |
+
+Configure the group mode in the Nadoo AI channel settings:
+
+```json
+{
+  "group_mode": "mention_only",
+  "privacy_mode": true
+}
+```
+
+<Tip>
+  Set `privacy_mode: true` (the default) so the bot only receives messages that are directly addressed to it in group chats. This reduces unnecessary processing and respects user privacy.
+</Tip>
+
+## Troubleshooting
+
+| Issue | Solution |
+|---|---|
+| Bot does not respond | Verify the bot token is correct and the channel is **Active** in Nadoo AI |
+| Webhook registration failed | Check that your Nadoo AI instance is accessible via HTTPS with a valid SSL certificate. Telegram requires HTTPS for webhooks. |
+| Bot responds in private but not in groups | Enable group mode and ensure the bot has been added to the group. Check `privacy_mode` settings. |
+| Keyboard buttons not working | Verify that `callback_data` values are being handled in your workflow's condition nodes |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Channels Overview" icon="comments" href="/channels/overview">
+    Multi-channel messaging architecture
+  </Card>
+  <Card title="KakaoTalk" icon="comment" href="/channels/kakaotalk">
+    Set up the KakaoTalk integration
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/channels/webhooks">
+    Webhook delivery, verification, and monitoring
+  </Card>
+  <Card title="Workflow Engine" icon="diagram-project" href="/workflow/overview">
+    Build the workflows that power your Telegram bot
+  </Card>
+</CardGroup>

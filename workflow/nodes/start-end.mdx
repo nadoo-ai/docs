@@ -1,0 +1,211 @@
+---
+title: 'Start & End Nodes'
+description: 'Workflow entry and exit points: Start Node initializes execution, End Node collects outputs, and Question Node pauses for user input'
+sidebarTitle: 'Start & End'
+'og:title': 'Start & End Nodes - Nadoo AI'
+'og:description': 'Configure the foundational input/output nodes that define every Nadoo AI workflow'
+icon: 'play'
+---
+
+## Overview
+
+Every Nadoo AI workflow begins with a **Start Node** and terminates with an **End Node**. These two nodes are mandatory -- they define the boundaries of your execution graph. The **Question Node** complements them by allowing the workflow to pause mid-execution and wait for additional user input.
+
+Together, these three nodes form the input/output backbone of the workflow engine.
+
+## Start Node
+
+The Start Node is the **entry point** for every workflow. When a workflow execution begins, the Start Node receives the user's initial message, initializes the workflow context, and sets up any default variables before passing control to the next node in the graph.
+
+### Responsibilities
+
+- Receive the initial user message and any attached files
+- Initialize the `WorkflowContext` with global variables
+- Set up conversation history for downstream AI Agent nodes
+- Trigger the first edge in the execution graph
+
+### Configuration
+
+```json
+{
+  "type": "start-node",
+  "config": {
+    "variables": [
+      {
+        "name": "language",
+        "type": "string",
+        "default": "en"
+      },
+      {
+        "name": "max_results",
+        "type": "number",
+        "default": 5
+      }
+    ]
+  }
+}
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `variables` | array | List of workflow-level variables to initialize at the start of execution |
+| `variables[].name` | string | Variable name, referenced by downstream nodes as `{{variable_name}}` |
+| `variables[].type` | string | Data type: `string`, `number`, `boolean`, `array`, `object` |
+| `variables[].default` | any | Default value if not provided by the caller |
+
+### Output
+
+The Start Node writes the following to the workflow context:
+
+| Key | Description |
+|---|---|
+| `user_message` | The initial user message text |
+| `files` | Array of uploaded file references (if any) |
+| `variables` | Initialized variable map |
+
+<Info>
+  Every workflow must have exactly **one** Start Node. The visual editor enforces this constraint automatically.
+</Info>
+
+## End Node
+
+The End Node is the **terminal point** of a workflow. It collects the final outputs from the workflow context and delivers the response to the user. Once the End Node executes, the workflow transitions to the `workflow_finished` state.
+
+### Responsibilities
+
+- Collect final output variables from the workflow context
+- Format the response for delivery
+- Emit the `workflow_finished` SSE event
+- Close the execution session
+
+### Configuration
+
+```json
+{
+  "type": "end-node",
+  "config": {
+    "outputs": [
+      {
+        "name": "response",
+        "source": "{{ai_agent_output}}"
+      },
+      {
+        "name": "metadata",
+        "source": "{{search_results_metadata}}"
+      }
+    ]
+  }
+}
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `outputs` | array | List of output mappings to include in the final response |
+| `outputs[].name` | string | Key name for the output |
+| `outputs[].source` | string | Variable reference or expression to resolve the value |
+
+### Behavior
+
+- If no `outputs` are configured, the End Node returns the last written value in the workflow context
+- Multiple End Nodes are allowed for workflows with branching paths -- whichever branch completes first triggers the response
+
+## Question Node
+
+The Question Node **pauses** the workflow and prompts the user for additional input. This is essential for multi-turn workflows where the agent needs clarification, confirmation, or additional information before proceeding.
+
+### How It Works
+
+<Steps>
+  <Step title="Pause Execution">
+    The workflow reaches the Question Node and transitions to the `INTERRUPTED` status.
+  </Step>
+  <Step title="Prompt the User">
+    The node emits a `question_asked` SSE event with the configured prompt text.
+  </Step>
+  <Step title="Wait for Response">
+    The workflow engine suspends execution until the user provides a response.
+  </Step>
+  <Step title="Resume Execution">
+    The user's response is written to the workflow context, and execution continues from the Question Node's output edge.
+  </Step>
+</Steps>
+
+### Configuration
+
+```json
+{
+  "type": "question-node",
+  "config": {
+    "question_text": "What is your preferred language for the report?",
+    "variable_name": "user_language",
+    "options": ["English", "Korean", "Japanese"],
+    "required": true
+  }
+}
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `question_text` | string | -- | The prompt displayed to the user |
+| `variable_name` | string | -- | Context variable to store the user's response |
+| `options` | string[] | `[]` | Optional list of predefined choices |
+| `required` | boolean | `true` | Whether the user must provide a response to continue |
+
+### Output
+
+The user's response is stored in the workflow context under the configured `variable_name`, making it available to all downstream nodes via `{{variable_name}}`.
+
+## Example: Multi-Turn Workflow
+
+A workflow that gathers requirements before generating a response:
+
+```mermaid
+graph LR
+    A[Start Node] --> B[Question Node\n"What topic?"]
+    B --> C[Question Node\n"How detailed?"]
+    C --> D[AI Agent Node]
+    D --> E[End Node]
+
+    style A fill:#e1f5fe
+    style B fill:#fff9c4
+    style C fill:#fff9c4
+    style D fill:#fff3e0
+    style E fill:#c8e6c9
+```
+
+1. **Start Node** receives the initial request.
+2. **First Question Node** asks the user to specify a topic.
+3. **Second Question Node** asks for the desired level of detail.
+4. **AI Agent Node** generates a response using both answers as context.
+5. **End Node** delivers the final output.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Initialize variables in the Start Node">
+    Define all workflow-level variables with sensible defaults in the Start Node. This makes the workflow self-documenting and prevents downstream nodes from encountering undefined references.
+  </Accordion>
+  <Accordion title="Use Question Nodes sparingly">
+    Each Question Node adds a round-trip pause. Combine related questions into a single Form Node when you need to collect multiple pieces of information at once.
+  </Accordion>
+  <Accordion title="Always have a reachable End Node">
+    Every branch in your workflow graph should eventually reach an End Node. Unreachable End Nodes or dead-end branches will cause the workflow to hang.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Form Node" icon="rectangle-list" href="/workflow/nodes/form">
+    Collect structured data with validated form fields
+  </Card>
+  <Card title="Condition Node" icon="code-branch" href="/workflow/nodes/condition">
+    Branch your workflow based on user responses
+  </Card>
+  <Card title="Direct Reply Node" icon="reply" href="/workflow/nodes/direct-reply">
+    Return immediate static responses without LLM calls
+  </Card>
+  <Card title="AI Agent Node" icon="robot" href="/workflow/nodes/ai-agent">
+    Process user input with LLM-powered reasoning
+  </Card>
+</CardGroup>

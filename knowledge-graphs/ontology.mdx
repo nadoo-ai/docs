@@ -1,0 +1,286 @@
+---
+title: 'Ontology Management'
+description: 'Define and manage knowledge graph schemas with RDF/OWL ontologies'
+sidebarTitle: 'Ontology Management'
+'og:title': 'Ontology Management - Nadoo AI Knowledge Graphs'
+'og:description': 'Create OWL/RDF ontologies, define entity types and relationships, validate graph data, and explore ontologies visually'
+---
+
+## Overview
+
+An ontology defines the **schema** of a knowledge graph: what types of entities can exist, what relationships are allowed between them, and what properties each entity and relationship can have. In Nadoo AI, ontologies are expressed using the **OWL (Web Ontology Language)** standard on top of **RDF (Resource Description Framework)**, giving you formal semantics, validation, and interoperability with industry standards.
+
+## Why Ontologies?
+
+Without an ontology, a knowledge graph is an unstructured collection of nodes and edges with no rules about what is valid. An ontology provides:
+
+- **Type safety** -- Entities must conform to defined types (e.g., a `Service` cannot have a `birthDate` property)
+- **Relationship constraints** -- Only valid relationships are allowed (e.g., `MANAGES` can only go from `Team` to `Service`, not from `Service` to `Person`)
+- **Consistency** -- New data is validated against the schema before insertion
+- **Discoverability** -- Developers and AI agents can inspect the ontology to understand what data exists and how to query it
+- **Interoperability** -- OWL/RDF ontologies can be shared across systems and merged with external knowledge bases
+
+## Core Concepts
+
+### Classes
+
+Classes define the types of entities that can exist in the graph. They are analogous to tables in a relational database or types in a type system.
+
+```turtle
+@prefix nadoo: <http://nadoo.ai/ontology#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+nadoo:Service a owl:Class ;
+    rdfs:label "Service" ;
+    rdfs:comment "A software service or microservice in the system" .
+
+nadoo:Team a owl:Class ;
+    rdfs:label "Team" ;
+    rdfs:comment "An engineering team responsible for one or more services" .
+
+nadoo:Person a owl:Class ;
+    rdfs:label "Person" ;
+    rdfs:comment "An individual contributor or team member" .
+```
+
+### Subclasses
+
+Classes can form hierarchies. A subclass inherits all properties and constraints of its parent class.
+
+```turtle
+nadoo:Microservice a owl:Class ;
+    rdfs:subClassOf nadoo:Service ;
+    rdfs:label "Microservice" ;
+    rdfs:comment "A service deployed as an independent microservice" .
+
+nadoo:MonolithModule a owl:Class ;
+    rdfs:subClassOf nadoo:Service ;
+    rdfs:label "Monolith Module" ;
+    rdfs:comment "A service module within a monolithic application" .
+```
+
+### Object Properties
+
+Object properties define relationships between entities (edges in the graph).
+
+```turtle
+nadoo:BUILT a owl:ObjectProperty ;
+    rdfs:label "built" ;
+    rdfs:domain nadoo:Team ;
+    rdfs:range nadoo:Service ;
+    rdfs:comment "The team that originally built the service" .
+
+nadoo:MANAGES a owl:ObjectProperty ;
+    rdfs:label "manages" ;
+    rdfs:domain nadoo:Team ;
+    rdfs:range nadoo:Service ;
+    rdfs:comment "The team currently responsible for the service" .
+
+nadoo:DEPENDS_ON a owl:ObjectProperty ;
+    rdfs:label "depends on" ;
+    rdfs:domain nadoo:Service ;
+    rdfs:range nadoo:Service ;
+    rdfs:comment "A runtime or build-time dependency between services" .
+
+nadoo:MEMBER_OF a owl:ObjectProperty ;
+    rdfs:label "member of" ;
+    rdfs:domain nadoo:Person ;
+    rdfs:range nadoo:Team ;
+    rdfs:comment "A person's team membership" .
+```
+
+### Datatype Properties
+
+Datatype properties define attributes of entities (properties with literal values).
+
+```turtle
+nadoo:name a owl:DatatypeProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range xsd:string ;
+    rdfs:comment "The display name of the entity" .
+
+nadoo:language a owl:DatatypeProperty ;
+    rdfs:domain nadoo:Service ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Primary programming language of the service" .
+
+nadoo:created_date a owl:DatatypeProperty ;
+    rdfs:domain nadoo:Service ;
+    rdfs:range xsd:date ;
+    rdfs:comment "Date the service was first created" .
+
+nadoo:email a owl:DatatypeProperty ;
+    rdfs:domain nadoo:Person ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Email address of the person" .
+```
+
+## Managing Ontologies via API
+
+### Create an Ontology
+
+```bash
+curl -X POST \
+  "https://your-instance.example.com/api/v1/workspaces/{workspace_id}/knowledge-graphs/ontologies" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "service-architecture",
+    "description": "Entity model for service architecture and team ownership",
+    "format": "turtle",
+    "content": "@prefix nadoo: <http://nadoo.ai/ontology#> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n..."
+  }'
+```
+
+### Upload an Ontology File
+
+You can also upload an OWL or Turtle file directly.
+
+```bash
+curl -X POST \
+  "https://your-instance.example.com/api/v1/workspaces/{workspace_id}/knowledge-graphs/ontologies/upload" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -F "file=@/path/to/ontology.ttl" \
+  -F "name=service-architecture"
+```
+
+**Supported formats:**
+
+| Format | Extension | MIME Type |
+|---|---|---|
+| Turtle | `.ttl` | `text/turtle` |
+| RDF/XML | `.rdf`, `.owl` | `application/rdf+xml` |
+| JSON-LD | `.jsonld` | `application/ld+json` |
+| N-Triples | `.nt` | `application/n-triples` |
+
+### List Ontologies
+
+```bash
+curl -X GET \
+  "https://your-instance.example.com/api/v1/workspaces/{workspace_id}/knowledge-graphs/ontologies" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Update an Ontology
+
+```bash
+curl -X PUT \
+  "https://your-instance.example.com/api/v1/workspaces/{workspace_id}/knowledge-graphs/ontologies/{ontology_id}" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "@prefix nadoo: <http://nadoo.ai/ontology#> .\n..."
+  }'
+```
+
+<Warning>
+  Updating an ontology may invalidate existing entities in the knowledge graph. The platform will report validation errors for entities that no longer conform to the updated schema. Review these errors and update or remove non-conforming entities.
+</Warning>
+
+### Delete an Ontology
+
+```bash
+curl -X DELETE \
+  "https://your-instance.example.com/api/v1/workspaces/{workspace_id}/knowledge-graphs/ontologies/{ontology_id}" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Entity Mapping and Validation
+
+When entities are added to the knowledge graph -- whether manually, via API, or through automatic extraction from documents -- the ontology validates them.
+
+### Validation Rules
+
+| Rule | Description | Example |
+|---|---|---|
+| **Type check** | Entity type must be a defined class | `FooBar` rejected if not in the ontology |
+| **Domain check** | Relationship source must be of the correct type | `MANAGES` requires source to be a `Team` |
+| **Range check** | Relationship target must be of the correct type | `DEPENDS_ON` requires target to be a `Service` |
+| **Required properties** | Entities must have all required datatype properties | `Service` must have a `name` |
+| **Datatype check** | Property values must match the declared datatype | `created_date` must be a valid `xsd:date` |
+
+### Validation Response
+
+When a validation error occurs, the API returns details about what failed:
+
+```json
+{
+  "valid": false,
+  "errors": [
+    {
+      "entity_id": "entity_new_service",
+      "error_type": "missing_required_property",
+      "property": "name",
+      "message": "Entity of type 'Service' is missing required property 'name'"
+    },
+    {
+      "entity_id": "entity_new_service",
+      "error_type": "invalid_relationship_domain",
+      "relationship": "MEMBER_OF",
+      "message": "Relationship 'MEMBER_OF' requires domain type 'Person', but source entity is type 'Service'"
+    }
+  ]
+}
+```
+
+## Ontology Explorer UI
+
+The Nadoo AI platform includes a visual ontology explorer that lets you browse and understand your knowledge graph schema without writing queries.
+
+### Features
+
+- **Class hierarchy tree:** Browse entity types and their inheritance relationships
+- **Property inspector:** View all properties and constraints for a selected class
+- **Relationship diagram:** Visualize which classes are connected by which relationship types
+- **Instance browser:** See example entities for each class
+- **Validation dashboard:** View and resolve entities that do not conform to the ontology
+
+### Accessing the Explorer
+
+1. Navigate to your workspace.
+2. Open the **Knowledge Graphs** section.
+3. Select a knowledge graph.
+4. Click the **Ontology** tab.
+
+The explorer shows a visual diagram of your ontology's classes and relationships with an interactive graph layout. Click on any class to inspect its properties, constraints, and sample entities.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Start simple and iterate" icon="seedling">
+    Begin with a small ontology covering your core entity types and relationships. Add complexity as your knowledge graph grows and new requirements emerge. Over-engineering the ontology upfront leads to maintenance overhead.
+  </Accordion>
+  <Accordion title="Use meaningful naming conventions" icon="tag">
+    - **Classes:** PascalCase nouns (`Service`, `Team`, `Person`)
+    - **Object properties:** UPPER_SNAKE_CASE verbs (`DEPENDS_ON`, `MANAGES`, `MEMBER_OF`)
+    - **Datatype properties:** snake_case nouns (`created_date`, `language`, `email`)
+    - Always include `rdfs:label` and `rdfs:comment` for documentation
+  </Accordion>
+  <Accordion title="Version your ontologies" icon="code-branch">
+    Treat ontologies as code. Store them in version control, review changes in pull requests, and test that existing entities remain valid after schema changes.
+  </Accordion>
+  <Accordion title="Leverage subclasses for specialization" icon="sitemap">
+    Use class hierarchies to model variations without duplicating properties. For example, `Microservice` and `MonolithModule` both inherit from `Service` but can have additional type-specific properties.
+  </Accordion>
+  <Accordion title="Validate before bulk import" icon="circle-check">
+    Before importing a large dataset, run a validation pass to catch schema violations early. Fix the ontology or the data before committing the import.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Knowledge Graphs Overview" icon="diagram-project" href="/knowledge-graphs/overview">
+    Architecture, graph stores, and entity extraction
+  </Card>
+  <Card title="SPARQL Queries" icon="code" href="/knowledge-graphs/sparql">
+    Query your ontology-validated knowledge graph with SPARQL
+  </Card>
+  <Card title="Knowledge Base" icon="book" href="/knowledge/overview">
+    Unstructured document retrieval with RAG
+  </Card>
+  <Card title="Workflow Engine" icon="diagram-project" href="/workflow/overview">
+    Build workflows that use graph and document knowledge together
+  </Card>
+</CardGroup>

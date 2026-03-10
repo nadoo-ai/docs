@@ -1,0 +1,155 @@
+---
+title: 'Applications'
+description: 'Build and manage AI agent applications in Nadoo AI'
+sidebarTitle: 'Overview'
+'og:title': 'Applications - Nadoo AI'
+icon: 'rocket'
+---
+
+## What is an Application?
+
+An **Application** is an AI agent instance that lives inside a Workspace. Each application combines a model configuration, optional knowledge bases, tools, and conversation settings into a deployable unit that can serve users through chat, APIs, or external messaging channels.
+
+## Application Types
+
+Nadoo AI supports three application types, each designed for a different complexity level.
+
+<CardGroup cols={3}>
+  <Card
+    title="Chat App"
+    icon="comments"
+  >
+    A conversational chatbot powered by a selected AI model. Attach knowledge bases for RAG and tools for external actions. Best for customer support, Q&A, and general assistants.
+  </Card>
+  <Card
+    title="Workflow App"
+    icon="diagram-project"
+  >
+    A visual node-graph workflow for complex, multi-step logic. Chain LLM calls, conditions, loops, and tool invocations. Best for data pipelines, automation, and orchestrated agent behavior.
+  </Card>
+  <Card
+    title="Channel App"
+    icon="share-nodes"
+  >
+    An application connected to external messaging platforms such as Slack, KakaoTalk, or web widgets. Inherits the capabilities of a Chat or Workflow App while adding channel-specific configuration.
+  </Card>
+</CardGroup>
+
+## Application Settings
+
+Every application has the following configurable properties:
+
+### General
+
+| Setting | Description |
+|---------|-------------|
+| **Name** | Display name shown in the workspace and to end users |
+| **Description** | Brief summary of what the application does |
+| **Icon** | Visual identifier for the application |
+| **Type** | Chat, Workflow, or Channel |
+
+### Model Configuration
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Model** | -- | The AI model to use (e.g., `gpt-4o`, `claude-3.5-sonnet`) |
+| **Temperature** | 0.7 | Controls randomness. Lower = more deterministic, higher = more creative. |
+| **Max Tokens** | 4096 | Maximum number of tokens in the model's response |
+| **Top P** | 1.0 | Nucleus sampling parameter |
+| **System Prompt** | -- | Instructions that define the agent's persona and behavior |
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| **Streaming** | Enable real-time token-by-token response delivery via SSE |
+| **Memory** | Conversation memory with configurable window size (number of past messages retained) |
+| **Tools** | Attach tools (plugins) the agent can invoke during conversation |
+| **Knowledge Bases** | Connect one or more knowledge bases for retrieval-augmented generation (RAG) |
+
+## Application Lifecycle
+
+<Steps>
+  <Step title="Create">
+    Create a new application from the workspace dashboard. Choose the application type and give it a name.
+  </Step>
+  <Step title="Configure">
+    Select a model, write a system prompt, set parameters, and optionally attach knowledge bases and tools.
+  </Step>
+  <Step title="Test">
+    Use the built-in chat playground to test your application's behavior. Iterate on prompts and settings.
+  </Step>
+  <Step title="Deploy">
+    Publish the application to make it available via API, embed widget, or messaging channel.
+  </Step>
+  <Step title="Monitor">
+    Track token usage, response times, costs, and conversation quality through the analytics dashboard.
+  </Step>
+</Steps>
+
+## Chat App in Detail
+
+A Chat App is the simplest and most common application type. It wraps a single LLM with:
+
+- **System prompt** defining the agent's role and instructions
+- **Knowledge bases** for RAG -- the agent retrieves relevant documents before answering
+- **Tools** the agent can call (e.g., web search, calculator, custom APIs)
+- **Conversation memory** to maintain context across turns
+
+```
+User Message → [Memory Recall] → [Knowledge Retrieval] → [LLM + Tools] → Response
+```
+
+## Workflow App in Detail
+
+A Workflow App uses a visual node graph to define complex execution flows. Each node performs a specific operation, and edges define the data flow between them.
+
+Supported node types include:
+
+- **LLM Node** -- call an AI model with a prompt
+- **Condition Node** -- branch based on a condition
+- **Tool Node** -- invoke an external tool or API
+- **Code Node** -- execute custom Python or JavaScript
+- **Knowledge Node** -- query a knowledge base
+- **Loop Node** -- iterate over a collection
+
+<Info>
+  Workflow Apps are ideal when you need deterministic control flow, parallel execution, or multi-agent orchestration that goes beyond a single LLM conversation.
+</Info>
+
+## Channel App in Detail
+
+A Channel App connects your Chat or Workflow application to an external messaging platform. Nadoo AI handles the channel-specific protocol (webhooks, message formatting, authentication) so your agent logic stays the same.
+
+Supported channels include:
+
+- Web embed widget
+- Slack
+- KakaoTalk
+- Custom webhook endpoints
+
+## Managing Applications
+
+### Via the Dashboard
+
+Use the workspace dashboard to create, edit, duplicate, and delete applications. The dashboard provides a visual interface for all settings.
+
+### Via the API
+
+All application operations are available through the REST API:
+
+```bash
+# List applications
+GET /api/v1/applications
+
+# Create an application
+POST /api/v1/applications
+
+# Update an application
+PUT /api/v1/applications/{app_id}
+
+# Delete an application
+DELETE /api/v1/applications/{app_id}
+```
+
+See the [API Reference](/api/overview) for full endpoint documentation.

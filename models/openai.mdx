@@ -1,0 +1,129 @@
+---
+title: 'OpenAI'
+description: 'Configure OpenAI models in Nadoo AI'
+sidebarTitle: 'OpenAI'
+'og:title': 'OpenAI Provider - Nadoo AI'
+icon: 'bolt'
+---
+
+## Overview
+
+OpenAI is the most feature-rich provider in Nadoo AI, supporting chat completion, embeddings, text-to-speech, speech-to-text, image generation, and vision -- all through a single API key.
+
+## Setup
+
+<Steps>
+  <Step title="Get an API Key">
+    Sign up or log in at [platform.openai.com](https://platform.openai.com). Navigate to **API Keys** and create a new secret key.
+  </Step>
+  <Step title="Configure in Nadoo">
+    Go to **Admin > Model Providers > OpenAI** and enter the following:
+
+    | Field | Required | Description |
+    |-------|----------|-------------|
+    | API Key | Yes | Your OpenAI API key (starts with `sk-`) |
+    | Organization ID | No | Your OpenAI organization ID (starts with `org-`). Only needed if your key belongs to multiple orgs. |
+  </Step>
+  <Step title="Test Connection">
+    Click **Test** to verify the key is valid. Once connected, enable the models you want to use.
+  </Step>
+</Steps>
+
+## Available Models
+
+### Chat / LLM
+
+| Model | Context Window | Best For |
+|-------|---------------|----------|
+| `gpt-4o` | 128K tokens | General-purpose, multimodal, fastest GPT-4 class |
+| `gpt-4o-mini` | 128K tokens | Cost-efficient tasks, high-volume workloads |
+| `gpt-4-turbo` | 128K tokens | Complex reasoning with large context |
+| `gpt-3.5-turbo` | 16K tokens | Simple tasks, lowest cost |
+
+### Embedding
+
+| Model | Dimensions | Best For |
+|-------|-----------|----------|
+| `text-embedding-3-small` | 1536 | Cost-efficient embeddings for RAG |
+| `text-embedding-3-large` | 3072 | Highest quality embeddings |
+
+### Image Generation
+
+| Model | Description |
+|-------|-------------|
+| `dall-e-3` | High-quality image generation from text prompts |
+
+### Speech
+
+| Model | Capability |
+|-------|-----------|
+| `whisper-1` | Speech-to-text transcription |
+| `tts-1` | Text-to-speech audio generation |
+| `tts-1-hd` | High-definition text-to-speech |
+
+## Capabilities
+
+<CardGroup cols={3}>
+  <Card title="Chat Completion" icon="comments">
+    Conversational AI with streaming, function calling, and JSON mode support.
+  </Card>
+  <Card title="Vision" icon="eye">
+    Analyze images by sending them alongside text prompts using GPT-4o.
+  </Card>
+  <Card title="Function Calling" icon="code">
+    Let the model invoke your application's tools with structured arguments.
+  </Card>
+  <Card title="Embeddings" icon="vector-square">
+    Generate vector representations of text for semantic search and RAG.
+  </Card>
+  <Card title="Text-to-Speech" icon="volume-high">
+    Convert text to natural-sounding speech in multiple voices.
+  </Card>
+  <Card title="Image Generation" icon="image">
+    Create images from text descriptions using DALL-E 3.
+  </Card>
+</CardGroup>
+
+## Recommended Models by Use Case
+
+| Use Case | Recommended Model | Reason |
+|----------|------------------|--------|
+| General chatbot | `gpt-4o` | Best balance of speed, quality, and cost |
+| High-volume support | `gpt-4o-mini` | Low cost with strong performance |
+| Document analysis | `gpt-4o` | Vision + long context window |
+| Knowledge base search | `text-embedding-3-small` | High quality at low cost |
+| Premium RAG pipeline | `text-embedding-3-large` | Maximum embedding quality |
+| Voice assistant | `whisper-1` + `tts-1` | Full speech loop |
+| Image creation | `dall-e-3` | Best available image generation |
+
+## Environment Variable
+
+When self-hosting, you can also set the API key via environment variable:
+
+```bash
+OPENAI_API_KEY=sk-your-api-key-here
+```
+
+This is picked up automatically by the backend. If both the environment variable and the admin UI configuration are set, the admin UI value takes precedence.
+
+## Rate Limits and Pricing
+
+OpenAI applies rate limits based on your account tier. Nadoo AI respects these limits and surfaces rate-limit errors clearly in the chat and logs.
+
+<Warning>
+  Monitor your OpenAI usage at [platform.openai.com/usage](https://platform.openai.com/usage) to avoid unexpected charges. Consider setting a monthly spending limit in your OpenAI account.
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="401 Unauthorized" icon="lock">
+    Your API key is invalid or has been revoked. Generate a new key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys).
+  </Accordion>
+  <Accordion title="429 Rate Limit Exceeded" icon="gauge-high">
+    You have hit OpenAI's rate limit. Wait a moment and retry, or upgrade your OpenAI plan for higher limits.
+  </Accordion>
+  <Accordion title="Model not available" icon="circle-xmark">
+    Some models require specific access tiers. Check your OpenAI account to verify you have access to the model you selected.
+  </Accordion>
+</AccordionGroup>

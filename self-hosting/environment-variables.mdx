@@ -1,0 +1,158 @@
+---
+title: 'Environment Variables'
+description: 'Complete reference for Nadoo AI environment variables'
+sidebarTitle: 'Environment Variables'
+'og:title': 'Environment Variables - Nadoo AI'
+icon: 'key'
+---
+
+## Overview
+
+Nadoo AI uses environment variables for all service configuration. Variables are loaded from a `.env` file in the project root or set directly in your shell / Docker Compose environment.
+
+<Info>
+  A `.env.example` file is included in the repository with sensible defaults for local development. Copy it to `.env` and adjust as needed.
+</Info>
+
+```bash
+cp .env.example .env
+```
+
+## Database
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | `postgresql://postgres:4432646294A404D6351@localhost:5432/nadoo_db` | Full PostgreSQL connection string |
+| `POSTGRES_USER` | `postgres` | PostgreSQL username |
+| `POSTGRES_PASSWORD` | `4432646294A404D6351` | PostgreSQL password |
+| `POSTGRES_DB` | `nadoo_db` | PostgreSQL database name |
+| `POSTGRES_HOST` | `localhost` | PostgreSQL host |
+| `POSTGRES_PORT` | `5432` | PostgreSQL port |
+
+<Warning>
+  Always change the default password in production deployments. Use a strong, randomly generated password.
+</Warning>
+
+## Redis
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `REDIS_URL` | `redis://localhost:6379/0` | Full Redis connection string |
+| `REDIS_PASSWORD` | _(empty)_ | Redis password. Set this if your Redis instance requires authentication. |
+| `REDIS_HOST` | `localhost` | Redis host |
+| `REDIS_PORT` | `6379` | Redis port |
+
+## AI Providers
+
+Configure API keys for each AI model provider you want to use. These can also be set via the Admin UI, which takes precedence over environment variables.
+
+| Variable | Description |
+|----------|-------------|
+| `OPENAI_API_KEY` | OpenAI API key (starts with `sk-`) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (starts with `sk-ant-`) |
+| `AZURE_OPENAI_API_KEY` | Azure OpenAI API key |
+| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI endpoint URL |
+| `AZURE_OPENAI_API_VERSION` | Azure OpenAI API version (e.g., `2024-02-01`) |
+| `AWS_ACCESS_KEY_ID` | AWS access key for Bedrock |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key for Bedrock |
+| `AWS_REGION` | AWS region for Bedrock (e.g., `us-east-1`) |
+| `GOOGLE_API_KEY` | Google Gemini API key |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Path to Google Cloud service account JSON for Vertex AI |
+| `OLLAMA_BASE_URL` | Ollama server URL (e.g., `http://localhost:11434`) |
+| `VLLM_BASE_URL` | vLLM server URL |
+| `OPENROUTER_API_KEY` | OpenRouter API key |
+
+## Security
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SECRET_KEY` | _(required)_ | Application secret key used for cryptographic signing. Generate with `openssl rand -hex 32`. |
+| `JWT_SECRET` | _(required)_ | Secret key for signing JWT tokens. Should be different from `SECRET_KEY`. |
+| `JWT_ALGORITHM` | `HS256` | Algorithm used for JWT signing (`HS256`, `HS384`, `HS512`) |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | Access token lifetime in minutes |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Refresh token lifetime in days |
+
+<Warning>
+  Never use the default or example secret keys in production. Generate unique, random values for `SECRET_KEY` and `JWT_SECRET`.
+</Warning>
+
+## Storage
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `S3_BUCKET` | _(empty)_ | S3-compatible bucket name for file storage |
+| `S3_ACCESS_KEY` | _(empty)_ | S3 access key |
+| `S3_SECRET_KEY` | _(empty)_ | S3 secret key |
+| `S3_REGION` | `us-east-1` | S3 region |
+| `S3_ENDPOINT` | _(empty)_ | Custom S3 endpoint URL (for MinIO or other S3-compatible services) |
+| `MINIO_ENDPOINT` | _(empty)_ | MinIO server endpoint URL |
+| `MINIO_ACCESS_KEY` | _(empty)_ | MinIO access key |
+| `MINIO_SECRET_KEY` | _(empty)_ | MinIO secret key |
+| `UPLOAD_DIR` | `./uploads` | Local directory for file uploads (used when S3 is not configured) |
+
+## Application
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `APP_ENV` | `development` | Environment name: `development`, `staging`, or `production` |
+| `DEBUG` | `true` | Enable debug mode. Set to `false` in production. |
+| `LOG_LEVEL` | `INFO` | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
+| `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated list of allowed CORS origins |
+| `API_PREFIX` | `/api/v1` | URL prefix for all API routes |
+| `WORKERS` | `1` | Number of Uvicorn worker processes (set to CPU count in production) |
+| `HOST` | `0.0.0.0` | Host address to bind the server to |
+| `PORT` | `8000` | Port number for the backend API server |
+
+## Celery / Task Queue
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CELERY_BROKER_URL` | `redis://localhost:6379/1` | Celery message broker URL |
+| `CELERY_RESULT_BACKEND` | `redis://localhost:6379/2` | Celery result backend URL |
+| `CELERY_WORKER_CONCURRENCY` | `4` | Number of concurrent Celery worker processes |
+
+## Example Configuration
+
+### Local Development
+
+```bash
+# .env
+APP_ENV=development
+DEBUG=true
+LOG_LEVEL=DEBUG
+
+DATABASE_URL=postgresql://postgres:4432646294A404D6351@localhost:5432/nadoo_db
+REDIS_URL=redis://localhost:6379/0
+
+SECRET_KEY=dev-secret-key-change-in-production
+JWT_SECRET=dev-jwt-secret-change-in-production
+
+OPENAI_API_KEY=sk-your-key-here
+CORS_ORIGINS=http://localhost:3000
+```
+
+### Production
+
+```bash
+# .env
+APP_ENV=production
+DEBUG=false
+LOG_LEVEL=WARNING
+WORKERS=4
+
+DATABASE_URL=postgresql://nadoo:STRONG_PASSWORD@db-host:5432/nadoo_db
+REDIS_URL=redis://:REDIS_PASSWORD@redis-host:6379/0
+
+SECRET_KEY=a]8f2k...randomly-generated-64-chars
+JWT_SECRET=b]9g3l...randomly-generated-64-chars
+
+CORS_ORIGINS=https://app.yourdomain.com
+S3_BUCKET=nadoo-uploads
+S3_ACCESS_KEY=your-s3-access-key
+S3_SECRET_KEY=your-s3-secret-key
+S3_REGION=us-east-1
+```
+
+<Note>
+  Environment variables set in the shell or Docker Compose `environment` block override values in the `.env` file.
+</Note>

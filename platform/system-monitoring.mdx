@@ -1,0 +1,328 @@
+---
+title: 'System Monitoring'
+description: 'Monitoring and observability for the platform'
+sidebarTitle: 'System Monitoring'
+'og:title': 'System Monitoring - Nadoo AI'
+icon: 'chart-line'
+---
+
+## Overview
+
+Nadoo AI provides built-in monitoring, health checks, and metrics collection to ensure platform reliability. The observability stack includes Prometheus-compatible metrics, structured logging, health probes for Kubernetes, and real-time system resource tracking.
+
+<CardGroup cols={3}>
+  <Card title="Health Checks" icon="heart-pulse">
+    Liveness, readiness, and comprehensive health endpoints for orchestration platforms.
+  </Card>
+  <Card title="Prometheus Metrics" icon="chart-bar">
+    HTTP request counters, latency histograms, connection pool gauges, and business metrics.
+  </Card>
+  <Card title="Structured Logging" icon="file-lines">
+    Colored, leveled logging with configurable output and SQL query tracing.
+  </Card>
+</CardGroup>
+
+---
+
+## Health Check Endpoints
+
+Nadoo AI exposes three levels of health checks, designed for use with Kubernetes probes, load balancers, or external monitoring tools.
+
+<Tabs>
+  <Tab title="Liveness Probe">
+    Returns immediately to confirm the process is running. Use this for Kubernetes `livenessProbe`.
+
+    ```bash
+    GET /health/liveness
+    ```
+
+    **Response (200 OK):**
+
+    ```json
+    {
+      "status": "alive",
+      "timestamp": "2026-03-09T12:00:00Z"
+    }
+    ```
+  </Tab>
+  <Tab title="Readiness Probe">
+    Checks whether the application is ready to serve traffic. Verifies database connectivity, Redis availability, and system resources. Use this for Kubernetes `readinessProbe`.
+
+    ```bash
+    GET /health/readiness
+    ```
+
+    **Response (200 OK):**
+
+    ```json
+    {
+      "status": "ready",
+      "timestamp": "2026-03-09T12:00:00Z"
+    }
+    ```
+
+    **Response when not ready (503):**
+
+    ```json
+    {
+      "status": "not_ready",
+      "timestamp": "2026-03-09T12:00:00Z",
+      "reason": "Application is still starting up"
+    }
+    ```
+  </Tab>
+  <Tab title="Comprehensive Health">
+    Runs all component checks and returns a detailed status report. Ideal for dashboards and alerting systems.
+
+    ```bash
+    GET /api/v1/system/health
+    ```
+
+    **Response:**
+
+    ```json
+    {
+      "status": "healthy",
+      "timestamp": "2026-03-09T12:00:00Z",
+      "version": "1.2.0",
+      "checks": {
+        "database": {
+          "status": "healthy",
+          "message": "Database connection is working"
+        },
+        "redis": {
+          "status": "healthy",
+          "message": "Redis connection is working"
+        },
+        "system": {
+          "status": "healthy",
+          "message": "System resources are within normal limits",
+          "metrics": {
+            "cpu_percent": 23.5,
+            "memory_percent": 61.2,
+            "disk_percent": 45.0
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Health Status Values
+
+| Status | Meaning |
+|--------|---------|
+| `healthy` | All components are functioning normally |
+| `degraded` | The system is operational but one or more resources exceed warning thresholds (CPU, memory, or disk > 90%) |
+| `unhealthy` | One or more critical components (database, Redis) are unavailable |
+
+<Info>
+  The comprehensive health check triggers real-time system metric collection. Avoid polling it more frequently than every 15 seconds to minimize overhead.
+</Info>
+
+---
+
+## Prometheus Metrics
+
+Nadoo AI exposes a `/metrics` endpoint in Prometheus exposition format. The platform collects metrics automatically via a background task that runs every 30 seconds.
+
+### Available Metrics
+
+<Tabs>
+  <Tab title="HTTP Metrics">
+    | Metric | Type | Labels | Description |
+    |--------|------|--------|-------------|
+    | `http_requests_total` | Counter | `method`, `endpoint`, `status` | Total HTTP requests received |
+    | `http_request_duration_seconds` | Histogram | `method`, `endpoint` | Request latency distribution |
+    | `active_connections` | Gauge | -- | Number of currently active connections |
+  </Tab>
+  <Tab title="Database Metrics">
+    | Metric | Type | Description |
+    |--------|------|-------------|
+    | `database_pool_size` | Gauge | Current database connection pool size |
+    | `database_pool_checked_out` | Gauge | Number of active (checked-out) database connections |
+  </Tab>
+  <Tab title="Cache Metrics">
+    | Metric | Type | Labels | Description |
+    |--------|------|--------|-------------|
+    | `cache_hits_total` | Counter | `cache_type` | Total cache hits |
+    | `cache_misses_total` | Counter | `cache_type` | Total cache misses |
+  </Tab>
+  <Tab title="Business Metrics">
+    | Metric | Type | Labels | Description |
+    |--------|------|--------|-------------|
+    | `chat_messages_total` | Counter | `application_id` | Total chat messages processed |
+    | `documents_processed_total` | Counter | `knowledge_base_id`, `status` | Total documents processed |
+    | `embeddings_generated_total` | Counter | `model` | Total embeddings generated |
+  </Tab>
+  <Tab title="System Metrics">
+    | Metric | Type | Description |
+    |--------|------|-------------|
+    | `system_cpu_usage_percent` | Gauge | Current system CPU usage percentage |
+    | `system_memory_usage_percent` | Gauge | Current system memory usage percentage |
+    | `system_disk_usage_percent` | Gauge | Current system disk usage percentage |
+  </Tab>
+</Tabs>
+
+### Scraping Metrics
+
+Configure Prometheus to scrape the `/metrics` endpoint:
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: 'nadoo-ai'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['nadoo-backend:8000']
+    metrics_path: '/metrics'
+```
+
+<Tip>
+  The `/metrics` endpoint is excluded from the metrics middleware itself to prevent recursive metric collection.
+</Tip>
+
+---
+
+## Logging Configuration
+
+Nadoo AI uses Python's standard logging library with colored output and configurable log levels.
+
+### Log Levels
+
+| Level | Use Case |
+|-------|----------|
+| `DEBUG` | Verbose output including system metric snapshots and SQL queries (when `LOG_SQL_QUERIES=true`) |
+| `INFO` | Standard operational messages (default) |
+| `WARNING` | Non-critical issues such as rate limit warnings or deprecated API usage |
+| `ERROR` | Failures that affect individual requests |
+| `CRITICAL` | System-level failures requiring immediate attention |
+
+### Configuration
+
+Control logging via environment variables:
+
+```bash
+# Set the global log level
+NADOO_LOG_LEVEL=INFO
+
+# Write logs to a file (in addition to stdout)
+NADOO_LOG_FILE=/var/log/nadoo/app.log
+
+# Enable verbose SQL query logging
+NADOO_LOG_SQL_QUERIES=false
+```
+
+### Log Format
+
+All log entries follow a structured format with timestamps, module names, and colored severity levels:
+
+```
+2026-03-09 12:00:00,123 - src.api.v1.chat_router - INFO - Chat message processed
+2026-03-09 12:00:00,456 - src.core.metrics - DEBUG - System metrics collected - CPU: 23.5%, Memory: 61.2%, Disk: 45.0%
+2026-03-09 12:00:01,789 - src.core.access_control - WARNING - Rate limit exceeded for user:abc123
+```
+
+<Info>
+  Noisy loggers (uvicorn access logs, watchfiles, SQLAlchemy internals) are automatically suppressed to keep output clean. Enable `LOG_SQL_QUERIES=true` only when debugging database performance issues.
+</Info>
+
+---
+
+## PostHog Analytics
+
+Nadoo AI optionally integrates with PostHog for product analytics and error tracking.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NADOO_POSTHOG_ENABLED` | `null` | Explicitly enable or disable PostHog. If unset, auto-enabled in demo mode. |
+| `NADOO_POSTHOG_API_KEY` | -- | Your PostHog project API key |
+| `NADOO_POSTHOG_HOST` | `https://us.i.posthog.com` | PostHog ingestion host |
+
+<Note>
+  PostHog is **disabled by default** for self-hosted (air-gapped) deployments. It is only auto-enabled when `DEMO_MODE=true`. Set `POSTHOG_ENABLED=false` explicitly to ensure no external analytics calls are made.
+</Note>
+
+---
+
+## System Statistics
+
+The system management API provides aggregate platform statistics:
+
+```bash
+GET /api/v1/system/statistics
+Authorization: Bearer {admin-access-token}
+```
+
+This endpoint returns counts and trends for users, workspaces, applications, chat messages, and document processing across the platform.
+
+---
+
+## Audit Logging
+
+Nadoo AI records all significant actions in an audit log, including:
+
+- Resource creation, updates, and deletions
+- Access control denials (domain, IP, rate limit)
+- Role changes and member management
+- API key lifecycle events
+
+Query audit logs via the system API:
+
+```bash
+GET /api/v1/system/audit-logs?page=1&size=50
+Authorization: Bearer {admin-access-token}
+```
+
+Each audit entry captures the acting user, action type, resource details, IP address, user agent, and timestamp.
+
+---
+
+## Kubernetes Integration
+
+Use the following probe configuration in your Kubernetes deployment:
+
+```yaml
+# deployment.yaml
+spec:
+  containers:
+    - name: nadoo-backend
+      livenessProbe:
+        httpGet:
+          path: /health/liveness
+          port: 8000
+        initialDelaySeconds: 10
+        periodSeconds: 15
+        failureThreshold: 3
+      readinessProbe:
+        httpGet:
+          path: /health/readiness
+          port: 8000
+        initialDelaySeconds: 20
+        periodSeconds: 10
+        failureThreshold: 5
+```
+
+<Warning>
+  Set `initialDelaySeconds` high enough for your environment. The readiness probe will return `not_ready` until the database connection pool is established, Redis is reachable, and all startup tasks have completed.
+</Warning>
+
+---
+
+## Monitoring Best Practices
+
+<AccordionGroup>
+  <Accordion title="Set up alerting on health status" icon="bell">
+    Configure alerts in your monitoring system (Grafana, PagerDuty, etc.) to trigger when the comprehensive health check returns `degraded` or `unhealthy` for more than 2 consecutive checks.
+  </Accordion>
+  <Accordion title="Monitor database connection pool saturation" icon="database">
+    Watch the `database_pool_checked_out` metric against `database_pool_size`. Pool exhaustion leads to request timeouts. Default pool settings: size=5, max overflow=10.
+  </Accordion>
+  <Accordion title="Track cache hit ratios" icon="bolt">
+    A healthy cache hit ratio should be above 70%. If `cache_misses_total` grows faster than `cache_hits_total`, review your caching strategy or increase Redis memory.
+  </Accordion>
+  <Accordion title="Review audit logs regularly" icon="clipboard-list">
+    Schedule weekly reviews of audit logs to catch unusual access patterns, repeated access denials, or unexpected administrative actions.
+  </Accordion>
+</AccordionGroup>

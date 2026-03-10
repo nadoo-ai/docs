@@ -1,293 +1,375 @@
 ---
 title: 'API Reference'
-description: 'Complete API documentation for Nadoo AI platform'
+description: 'OpenAI-compatible Chat Completion API for accessing AI agents'
 sidebarTitle: 'Overview'
-'og:title': 'Nadoo AI API Reference'
+'og:title': 'API Reference - Nadoo AI'
 icon: 'code'
 ---
 
-## API Documentation
+## Overview
 
-Comprehensive API reference for all Nadoo AI platform components.
+Nadoo AI provides an **OpenAI-compatible Chat Completion API**. You can integrate with any existing OpenAI SDK or HTTP client -- the AI model, workflow, and knowledge base configured for each application are applied automatically.
 
-## Available APIs
-
-<CardGroup cols={2}>
-  <Card
-    title="Flow Core APIs"
-    icon="cube"
-    href="/api/flow-core/base"
-  >
-    **Open Source Python Framework**
-
-    Workflow orchestration and AI agent development
-  </Card>
-  <Card
-    title="Plugin SDK APIs"
-    icon="puzzle-piece"
-    href="/api/plugin-sdk/llm"
-  >
-    **Plugin Development**
-
-    Build custom tools and integrations
-  </Card>
-  <Card
-    title="Sandbox APIs"
-    icon="shield"
-    href="/api/sandbox/execute"
-  >
-    **Secure Code Execution**
-
-    Multi-language code execution service
-  </Card>
-  <Card
-    title="Builder APIs"
-    icon="palette"
-    href="/api/builder/rest-api"
-  >
-    **Coming Soon**
-
-    Visual builder platform APIs
-  </Card>
-</CardGroup>
-
----
-
-## Flow Core APIs
-
-Python framework for building AI workflows and agents.
-
-### Core Modules
-
-| Module | Description | Status |
-|--------|-------------|--------|
-| [`base`](/api/flow-core/base) | Core types and workflow execution | ✅ Stable |
-| [`chain`](/api/flow-core/chain) | Chaining API with pipe operator | ✅ Stable |
-| [`batch`](/api/flow-core/batch) | Batch processing operations | ✅ Stable |
-| [`callbacks`](/api/flow-core/callbacks) | Event handling and observability | ✅ Stable |
-
-### Feature Modules
-
-| Module | Description | Status |
-|--------|-------------|--------|
-| [`memory`](/api/flow-core/memory) | Chat history and session management | ✅ Stable |
-| [`memory_db`](/api/flow-core/memory_db) | Database-backed persistent storage | ✅ Stable |
-| [`streaming`](/api/flow-core/streaming) | Real-time event streaming | ✅ Stable |
-| [`resilience`](/api/flow-core/resilience) | Retry and fallback patterns | ✅ Stable |
-| [`caching`](/api/flow-core/caching) | Response caching mechanisms | ✅ Stable |
-| [`rate_limiting`](/api/flow-core/rate_limiting) | API quota management | ✅ Stable |
-| [`tools`](/api/flow-core/tools) | Tool registry and management | ✅ Stable |
-| [`parsers`](/api/flow-core/parsers) | Output parsing and extraction | ✅ Stable |
-| [`prompts`](/api/flow-core/prompts) | Prompt templates and formatting | ✅ Stable |
-| [`backends`](/api/flow-core/backends) | Multi-backend support | ✅ Stable |
-
-### Quick Example
-
-```python
-from nadoo_flow import ChainableNode, NodeResult
-
-class MyNode(ChainableNode):
-    async def execute(self, node_context, workflow_context):
-        return NodeResult(success=True, output={"result": "data"})
-
-# Chain nodes with pipe operator
-workflow = MyNode() | ProcessNode() | OutputNode()
-result = await workflow.run({"input": "data"})
+```
+POST https://your-domain.com/api/v1/chat/{application_id}/chat/completions
 ```
 
----
-
-## Plugin SDK APIs
-
-SDK for developing custom plugins and tools.
-
-### Available APIs
-
-| API | Description | Documentation |
-|-----|-------------|---------------|
-| [`llm`](/api/plugin-sdk/llm) | Invoke LLM models | ✅ Available |
-| [`knowledge`](/api/plugin-sdk/knowledge) | Search knowledge bases | ✅ Available |
-| [`tools`](/api/plugin-sdk/tools) | Invoke other tools | ✅ Available |
-| [`storage`](/api/plugin-sdk/storage) | Persistent storage | ✅ Available |
-
-### Quick Example
-
-```python
-from nadoo_plugin import NadooPlugin, tool, parameter
-
-class MyPlugin(NadooPlugin):
-    @tool(name="process_text", description="Process text using AI")
-    @parameter("text", type="string", required=True)
-    def process_text(self, text: str) -> dict:
-        # Use Nadoo's LLM
-        response = self.api.llm.invoke(
-            messages=[
-                {"role": "user", "content": f"Process: {text}"}
-            ]
-        )
-
-        return {"processed": response.content}
-```
+<Info>
+  `application_id` can be either an app UUID or an **Access Token** (for public URLs).
+</Info>
 
 ---
 
-## Sandbox APIs
+## Chat Completion API
 
-Secure code execution in 12+ programming languages.
+Uses the same request/response format as OpenAI's `/v1/chat/completions`.
 
-### Endpoints
-
-| Endpoint | Description | Documentation |
-|----------|-------------|---------------|
-| [`/execute`](/api/sandbox/execute) | Synchronous execution | ✅ Available |
-| [`/async-execute`](/api/sandbox/async-execute) | Asynchronous execution | ✅ Available |
-| [`/batch`](/api/sandbox/batch) | Batch execution | ✅ Available |
-
-### Supported Languages
-
-Python, JavaScript, TypeScript, Java, Go, Rust, C++, C#, Ruby, PHP, SQL, Bash
-
-### Quick Example
+### Request
 
 ```bash
-curl -X POST http://localhost:8002/api/v1/execute \
-  -H "X-API-Key: your-api-key" \
+curl -X POST https://your-domain.com/api/v1/chat/{application_id}/chat/completions \
+  -H "Authorization: Bearer {your-jwt-token}" \
   -H "Content-Type: application/json" \
+  -H "X-Session-Id: session-abc123" \
   -d '{
-    "code": "print(\"Hello, World!\")",
-    "language": "python"
+    "model": "gpt-4o",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Hello!"}
+    ],
+    "stream": false,
+    "temperature": 0.7,
+    "max_tokens": 1000
   }'
 ```
 
----
+### Request Body
 
-## Builder APIs
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `model` | `string` | `"gpt-3.5-turbo"` | Model ID (overridden by app config) |
+| `messages` | `array` | **required** | Array of conversation messages |
+| `stream` | `boolean` | `false` | Enable SSE streaming |
+| `temperature` | `float` | `0.7` | Generation temperature (0-2) |
+| `top_p` | `float` | `1.0` | Nucleus sampling (0-1) |
+| `max_tokens` | `integer` | `null` | Maximum tokens to generate |
+| `stop` | `array` | `null` | Stop sequences |
+| `tools` | `array` | `null` | Function calling tool definitions |
+| `tool_choice` | `string/object` | `null` | Tool selection strategy |
+| `metadata` | `object` | `null` | Request metadata |
 
-<Note>
-  **Coming Soon**
+### Message Format
 
-  Builder platform APIs for visual workflow creation and management.
-</Note>
+<Tabs>
+  <Tab title="Text">
+    ```json
+    {
+      "role": "user",
+      "content": "What's the weather in Seoul?"
+    }
+    ```
+  </Tab>
+  <Tab title="Multimodal (Image)">
+    ```json
+    {
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "What do you see in this image?"},
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "https://example.com/photo.jpg",
+            "detail": "auto"
+          }
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Audio">
+    ```json
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_audio",
+          "input_audio": {
+            "data": "base64-encoded-audio...",
+            "format": "wav"
+          }
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="File Attachments">
+    ```json
+    {
+      "role": "user",
+      "content": "Summarize this document",
+      "attachments": [
+        {
+          "filename": "report.pdf",
+          "fileType": "pdf",
+          "size": 102400,
+          "uploadedAt": "2025-03-01T12:00:00Z"
+        }
+      ]
+    }
+    ```
+  </Tab>
+</Tabs>
 
-Planned APIs:
-- REST API for workflow management
-- Webhooks for event notifications
-- SDK for programmatic access
+### Response (Non-streaming)
 
----
-
-## API Conventions
-
-### Import Structure
-
-All APIs follow consistent import patterns:
-
-```python
-# Flow Core
-from nadoo_flow import ChainableNode, WorkflowExecutor
-
-# Plugin SDK
-from nadoo_plugin import NadooPlugin, tool, parameter
-
-# For Sandbox, use REST API
+```json
+{
+  "id": "chatcmpl-abc123",
+  "object": "chat.completion",
+  "created": 1709312000,
+  "model": "gpt-4o",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Hello! How can I help you?"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 25,
+    "completion_tokens": 15,
+    "total_tokens": 40
+  }
+}
 ```
 
-### Async-First Design
+### Response (Streaming)
 
-Flow Core and Plugin SDK use async/await:
+When `"stream": true`, tokens are delivered in real time via **Server-Sent Events**:
 
-```python
-# Async execution
-result = await node.execute(node_context, workflow_context)
-result = await workflow.run(input_data)
+```
+data: {"id":"chatcmpl-abc123","object":"chat.completion.chunk","created":1709312000,"model":"gpt-4o","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}
 
-# Streaming
-async for chunk in workflow.stream(input_data):
-    process(chunk)
+data: {"id":"chatcmpl-abc123","object":"chat.completion.chunk","created":1709312000,"model":"gpt-4o","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-abc123","object":"chat.completion.chunk","created":1709312000,"model":"gpt-4o","choices":[{"index":0,"delta":{"content":"!"},"finish_reason":null}]}
+
+data: [DONE]
 ```
 
-### Type Safety
-
-All APIs use type hints and Pydantic models:
-
-```python
-from typing import Dict, Any
-from pydantic import BaseModel
-
-class Config(BaseModel):
-    timeout: float = 30.0
-    retries: int = 3
-```
-
-### Error Handling
-
-Consistent error handling across all APIs:
-
-```python
-from nadoo_flow import NodeResult
-
-try:
-    result = await node.execute(context)
-    return NodeResult(success=True, output=data)
-except Exception as e:
-    return NodeResult(success=False, error=str(e))
-```
+<Tip>
+  For Workflow apps, additional SSE events (node execution status, agent reasoning steps, etc.) are emitted during streaming. See [SSE Events](/api/sse-events) for details.
+</Tip>
 
 ---
 
 ## Authentication
 
-### Flow Core
+| Method | Header | Use Case |
+|--------|--------|----------|
+| **JWT Bearer** | `Authorization: Bearer {token}` | Authenticated users |
+| **API Key** | `X-API-Key: {key}` | Server-to-server integration |
+| **Access Token** | Included in URL path | Public chatbot URLs |
 
-No authentication required - local Python library
+<Tabs>
+  <Tab title="JWT Bearer">
+    ```bash
+    curl -X POST /api/v1/chat/{app_id}/chat/completions \
+      -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."
+    ```
+  </Tab>
+  <Tab title="API Key">
+    ```bash
+    curl -X POST /api/v1/chat/{app_id}/chat/completions \
+      -H "X-API-Key: nai-your-api-key"
+    ```
+  </Tab>
+  <Tab title="Access Token (Public)">
+    ```bash
+    # Use access_token in place of application_id
+    curl -X POST /api/v1/chat/{access_token}/chat/completions
+    ```
 
-### Plugin SDK
+    Access Tokens are generated in the app settings and allow unauthenticated public access.
+  </Tab>
+</Tabs>
 
-Uses workspace API keys configured in Nadoo platform
-
-### Sandbox
-
-API key authentication via `X-API-Key` header:
-
-```bash
-curl -H "X-API-Key: your-api-key" ...
-```
-
-### Builder
-
-OAuth 2.0 and API key authentication (coming soon)
+See [Authentication](/api/authentication) for full details.
 
 ---
 
-## Getting Started
+## Client Integration
+
+Fully compatible with the OpenAI SDK -- just change the `base_url`.
+
+<Tabs>
+  <Tab title="Python (OpenAI SDK)">
+    ```python
+    from openai import OpenAI
+
+    client = OpenAI(
+        api_key="nai-your-api-key",
+        base_url="https://your-domain.com/api/v1/chat/{app_id}"
+    )
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "user", "content": "Hello!"}
+        ],
+        stream=True
+    )
+
+    for chunk in response:
+        if chunk.choices[0].delta.content:
+            print(chunk.choices[0].delta.content, end="")
+    ```
+  </Tab>
+  <Tab title="JavaScript (fetch)">
+    ```javascript
+    const response = await fetch(
+      'https://your-domain.com/api/v1/chat/{app_id}/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': 'nai-your-api-key',
+          'X-Session-Id': 'session-abc123'
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [{ role: 'user', content: 'Hello!' }],
+          stream: false
+        })
+      }
+    );
+
+    const data = await response.json();
+    console.log(data.choices[0].message.content);
+    ```
+  </Tab>
+  <Tab title="cURL">
+    ```bash
+    curl -X POST https://your-domain.com/api/v1/chat/{app_id}/chat/completions \
+      -H "Content-Type: application/json" \
+      -H "X-API-Key: nai-your-api-key" \
+      -d '{
+        "model": "gpt-4o",
+        "messages": [{"role": "user", "content": "Hello!"}],
+        "stream": false
+      }'
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Behavior by App Type
+
+The same Chat Completion endpoint is used for all app types, but the internal processing differs:
+
+<AccordionGroup>
+  <Accordion title="Chat App" icon="comments">
+    Conversations are handled directly by the configured AI model. If a knowledge base is linked, RAG is applied automatically.
+
+    - Based on system prompt + conversation history
+    - Linked tools/plugins are activated automatically
+    - Supports multimodal input (images, audio, files)
+  </Accordion>
+  <Accordion title="Workflow App" icon="diagram-project">
+    Messages are routed into the workflow graph and processed through the node chain.
+
+    - Start node → AI Agent → Condition → Search Knowledge, etc.
+    - Node execution status SSE events are emitted during streaming
+    - Use `start_node_inputs` to pass custom field values to the start node
+
+    ```json
+    {
+      "messages": [{"role": "user", "content": "Generate a report"}],
+      "stream": true,
+      "start_node_inputs": {
+        "report_type": "monthly",
+        "department": "engineering"
+      }
+    }
+    ```
+  </Accordion>
+  <Accordion title="Channel App" icon="message">
+    Apps connected to external messaging channels (Slack, Discord, etc.). Typically invoked automatically via channel webhooks, but can also be called directly via the Chat Completion API.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Session Management
+
+Use the `X-Session-Id` header to maintain conversation context. Sending the same session ID preserves the conversation history across requests.
+
+```bash
+# Same session ID across requests → conversation history is maintained
+curl -X POST /api/v1/chat/{app_id}/chat/completions \
+  -H "X-Session-Id: user-123-conv-1" \
+  -d '{"messages": [{"role": "user", "content": "First question"}]}'
+
+curl -X POST /api/v1/chat/{app_id}/chat/completions \
+  -H "X-Session-Id: user-123-conv-1" \
+  -d '{"messages": [{"role": "user", "content": "Follow-up question"}]}'
+```
+
+---
+
+## Rate Limits
+
+| Scope | Limit |
+|-------|-------|
+| Chat Completion | 20 requests/min (burst: 5) |
+| IP-based (global) | 300 requests/min |
+| User-based (authenticated) | 600 requests/min |
+
+Rate-limited responses return HTTP `429` with a `Retry-After` header.
+
+---
+
+## Management API (Internal)
+
+The internal REST API used for platform management is available via FastAPI's **Swagger UI**. This API is consumed by the frontend. For external integrations, use the Chat Completion API above.
 
 <CardGroup cols={2}>
-  <Card title="Flow Core Quickstart" icon="rocket" href="/flow-core/quickstart">
-    Build your first workflow
+  <Card
+    title="Swagger UI"
+    icon="flask"
+    href="http://localhost:8000/api/docs"
+  >
+    Available in development mode when `DEBUG=true`. Browse and test all endpoints.
   </Card>
-  <Card title="Plugin SDK Quickstart" icon="plug" href="/plugin-sdk/quickstart">
-    Create your first plugin
-  </Card>
-  <Card title="Sandbox Quickstart" icon="play" href="/sandbox/quickstart">
-    Execute code securely
-  </Card>
-  <Card title="Builder Guide" icon="wand-magic-sparkles" href="/builder/getting-started">
-    Visual workflow editor
+  <Card
+    title="ReDoc"
+    icon="book"
+    href="http://localhost:8000/api/redoc"
+  >
+    Human-readable API documentation with schemas and examples.
   </Card>
 </CardGroup>
 
+<Note>
+  Swagger UI is only enabled when `DEBUG=true`. It is disabled in production for security.
+</Note>
+
 ---
 
-## Support
+## Related
 
 <CardGroup cols={3}>
-  <Card title="GitHub" icon="github" href="https://github.com/nadoo-ai">
-    View source code and contribute
+  <Card title="Authentication" icon="lock" href="/api/authentication">
+    JWT, API Key, and Cookie authentication details
   </Card>
-  <Card title="Discord" icon="discord" href="https://discord.gg/9gCsxSn6">
-    Join our community
+  <Card title="SSE Events" icon="bolt" href="/api/sse-events">
+    19 real-time streaming event types
   </Card>
-  <Card title="Documentation" icon="book" href="/introduction">
-    Read the full documentation
+  <Card title="Error Handling" icon="circle-exclamation" href="/api/errors">
+    Error codes and response format
   </Card>
 </CardGroup>

@@ -1,0 +1,271 @@
+---
+title: 'Documents'
+description: 'Upload, process, and manage documents in the Nadoo AI Knowledge Base'
+sidebarTitle: 'Documents'
+'og:title': 'Documents - Nadoo AI Knowledge Base'
+'og:description': 'Supported document formats, upload methods, processing pipeline, and metadata extraction'
+---
+
+## Overview
+
+Documents are the foundation of the Nadoo AI Knowledge Base. You upload files or provide URLs, the platform parses and chunks them, generates embeddings, and indexes them for fast retrieval. Once indexed, documents power your RAG pipelines and AI agent workflows with grounded, source-backed answers.
+
+## Supported Formats
+
+Nadoo AI accepts a range of document formats, each with format-specific parsing to preserve structure and meaning.
+
+| Format | Extensions | Processing Details |
+|---|---|---|
+| PDF | `.pdf` | Text extraction with layout preservation. OCR fallback for scanned documents. |
+| Microsoft Word | `.docx`, `.doc` | Heading hierarchy, tables, and inline images are preserved during parsing. |
+| Plain Text | `.txt` | Direct ingestion with no conversion required. |
+| Markdown | `.md`, `.mdx` | Heading levels are used as chunk boundaries and metadata. |
+| Excel | `.xlsx`, `.xls` | Each worksheet is processed as a separate logical document. Column headers become metadata. |
+| Web Pages | URL | HTML is fetched, cleaned of navigation and boilerplate, and converted to plain text. |
+
+<Info>
+  File size limits depend on your deployment configuration. The default limit is **50 MB per file**. For self-hosted deployments, adjust the `MAX_UPLOAD_SIZE` environment variable.
+</Info>
+
+## Uploading Documents
+
+### Via the UI
+
+1. Navigate to your workspace and open the **Knowledge Base** section.
+2. Select a knowledge base or create a new one.
+3. Click **Upload Documents** and drag files into the upload zone, or click to browse.
+4. Optionally add custom metadata tags before confirming.
+5. The upload begins and documents enter the processing pipeline automatically.
+
+### Via the API
+
+Use the document upload endpoint to add files programmatically.
+
+```bash
+curl -X POST \
+  "https://your-instance.example.com/api/v1/workspaces/{workspace_id}/knowledge/{kb_id}/documents" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@/path/to/document.pdf" \
+  -F 'metadata={"tags": ["engineering", "onboarding"]}'
+```
+
+**Request parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `file` | File | Yes | The document file to upload |
+| `metadata` | JSON | No | Custom metadata to attach to the document |
+| `chunk_size` | Integer | No | Override the knowledge base default chunk size |
+| `chunk_overlap` | Integer | No | Override the knowledge base default chunk overlap |
+
+**Response:**
+
+```json
+{
+  "id": "doc_abc123",
+  "filename": "document.pdf",
+  "status": "processing",
+  "format": "pdf",
+  "size_bytes": 1048576,
+  "metadata": {
+    "tags": ["engineering", "onboarding"]
+  },
+  "created_at": "2026-03-09T10:30:00Z"
+}
+```
+
+## Document Processing Pipeline
+
+Every uploaded document passes through a four-stage pipeline before it becomes searchable.
+
+```mermaid
+graph LR
+    A[Upload] --> B[Parse]
+    B --> C[Chunk]
+    C --> D[Embed]
+    D --> E[Index]
+
+    style A fill:#e1f5fe
+    style B fill:#fff9c4
+    style C fill:#fff3e0
+    style D fill:#f3e5f5
+    style E fill:#c8e6c9
+```
+
+<Steps>
+  <Step title="Upload">
+    The file is received, validated for format and size, and stored in the platform's object storage. A document record is created with status `processing`.
+  </Step>
+  <Step title="Parse">
+    A Celery background worker extracts text from the file using format-specific parsers. Structure such as headings, tables, and page boundaries is preserved as metadata annotations.
+  </Step>
+  <Step title="Chunk">
+    The extracted text is split into overlapping segments. The chunking strategy respects document structure -- splits prefer paragraph and heading boundaries over arbitrary character positions.
+
+    Default settings:
+    - **Chunk size:** 1000 characters
+    - **Chunk overlap:** 200 characters
+    - **Separator:** `\n\n` (falls back to sentence and word boundaries)
+  </Step>
+  <Step title="Embed">
+    Each chunk is converted into a vector using the knowledge base's configured embedding model. Embedding generation runs in batches for efficiency.
+  </Step>
+  <Step title="Index">
+    Vectors are inserted into the vector store (pgvector by default) and indexed for fast approximate nearest neighbor search. Once indexing completes, the document status transitions to `indexed`.
+  </Step>
+</Steps>
+
+## Document Status
+
+Each document has a status that reflects its position in the processing pipeline.
+
+| Status | Description |
+|---|---|
+| `processing` | The document has been uploaded and is being parsed, chunked, and embedded. |
+| `indexed` | Processing is complete. The document's chunks are searchable. |
+| `failed` | An error occurred during processing. Check the error details for the specific failure reason. |
+
+You can check document status via the API:
+
+```bash
+curl -X GET \
+  "https://your-instance.example.com/api/v1/workspaces/{workspace_id}/knowledge/{kb_id}/documents/{doc_id}" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Response for a failed document:**
+
+```json
+{
+  "id": "doc_xyz789",
+  "filename": "corrupted.pdf",
+  "status": "failed",
+  "error": "Unable to extract text from PDF: file appears to be encrypted",
+  "created_at": "2026-03-09T10:30:00Z",
+  "updated_at": "2026-03-09T10:31:15Z"
+}
+```
+
+<Warning>
+  Documents with `failed` status do not contribute to search results. Review the error message, fix the source file, and re-upload.
+</Warning>
+
+## Metadata Extraction
+
+During parsing, the platform automatically extracts structural metadata from documents. This metadata is stored alongside chunks and can be used for filtered retrieval.
+
+### Automatically Extracted Metadata
+
+| Metadata Field | Source | Description |
+|---|---|---|
+| `title` | Document title or first heading | Used for display and citation |
+| `headings` | Section headings in the document | Hierarchical heading path for each chunk |
+| `page_number` | PDF page numbers | Maps chunks back to their source page |
+| `sheet_name` | Excel worksheet name | Identifies which sheet a chunk came from |
+| `source_url` | Web page URL | The original URL for web-sourced documents |
+| `file_type` | File extension | The format of the uploaded file |
+| `word_count` | Computed | Word count per chunk |
+
+### Custom Metadata
+
+You can attach custom key-value metadata at upload time. Custom metadata is propagated to every chunk generated from the document, enabling filtered search.
+
+```json
+{
+  "metadata": {
+    "department": "engineering",
+    "version": "2.1",
+    "confidentiality": "internal",
+    "tags": ["api", "backend", "architecture"]
+  }
+}
+```
+
+**Filtering with metadata at query time:**
+
+```json
+{
+  "query": "How does authentication work?",
+  "search_mode": "hybrid",
+  "top_k": 5,
+  "filters": {
+    "department": "engineering",
+    "tags": ["api"]
+  }
+}
+```
+
+## Managing Documents
+
+### List Documents
+
+Retrieve all documents in a knowledge base with pagination.
+
+```bash
+curl -X GET \
+  "https://your-instance.example.com/api/v1/workspaces/{workspace_id}/knowledge/{kb_id}/documents?page=1&per_page=20" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Delete a Document
+
+Remove a document and all its associated chunks and vectors from the knowledge base.
+
+```bash
+curl -X DELETE \
+  "https://your-instance.example.com/api/v1/workspaces/{workspace_id}/knowledge/{kb_id}/documents/{doc_id}" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+<Warning>
+  Deleting a document is irreversible. All chunks and embeddings for the document are permanently removed from the vector store.
+</Warning>
+
+### Re-process a Document
+
+If you change the embedding model or chunking settings for a knowledge base, you can trigger reprocessing for existing documents.
+
+```bash
+curl -X POST \
+  "https://your-instance.example.com/api/v1/workspaces/{workspace_id}/knowledge/{kb_id}/documents/{doc_id}/reprocess" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+This deletes the existing chunks and vectors, then re-runs the full pipeline with the current settings.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Choose the right chunk size" icon="scissors">
+    - **Smaller chunks (300-500 chars):** Better for precise, fact-based Q&A where each answer fits in a few sentences.
+    - **Larger chunks (1000-2000 chars):** Better for questions that require broader context, such as summarization or multi-step reasoning.
+    - **Default (1000 chars):** A good starting point for most use cases.
+  </Accordion>
+  <Accordion title="Use metadata for filtering" icon="filter">
+    Tag documents with department, version, or topic metadata at upload time. This allows agents to restrict search to relevant subsets, improving both relevance and speed.
+  </Accordion>
+  <Accordion title="Keep documents up to date" icon="rotate">
+    Set up a regular schedule to re-upload updated documents. Stale documents can lead to incorrect or outdated answers from your agents.
+  </Accordion>
+  <Accordion title="Monitor processing status" icon="circle-check">
+    After bulk uploads, check for `failed` documents and address errors promptly. A knowledge base with unprocessed documents has gaps in its coverage.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Vector Search" icon="magnifying-glass" href="/knowledge/vector-search">
+    Learn how embedding-based similarity search retrieves relevant chunks
+  </Card>
+  <Card title="Hybrid Search" icon="code-merge" href="/knowledge/hybrid-search">
+    Combine vector and keyword search for the best of both approaches
+  </Card>
+  <Card title="RAG Pipeline" icon="arrows-turn-to-dots" href="/knowledge/rag-pipeline">
+    Understand the end-to-end retrieval-augmented generation flow
+  </Card>
+  <Card title="Knowledge Base Overview" icon="book" href="/knowledge/overview">
+    Return to the Knowledge Base overview
+  </Card>
+</CardGroup>

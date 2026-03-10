@@ -1,0 +1,179 @@
+---
+title: 'AWS Bedrock'
+description: 'Configure AWS Bedrock foundation models in Nadoo AI'
+sidebarTitle: 'AWS Bedrock'
+'og:title': 'AWS Bedrock Provider - Nadoo AI'
+icon: 'aws'
+---
+
+## Overview
+
+**Amazon Bedrock** is a fully managed service that provides access to foundation models from leading AI providers -- including Anthropic Claude, Meta Llama, and Amazon Titan -- through a unified AWS API. Bedrock integrates with the AWS ecosystem for security, networking, and billing, making it ideal for organizations already invested in AWS infrastructure.
+
+Key benefits:
+
+- **Multi-provider access** -- Use Claude, Llama, Titan, and other models through a single API
+- **AWS integration** -- IAM authentication, VPC endpoints, CloudWatch monitoring, and CloudTrail auditing
+- **No infrastructure management** -- Fully managed serverless inference with automatic scaling
+- **Data privacy** -- Your data is not used to train foundation models
+
+## Setup
+
+<Steps>
+  <Step title="Enable Bedrock Access">
+    In the [AWS Console](https://console.aws.amazon.com/bedrock), navigate to **Amazon Bedrock** and enable access to the foundation models you want to use. Model access must be requested per-model and per-region.
+
+    <Info>
+      Some models (e.g., Anthropic Claude) require you to accept usage terms before access is granted. This can take a few minutes to process.
+    </Info>
+  </Step>
+  <Step title="Create IAM Credentials">
+    Create an IAM user or role with the `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` permissions. For programmatic access, generate an access key.
+
+    **Minimal IAM policy:**
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "bedrock:InvokeModel",
+            "bedrock:InvokeModelWithResponseStream",
+            "bedrock:ListFoundationModels"
+          ],
+          "Resource": "*"
+        }
+      ]
+    }
+    ```
+  </Step>
+  <Step title="Configure in Nadoo">
+    Go to **Admin > Model Providers > AWS Bedrock** and enter:
+
+    | Field | Required | Description |
+    |-------|----------|-------------|
+    | AWS Region | Yes | The AWS region where Bedrock is enabled (e.g., `us-east-1`) |
+    | Access Key ID | Yes* | AWS access key for authentication |
+    | Secret Access Key | Yes* | AWS secret key for authentication |
+
+    *If running on AWS infrastructure (EC2, ECS, Lambda), you can use an IAM role instead of explicit keys.
+  </Step>
+  <Step title="Test Connection">
+    Click **Test** to verify the credentials and region are valid. Enable the models you want to use.
+  </Step>
+</Steps>
+
+## Available Models
+
+### Anthropic Claude (via Bedrock)
+
+| Model ID | Context Window | Best For |
+|----------|---------------|----------|
+| `anthropic.claude-3-5-sonnet-20241022-v2:0` | 200K tokens | Best balance of intelligence and speed |
+| `anthropic.claude-3-opus-20240229-v1:0` | 200K tokens | Highest reasoning capability |
+| `anthropic.claude-3-haiku-20240307-v1:0` | 200K tokens | Fastest and most cost-efficient |
+
+### Meta Llama
+
+| Model ID | Context Window | Best For |
+|----------|---------------|----------|
+| `meta.llama3-1-70b-instruct-v1:0` | 128K tokens | Strong open-source alternative |
+| `meta.llama3-1-8b-instruct-v1:0` | 128K tokens | Cost-efficient smaller model |
+
+### Amazon Titan
+
+| Model ID | Context Window | Best For |
+|----------|---------------|----------|
+| `amazon.titan-text-premier-v1:0` | 32K tokens | AWS-native text generation |
+| `amazon.titan-embed-text-v2:0` | 8K tokens | Embeddings for RAG |
+
+<Info>
+  Model availability varies by AWS region. Check the [Bedrock model availability page](https://docs.aws.amazon.com/bedrock/latest/userguide/models-regions.html) for the latest supported regions per model.
+</Info>
+
+## Capabilities
+
+<CardGroup cols={2}>
+  <Card title="Chat Completion" icon="comments">
+    Conversational AI with streaming support across all Bedrock LLM models.
+  </Card>
+  <Card title="Embeddings" icon="vector-square">
+    Generate vector embeddings using Amazon Titan Embed for knowledge base indexing and semantic search.
+  </Card>
+  <Card title="AWS Security" icon="shield">
+    IAM-based access control, VPC endpoints for private connectivity, and CloudTrail auditing.
+  </Card>
+  <Card title="Multi-Provider" icon="layer-group">
+    Access Claude, Llama, Titan, and other models through a single provider configuration.
+  </Card>
+</CardGroup>
+
+## Authentication Methods
+
+Nadoo AI supports two authentication methods for AWS Bedrock.
+
+### Access Keys
+
+Provide an `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` directly. Suitable for self-hosted deployments outside AWS.
+
+### IAM Role (Recommended for AWS)
+
+When running Nadoo AI on AWS infrastructure (EC2, ECS, EKS, Lambda), attach an IAM role with Bedrock permissions. No explicit keys are needed -- credentials are obtained automatically from the instance metadata service.
+
+<Tip>
+  IAM roles are the recommended authentication method when running on AWS. They eliminate the need to manage and rotate access keys.
+</Tip>
+
+## Environment Variables
+
+When self-hosting, configure AWS Bedrock via environment variables:
+
+```bash
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+AWS_REGION=us-east-1
+```
+
+If both environment variables and the admin UI configuration are set, the admin UI values take precedence.
+
+## Recommended Models by Use Case
+
+| Use Case | Recommended Model | Reason |
+|----------|------------------|--------|
+| General chatbot | Claude 3.5 Sonnet | Best all-around performance |
+| Complex reasoning | Claude 3 Opus | Highest reasoning capability |
+| High-volume support | Claude 3 Haiku | Fast and cost-efficient |
+| Open-source preference | Llama 3.1 70B | Strong performance without proprietary models |
+| Knowledge base search | Titan Embed Text v2 | AWS-native embedding model |
+| Budget-constrained | Llama 3.1 8B | Lowest cost per token |
+
+## Cross-Region Inference
+
+Bedrock supports cross-region inference profiles that route requests to the nearest available region for lower latency and higher availability. To use cross-region inference, enable it in your Bedrock console and configure the inference profile ARN in Nadoo instead of a model ID.
+
+## Rate Limits and Pricing
+
+Bedrock uses **on-demand pricing** with per-token charges that vary by model. You can also purchase **Provisioned Throughput** for guaranteed capacity at a fixed hourly rate.
+
+<Warning>
+  Bedrock applies default quotas on tokens per minute and requests per minute. Check your account quotas in the AWS Service Quotas console and request increases before scaling production workloads.
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="AccessDeniedException" icon="lock">
+    Your IAM user or role does not have the required Bedrock permissions. Verify the IAM policy includes `bedrock:InvokeModel` and that you have enabled access to the specific model in the Bedrock console.
+  </Accordion>
+  <Accordion title="Model not available" icon="circle-xmark">
+    The model is not available in your selected region, or you have not requested access. Check the Bedrock console for model availability and access status.
+  </Accordion>
+  <Accordion title="ThrottlingException" icon="gauge-high">
+    You have exceeded your account's request rate or token quota. Retry with exponential backoff or request a quota increase through AWS Service Quotas.
+  </Accordion>
+  <Accordion title="ValidationException" icon="triangle-exclamation">
+    The request payload is malformed. Check that the model ID is correct and the request parameters match the model's expected schema.
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,300 @@
+---
+title: 'Real-time Streaming'
+description: 'SSE event types, WebSocket communication, and frontend integration for real-time AI agent output'
+sidebarTitle: 'Streaming'
+'og:title': 'Real-time Streaming - Nadoo AI'
+icon: 'bolt'
+---
+
+## Overview
+
+Nadoo AI streams AI agent output to clients in real time using **Server-Sent Events (SSE)** and **WebSocket** connections. As the agent generates tokens, calls tools, retrieves documents, and reasons through steps, each action is emitted as a typed event that the frontend renders incrementally. This provides a responsive, transparent experience where users see the agent's work as it happens.
+
+## Server-Sent Events (SSE)
+
+SSE is the primary streaming protocol in Nadoo AI. The client opens a single HTTP connection, and the server pushes a sequence of typed events as the response is generated.
+
+### Endpoint
+
+```bash
+POST /api/v1/chat/completions
+Content-Type: application/json
+
+{
+  "session_id": "session-uuid",
+  "message": "Summarize the Q4 report",
+  "stream": true
+}
+```
+
+The response is a `text/event-stream` with events following the SSE format:
+
+```
+event: <event_type>
+data: <json_payload>
+
+```
+
+## Event Types
+
+Nadoo AI defines **19 event types** organized into four categories: Workflow, Node, Agent, and System.
+
+### Workflow Events
+
+These events mark the lifecycle of a workflow execution. They are emitted only when the application is a Workflow App.
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `workflow_start` | `{"workflow_id": "...", "execution_id": "..."}` | Workflow execution has begun |
+| `workflow_end` | `{"execution_id": "...", "duration_ms": 1234}` | Workflow completed successfully |
+| `workflow_error` | `{"execution_id": "...", "error": "..."}` | Workflow failed with an error |
+
+### Node Events
+
+These events track individual node execution within a workflow.
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `node_start` | `{"node_id": "...", "node_type": "ai_agent", "node_name": "Classify Intent"}` | A node has started executing |
+| `node_end` | `{"node_id": "...", "output": {...}, "duration_ms": 567}` | A node has finished executing |
+| `node_error` | `{"node_id": "...", "error": "..."}` | A node encountered an error |
+
+### Agent Events
+
+These events provide visibility into the AI agent's reasoning and tool-use behavior.
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `agent_iteration` | `{"iteration": 1, "max_iterations": 5}` | An agent reasoning iteration has occurred |
+| `agent_tool_call` | `{"tool_name": "web_search", "arguments": {"query": "..."}}` | The agent is invoking a tool |
+| `agent_tool_result` | `{"tool_name": "web_search", "result": "..."}` | A tool has returned a result |
+| `agent_reflection` | `{"critique": "...", "refinement": "..."}` | The agent is reflecting on and refining its output |
+| `agent_thinking` | `{"content": "Let me analyze this step by step..."}` | The agent is in a reasoning phase |
+| `cot_step` | `{"step": 1, "thought": "First, I need to..."}` | A chain-of-thought reasoning step |
+
+### System Events
+
+These events provide metadata, usage information, and error reporting.
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `token_usage` | `{"prompt_tokens": 150, "completion_tokens": 45, "total_tokens": 195}` | Token consumption for the current response |
+| `cost_update` | `{"cost_usd": 0.0023, "model": "gpt-4o"}` | Estimated cost for the current response |
+| `context_trimmed` | `{"original_tokens": 12000, "trimmed_tokens": 8000}` | Context was trimmed to fit the model's window |
+| `llm_call_start` | `{"model": "gpt-4o", "provider": "openai"}` | An LLM API call has been initiated |
+| `llm_call_end` | `{"model": "gpt-4o", "latency_ms": 890}` | An LLM API call has completed |
+| `memory_update` | `{"type": "buffer", "messages_retained": 20}` | Conversation memory has been updated |
+| `error` | `{"code": "rate_limit", "message": "..."}` | A system-level error occurred |
+
+## Example SSE Stream
+
+Below is an example SSE stream from a Chat App with tool use and knowledge base retrieval.
+
+```
+event: message_start
+data: {"conversation_id": "abc-123", "message_id": "msg-456"}
+
+event: llm_call_start
+data: {"model": "gpt-4o", "provider": "openai"}
+
+event: agent_tool_call
+data: {"tool_name": "search_knowledge", "arguments": {"query": "Q4 revenue figures"}}
+
+event: agent_tool_result
+data: {"tool_name": "search_knowledge", "result": "Q4 revenue was $12.3M, up 15% YoY..."}
+
+event: agent_thinking
+data: {"content": "The knowledge base contains the Q4 figures. Let me summarize the key points."}
+
+event: text_chunk
+data: {"content": "Based on the Q4 report, "}
+
+event: text_chunk
+data: {"content": "revenue reached $12.3 million, "}
+
+event: text_chunk
+data: {"content": "representing a 15% year-over-year increase."}
+
+event: llm_call_end
+data: {"model": "gpt-4o", "latency_ms": 1240}
+
+event: token_usage
+data: {"prompt_tokens": 850, "completion_tokens": 62, "total_tokens": 912}
+
+event: cost_update
+data: {"cost_usd": 0.0048, "model": "gpt-4o"}
+
+event: suggested_questions
+data: {"questions": ["What drove the revenue growth?", "How does Q4 compare to Q3?", "What are the projections for next quarter?"]}
+
+event: done
+data: {}
+```
+
+## WebSocket Communication
+
+For use cases that require **bidirectional communication** -- such as real-time collaborative editing, voice interaction, or interactive workflows that accept mid-stream input -- Nadoo AI provides a WebSocket endpoint.
+
+### Endpoint
+
+```
+ws://localhost:8000/ws/chat/{session_id}
+```
+
+### Client Example
+
+```javascript
+const ws = new WebSocket(`ws://localhost:8000/ws/chat/${sessionId}`);
+
+// Receive events from the server
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  switch (data.type) {
+    case 'text_chunk':
+      appendToResponse(data.content);
+      break;
+    case 'agent_tool_call':
+      showToolInvocation(data.tool_name, data.arguments);
+      break;
+    case 'done':
+      finalizeResponse();
+      break;
+  }
+};
+
+// Send a message to the agent
+ws.send(JSON.stringify({
+  type: 'message',
+  content: 'What are the key takeaways from the report?'
+}));
+
+// Cancel an in-progress response
+ws.send(JSON.stringify({
+  type: 'cancel'
+}));
+```
+
+### WebSocket vs SSE
+
+| Feature | SSE | WebSocket |
+|---------|-----|-----------|
+| Direction | Server to client (unidirectional) | Bidirectional |
+| Protocol | HTTP | ws:// or wss:// |
+| Reconnection | Built-in auto-reconnect | Manual reconnect required |
+| Mid-stream input | Not supported | Supported (cancel, interrupt) |
+| Browser support | Native `EventSource` API | Native `WebSocket` API |
+| Best for | Standard chat, streaming responses | Interactive, voice, collaborative |
+
+<Note>
+  For standard chatbot applications, **SSE is recommended** -- it is simpler to implement, automatically reconnects on failure, and works seamlessly through HTTP proxies and load balancers. Use WebSocket when you need bidirectional communication.
+</Note>
+
+## Frontend Integration
+
+### useAgentSSE Hook
+
+The Nadoo AI frontend provides a `useAgentSSE` React hook that manages the SSE connection, parses events, and exposes state for rendering.
+
+```tsx
+import { useAgentSSE } from '@/hooks/useAgentSSE';
+
+function ChatPanel({ sessionId }) {
+  const {
+    sendMessage,
+    response,        // accumulated response text
+    isStreaming,     // whether a response is in progress
+    toolCalls,       // list of tool calls with results
+    tokenUsage,      // { prompt_tokens, completion_tokens, total_tokens }
+    suggestedQuestions,
+    error,
+  } = useAgentSSE(sessionId);
+
+  return (
+    <div>
+      <MessageList messages={response} />
+      {isStreaming && <StreamingIndicator />}
+      {toolCalls.map(tc => <ToolCallCard key={tc.id} {...tc} />)}
+      {suggestedQuestions && <SuggestionChips questions={suggestedQuestions} />}
+      <MessageInput onSend={sendMessage} disabled={isStreaming} />
+    </div>
+  );
+}
+```
+
+### AgentExecutionMonitor Component
+
+For Workflow Apps, the `AgentExecutionMonitor` component renders a visual timeline of workflow execution, showing node progress, tool calls, and reasoning steps in real time.
+
+```tsx
+import { AgentExecutionMonitor } from '@/components/AgentExecutionMonitor';
+
+function WorkflowChat({ sessionId }) {
+  return (
+    <div>
+      <ChatPanel sessionId={sessionId} />
+      <AgentExecutionMonitor
+        sessionId={sessionId}
+        showNodeDetails={true}
+        showTokenUsage={true}
+        collapsible={true}
+      />
+    </div>
+  );
+}
+```
+
+The monitor displays:
+
+- **Node execution timeline** with status indicators (running, completed, failed)
+- **Expandable node details** showing input, output, and duration
+- **Tool call cards** with arguments and results
+- **Thinking/reasoning steps** from CoT and ReAct strategies
+- **Token usage and cost** per node and overall
+
+## Error Handling
+
+### SSE Error Events
+
+When an error occurs during streaming, the server emits an `error` event:
+
+```
+event: error
+data: {"code": "rate_limit", "message": "OpenAI rate limit exceeded. Retrying in 5 seconds."}
+```
+
+Common error codes:
+
+| Code | Description |
+|------|-------------|
+| `rate_limit` | The AI provider's rate limit was exceeded |
+| `context_overflow` | The input exceeded the model's context window |
+| `tool_error` | A tool invocation failed |
+| `timeout` | The request timed out |
+| `provider_error` | The AI provider returned an unexpected error |
+| `auth_error` | Authentication or authorization failure |
+
+### Reconnection Strategy
+
+SSE connections may drop due to network issues. The recommended reconnection strategy:
+
+1. Detect connection loss via the `EventSource` `onerror` event
+2. Wait with exponential backoff (1s, 2s, 4s, max 30s)
+3. Reconnect and resume from the last received event using the `Last-Event-ID` header
+4. Display a reconnection indicator to the user
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Chat App" icon="comments" href="/applications/chat-app">
+    Build a Chat App that uses SSE streaming
+  </Card>
+  <Card title="Canvas" icon="pen-to-square" href="/chat/canvas">
+    Rich content editing within the chat interface
+  </Card>
+  <Card title="Workflow App" icon="diagram-project" href="/applications/workflow-app">
+    Build workflows with real-time execution monitoring
+  </Card>
+  <Card title="Chat Overview" icon="message" href="/chat/overview">
+    Full chat system reference including memory and analytics
+  </Card>
+</CardGroup>

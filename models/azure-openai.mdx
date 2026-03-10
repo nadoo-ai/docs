@@ -1,0 +1,166 @@
+---
+title: 'Azure OpenAI'
+description: 'Configure Azure OpenAI Service deployments in Nadoo AI'
+sidebarTitle: 'Azure OpenAI'
+'og:title': 'Azure OpenAI Provider - Nadoo AI'
+icon: 'cloud'
+---
+
+## Overview
+
+**Azure OpenAI Service** provides enterprise-grade access to OpenAI models through Microsoft Azure. It offers the same GPT-4 and GPT-3.5 models as OpenAI's direct API, but with Azure's security, compliance, and regional data residency guarantees. This makes Azure OpenAI the preferred choice for organizations that require enterprise-level data governance.
+
+Key differences from direct OpenAI:
+
+- **Deployment-based** -- Models are deployed to named endpoints rather than selected by model ID
+- **Regional hosting** -- Choose the Azure region where your data is processed
+- **Enterprise security** -- Azure AD authentication, private endpoints, and managed identity support
+- **Compliance** -- SOC 2, HIPAA, GDPR, and other certifications through Azure
+
+## Setup
+
+<Steps>
+  <Step title="Create an Azure OpenAI Resource">
+    In the [Azure Portal](https://portal.azure.com), create an **Azure OpenAI** resource. Select your subscription, resource group, and region.
+
+    <Info>
+      Azure OpenAI requires approval. If you do not have access, apply at [aka.ms/oai/access](https://aka.ms/oai/access).
+    </Info>
+  </Step>
+  <Step title="Deploy Models">
+    In Azure OpenAI Studio, go to **Deployments** and create deployments for the models you need. Each deployment gets a unique name that you will use in Nadoo.
+
+    Common deployment setup:
+
+    | Deployment Name | Model | Use Case |
+    |----------------|-------|----------|
+    | `gpt-4o-deploy` | gpt-4o | General chat and reasoning |
+    | `gpt-35-deploy` | gpt-3.5-turbo | Cost-efficient tasks |
+    | `embedding-deploy` | text-embedding-ada-002 | Vector embeddings for RAG |
+  </Step>
+  <Step title="Get Credentials">
+    From your Azure OpenAI resource in the Azure Portal, navigate to **Keys and Endpoint**. Copy:
+
+    - **Endpoint URL** (e.g., `https://your-resource.openai.azure.com/`)
+    - **API Key** (Key 1 or Key 2)
+  </Step>
+  <Step title="Configure in Nadoo">
+    Go to **Admin > Model Providers > Azure OpenAI** and enter:
+
+    | Field | Required | Description |
+    |-------|----------|-------------|
+    | Endpoint URL | Yes | Your Azure OpenAI endpoint (e.g., `https://your-resource.openai.azure.com/`) |
+    | API Key | Yes | One of your Azure OpenAI API keys |
+    | API Version | Yes | The API version to use (e.g., `2024-02-15-preview`) |
+    | Deployment Names | Yes | Comma-separated list of your model deployment names |
+  </Step>
+  <Step title="Test Connection">
+    Click **Test** to verify the endpoint and key are valid. Enable the deployments you want to use in your workspace.
+  </Step>
+</Steps>
+
+## Available Models
+
+Azure OpenAI supports the same models as direct OpenAI, deployed under your custom deployment names.
+
+### Chat / LLM
+
+| Model | Context Window | Best For |
+|-------|---------------|----------|
+| `gpt-4o` | 128K tokens | General-purpose, multimodal, fastest GPT-4 class |
+| `gpt-4o-mini` | 128K tokens | Cost-efficient tasks, high-volume workloads |
+| `gpt-4-turbo` | 128K tokens | Complex reasoning with large context |
+| `gpt-3.5-turbo` | 16K tokens | Simple tasks, lowest cost |
+
+### Embedding
+
+| Model | Dimensions | Best For |
+|-------|-----------|----------|
+| `text-embedding-ada-002` | 1536 | Standard embeddings for RAG |
+| `text-embedding-3-small` | 1536 | Cost-efficient embeddings |
+| `text-embedding-3-large` | 3072 | Highest quality embeddings |
+
+<Info>
+  Model availability varies by Azure region. Check [Azure OpenAI model availability](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models) for the latest regional support.
+</Info>
+
+## Capabilities
+
+<CardGroup cols={2}>
+  <Card title="Chat Completion" icon="comments">
+    Conversational AI with streaming, function calling, and JSON mode -- identical capabilities to direct OpenAI.
+  </Card>
+  <Card title="Embeddings" icon="vector-square">
+    Generate vector representations of text for semantic search and RAG knowledge bases.
+  </Card>
+  <Card title="Enterprise Security" icon="shield">
+    Azure AD, managed identity, private endpoints, and virtual network integration.
+  </Card>
+  <Card title="Regional Compliance" icon="globe">
+    Data stays in your chosen Azure region for regulatory compliance.
+  </Card>
+</CardGroup>
+
+## Deployment Configuration
+
+Unlike direct OpenAI where you select a model by name, Azure OpenAI uses **deployment names**. When configuring an application in Nadoo, you select your Azure deployment instead of the base model name.
+
+```
+Direct OpenAI:  model = "gpt-4o"
+Azure OpenAI:   deployment = "my-gpt4o-deployment"
+```
+
+### Multiple Deployments
+
+You can create multiple deployments of the same model for different purposes:
+
+- **Production deployment** with higher token-per-minute (TPM) quota
+- **Development deployment** with lower quota for testing
+- **Embedding deployment** dedicated to knowledge base indexing
+
+## Environment Variables
+
+When self-hosting, configure Azure OpenAI via environment variables:
+
+```bash
+AZURE_OPENAI_API_KEY=your-api-key-here
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
+```
+
+If both environment variables and the admin UI configuration are set, the admin UI values take precedence.
+
+## Recommended Models by Use Case
+
+| Use Case | Recommended Deployment | Reason |
+|----------|----------------------|--------|
+| General chatbot | gpt-4o | Best balance of speed, quality, and cost |
+| High-volume support | gpt-4o-mini or gpt-3.5-turbo | Low cost with strong performance |
+| Document analysis | gpt-4o | Long context window with vision support |
+| Knowledge base search | text-embedding-3-small | High quality at low cost |
+| Premium RAG pipeline | text-embedding-3-large | Maximum embedding quality |
+
+## Rate Limits and Quotas
+
+Azure OpenAI uses **Tokens Per Minute (TPM)** quotas that are configured per deployment. You can adjust quotas in the Azure Portal under your deployment's settings.
+
+<Warning>
+  Azure OpenAI quotas are shared across all applications using the same deployment. Monitor usage in the Azure Portal and increase quotas before scaling production workloads.
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="404 Resource Not Found" icon="circle-xmark">
+    The endpoint URL or deployment name is incorrect. Verify both values in the Azure Portal under your OpenAI resource's **Keys and Endpoint** and **Deployments** sections.
+  </Accordion>
+  <Accordion title="401 Unauthorized" icon="lock">
+    Your API key is invalid or has been regenerated. Copy a fresh key from the Azure Portal.
+  </Accordion>
+  <Accordion title="429 Rate Limit Exceeded" icon="gauge-high">
+    You have exceeded your deployment's TPM quota. Increase the quota in the Azure Portal or distribute traffic across multiple deployments.
+  </Accordion>
+  <Accordion title="Model not available in region" icon="globe">
+    Not all models are available in every Azure region. Check [model availability](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models) and consider creating a resource in a supported region.
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,213 @@
+---
+title: 'API Keys'
+description: 'Managing API keys for programmatic access'
+sidebarTitle: 'API Keys'
+'og:title': 'API Keys - Nadoo AI'
+icon: 'key'
+---
+
+## Overview
+
+API keys provide programmatic access to the Nadoo AI platform without requiring interactive user authentication. Each key is scoped to a specific **workspace** and **user**, ensuring that access is isolated and auditable.
+
+<CardGroup cols={3}>
+  <Card title="Workspace-Scoped" icon="building">
+    Every API key belongs to a workspace. It can only access resources within that workspace.
+  </Card>
+  <Card title="Granular Scopes" icon="sliders">
+    Keys can be limited to specific permission scopes such as `read`, `write`, or `admin`.
+  </Card>
+  <Card title="Rate Limited" icon="gauge">
+    Each key has a configurable rate limit (default: 100 requests/minute) to prevent abuse.
+  </Card>
+</CardGroup>
+
+---
+
+## API Key Lifecycle
+
+<Steps>
+  <Step title="Create a Key">
+    Generate a new API key via the dashboard or the API. The full key value is returned **only once** at creation time.
+
+    ```bash
+    POST /api/v1/api-keys
+    Authorization: Bearer {access-token}
+    Content-Type: application/json
+
+    {
+      "name": "Production Backend",
+      "description": "Key for the production application server",
+      "workspace_id": "a1b2c3d4-...",
+      "scopes": ["read", "write"],
+      "rate_limit": 200,
+      "expires_in_days": 90
+    }
+    ```
+
+    **Response:**
+
+    ```json
+    {
+      "id": "f5e6d7c8-...",
+      "key": "nai-xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "name": "Production Backend",
+      "scopes": ["read", "write"],
+      "rate_limit": 200,
+      "expires_at": "2026-06-07T00:00:00Z",
+      "created_at": "2026-03-09T12:00:00Z"
+    }
+    ```
+
+    <Warning>
+      Copy the `key` value immediately and store it in a secure location (e.g., a secrets manager). It will not be shown again.
+    </Warning>
+  </Step>
+
+  <Step title="Use the Key">
+    Include the API key in the `X-API-Key` header for all requests:
+
+    ```bash
+    curl -H "X-API-Key: nai-xxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+      https://your-instance.com/api/v1/applications
+    ```
+  </Step>
+
+  <Step title="Monitor Usage">
+    Track usage statistics for any key:
+
+    ```bash
+    GET /api/v1/api-keys/{api_key_id}/stats?days=30
+    Authorization: Bearer {access-token}
+    ```
+
+    The response includes total requests, success/failure ratio, average response time, and the most-used endpoints.
+  </Step>
+
+  <Step title="Rotate or Revoke">
+    When a key needs to be replaced, use the rotate endpoint to atomically revoke the old key and generate a new one:
+
+    ```bash
+    POST /api/v1/api-keys/{api_key_id}/rotate
+    Authorization: Bearer {access-token}
+    ```
+
+    To permanently revoke a key without creating a replacement:
+
+    ```bash
+    DELETE /api/v1/api-keys/{api_key_id}
+    Authorization: Bearer {access-token}
+    ```
+  </Step>
+</Steps>
+
+---
+
+## API Endpoints Reference
+
+The complete set of API key management endpoints:
+
+| Method | Endpoint | Description | Permission Required |
+|--------|----------|-------------|-------------------|
+| `POST` | `/api/v1/api-keys` | Create a new API key | `WORKSPACE:CREATE` |
+| `GET` | `/api/v1/api-keys?workspace_id={id}` | List all keys in a workspace | `WORKSPACE:READ` |
+| `GET` | `/api/v1/api-keys/{id}` | Get details for a specific key | Owner of the key |
+| `PATCH` | `/api/v1/api-keys/{id}` | Update key name, description, or scopes | Owner of the key |
+| `DELETE` | `/api/v1/api-keys/{id}` | Revoke (deactivate) a key | Owner of the key |
+| `GET` | `/api/v1/api-keys/{id}/stats?days=7` | Usage statistics (1-90 days) | Owner of the key |
+| `POST` | `/api/v1/api-keys/{id}/rotate` | Revoke old key and generate new one | Owner of the key |
+
+<Info>
+  The `workspace_id` query parameter is **required** when listing API keys. This ensures keys are always accessed within the context of a specific workspace.
+</Info>
+
+---
+
+## Key Properties
+
+Each API key has the following attributes:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | UUID | Unique identifier for the key record |
+| `key` | String (64 chars) | The secret key value (only returned at creation) |
+| `name` | String | Human-readable name for identification |
+| `description` | String | Optional description of the key's purpose |
+| `workspace_id` | UUID | The workspace this key is scoped to |
+| `user_id` | UUID | The user who created the key |
+| `scopes` | JSON array | Permission scopes (e.g., `["read", "write", "admin"]`) |
+| `rate_limit` | Integer | Maximum requests per minute (default: 100) |
+| `expires_at` | DateTime | Expiration timestamp (null = no expiration) |
+| `is_active` | Boolean | Whether the key is currently active |
+| `usage_count` | Integer | Total number of requests made with this key |
+| `last_used_at` | DateTime | Timestamp of the most recent request |
+
+---
+
+## Scopes
+
+API key scopes control what operations the key can perform. If no scopes are specified, the key has **full access** within its workspace.
+
+| Scope | Description |
+|-------|-------------|
+| `read` | Read-only access to all workspace resources |
+| `write` | Create and update resources |
+| `admin` | Full access including member management |
+| `*` | Wildcard -- equivalent to all scopes |
+
+```bash
+# Create a read-only key
+POST /api/v1/api-keys
+{
+  "name": "Analytics Dashboard",
+  "workspace_id": "...",
+  "scopes": ["read"]
+}
+```
+
+<Tip>
+  Follow the principle of least privilege: if a key only needs to read data, restrict it to the `read` scope. This limits exposure if the key is compromised.
+</Tip>
+
+---
+
+## Usage Logging
+
+Every request made with an API key is logged in the `api_key_logs` table, capturing:
+
+- **Endpoint** and **HTTP method** called
+- **Status code** of the response
+- **Client IP address** and **User-Agent**
+- **Response time** in milliseconds
+- **Error messages** (if any)
+
+Access these logs through the usage statistics endpoint or the audit log system.
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Store keys in a secrets manager" icon="vault">
+    Use AWS Secrets Manager, HashiCorp Vault, Google Secret Manager, or similar tools. Never store API keys in environment files committed to version control.
+  </Accordion>
+  <Accordion title="Set expiration dates" icon="calendar">
+    Use the `expires_in_days` parameter when creating keys. Short-lived keys (30-90 days) reduce the window of exposure if a key is leaked.
+  </Accordion>
+  <Accordion title="Rotate keys regularly" icon="rotate">
+    Use the `/rotate` endpoint for zero-downtime key rotation. The old key is revoked immediately and a new key is returned in the same response.
+  </Accordion>
+  <Accordion title="Use minimal scopes" icon="shield">
+    Restrict each key to only the scopes it needs. A backend service that only reads data should use a `read`-only key.
+  </Accordion>
+  <Accordion title="Monitor usage patterns" icon="chart-line">
+    Review the `/stats` endpoint periodically. Unexpected spikes in usage or requests from unfamiliar IP addresses may indicate a compromised key.
+  </Accordion>
+  <Accordion title="Never expose keys in client-side code" icon="eye-slash">
+    API keys should only be used in server-side environments. For frontend applications, use JWT-based authentication with short-lived access tokens.
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  If you suspect an API key has been compromised, revoke it immediately using the `DELETE /api/v1/api-keys/{id}` endpoint. Then create a new key and update your services.
+</Warning>

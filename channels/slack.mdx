@@ -1,0 +1,205 @@
+---
+title: 'Slack'
+description: 'Deploy AI agents to Slack with OAuth integration, event subscriptions, and interactive messages'
+sidebarTitle: 'Slack'
+'og:title': 'Slack Integration - Nadoo AI'
+'og:description': 'Set up a Slack app, configure webhooks, and deploy Nadoo AI agents to Slack workspaces'
+---
+
+## Overview
+
+The Slack integration lets you deploy Nadoo AI agents directly into your Slack workspace. Users interact with the agent through direct messages, channel mentions, and slash commands. The integration supports threaded conversations, interactive buttons, file uploads, and rich message formatting.
+
+## Setup
+
+Follow these steps to connect your Nadoo AI agent to Slack.
+
+<Steps>
+  <Step title="Create a Slack App">
+    1. Go to the [Slack API portal](https://api.slack.com/apps) and click **Create New App**.
+    2. Select **From scratch** and give your app a name (e.g., "Nadoo AI Agent").
+    3. Choose the Slack workspace where you want to install the app.
+    4. Click **Create App**.
+  </Step>
+  <Step title="Configure OAuth Scopes">
+    Navigate to **OAuth & Permissions** in the left sidebar and add the following **Bot Token Scopes**:
+
+    | Scope | Purpose |
+    |---|---|
+    | `chat:write` | Send messages as the bot |
+    | `channels:history` | Read messages in public channels |
+    | `groups:history` | Read messages in private channels |
+    | `im:history` | Read direct messages |
+    | `mpim:history` | Read group direct messages |
+    | `users:read` | Look up user display names |
+    | `files:read` | Access files shared in conversations |
+    | `commands` | Register slash commands |
+
+    Click **Install to Workspace** and authorize the app. Copy the **Bot User OAuth Token** (starts with `xoxb-`).
+  </Step>
+  <Step title="Set Event Subscriptions">
+    Navigate to **Event Subscriptions** and toggle **Enable Events** to on.
+
+    Set the **Request URL** to your Nadoo AI webhook endpoint:
+
+    ```
+    https://your-instance.example.com/api/v1/webhooks/handle/slack
+    ```
+
+    Slack will send a verification challenge to this URL. Nadoo AI handles the challenge automatically.
+
+    Under **Subscribe to bot events**, add:
+
+    | Event | Description |
+    |---|---|
+    | `message.channels` | Messages posted in public channels |
+    | `message.groups` | Messages posted in private channels |
+    | `message.im` | Direct messages to the bot |
+    | `message.mpim` | Messages in group DMs with the bot |
+    | `app_mention` | When the bot is @mentioned |
+
+    Click **Save Changes**.
+  </Step>
+  <Step title="Configure Slash Commands (Optional)">
+    Navigate to **Slash Commands** and click **Create New Command**.
+
+    | Field | Example Value |
+    |---|---|
+    | Command | `/ask` |
+    | Request URL | `https://your-instance.example.com/api/v1/webhooks/handle/slack` |
+    | Short Description | Ask the AI agent a question |
+    | Usage Hint | `[your question]` |
+
+    Click **Save**.
+  </Step>
+  <Step title="Configure in Nadoo AI">
+    In the Nadoo AI platform:
+
+    1. Navigate to your workspace and open **Channels**.
+    2. Click **Add Channel** and select **Slack**.
+    3. Enter the following credentials:
+
+    | Field | Value |
+    |---|---|
+    | **Bot Token** | The `xoxb-` token from Step 2 |
+    | **Signing Secret** | Found under **Basic Information** > **App Credentials** |
+    | **Workflow** | Select the workflow to handle Slack messages |
+
+    4. Click **Save** and toggle the channel to **Active**.
+  </Step>
+  <Step title="Test the Integration">
+    Open Slack, find your bot in the Direct Messages sidebar, and send a test message. The bot should respond using the configured workflow.
+
+    You can also @mention the bot in a channel: `@Nadoo AI Agent what is our refund policy?`
+  </Step>
+</Steps>
+
+## Webhook URL Configuration
+
+The Slack integration uses a single webhook endpoint for all events:
+
+```
+POST /api/v1/webhooks/handle/slack
+```
+
+This endpoint handles:
+- **URL verification challenges** -- Slack sends a `challenge` parameter during setup that must be echoed back
+- **Event callbacks** -- Message events, app mentions, and interactive component payloads
+- **Slash commands** -- Payloads from registered slash commands
+- **Interactive messages** -- Button clicks, menu selections, and modal submissions
+
+### Signature Verification
+
+Every incoming request from Slack is verified using the **Signing Secret**. Nadoo AI computes an HMAC-SHA256 signature of the request body using the signing secret and compares it to the `X-Slack-Signature` header. Requests with invalid signatures are rejected with a 401 status.
+
+## Supported Features
+
+### Messages and Threads
+
+| Feature | Description |
+|---|---|
+| **Direct messages** | Users send messages directly to the bot for private conversations |
+| **Channel messages** | The bot responds when @mentioned in a channel |
+| **Thread replies** | The bot replies in the same thread to keep conversations organized |
+| **Conversation context** | Previous messages in the thread are included as conversation history |
+
+### Interactive Components
+
+| Feature | Description |
+|---|---|
+| **Buttons** | The agent can send messages with clickable buttons for user choices |
+| **Menus** | Dropdown menus for selecting from a list of options |
+| **Modals** | Pop-up dialogs for collecting structured input from users |
+
+### Slash Commands
+
+Register custom slash commands that trigger your workflow with a specific intent:
+
+- `/ask [question]` -- Ask the agent a question
+- `/summarize` -- Summarize the current channel conversation
+- `/search [query]` -- Search the knowledge base
+
+### File Handling
+
+| Feature | Description |
+|---|---|
+| **File uploads** | Users can attach files to their messages. The agent can process uploaded documents. |
+| **File downloads** | The agent can share files (reports, exports) back to the user |
+
+## Rate Limits and Best Practices
+
+### Slack API Rate Limits
+
+Slack enforces rate limits on API calls. Nadoo AI's delivery queue respects these limits automatically.
+
+| API Method | Rate Limit |
+|---|---|
+| `chat.postMessage` | 1 message per second per channel |
+| `conversations.history` | 50 requests per minute |
+| `files.upload` | 20 requests per minute |
+
+### Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use threads for multi-turn conversations" icon="comments">
+    Configure the bot to always reply in threads when responding in channels. This keeps the channel clean and groups related messages together. Thread context is automatically included in the conversation history.
+  </Accordion>
+  <Accordion title="Set typing indicators" icon="keyboard">
+    For longer processing times, the bot sends a typing indicator so users know a response is coming. This is handled automatically by the Slack adapter.
+  </Accordion>
+  <Accordion title="Handle long responses" icon="text-width">
+    Slack messages have a 40,000-character limit. For longer responses, the adapter automatically splits them into multiple messages. Consider configuring your workflow to produce concise responses.
+  </Accordion>
+  <Accordion title="Use rich formatting" icon="palette">
+    Slack supports Block Kit for rich message formatting. The adapter converts Markdown from your workflow responses into Slack-compatible formatting, including bold, italic, code blocks, and lists.
+  </Accordion>
+  <Accordion title="Limit channel scope" icon="lock">
+    Instead of adding the bot to all channels, invite it only to specific channels where it is needed. This reduces noise and gives you control over where the agent operates.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+| Issue | Solution |
+|---|---|
+| Bot does not respond | Verify the webhook URL is correct and the channel is set to **Active** in Nadoo AI |
+| "dispatch_failed" in Slack logs | Check that event subscriptions are configured and the Nadoo AI backend is reachable |
+| 401 errors on webhook | Verify the Signing Secret matches between Slack and Nadoo AI |
+| Duplicate responses | Ensure only one event type is subscribed for each message source (e.g., do not subscribe to both `message.channels` and `app_mention` if you want only @mention responses) |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Channels Overview" icon="comments" href="/channels/overview">
+    Multi-channel messaging architecture
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/channels/webhooks">
+    Webhook delivery, verification, and monitoring
+  </Card>
+  <Card title="Discord" icon="discord" href="/channels/discord">
+    Set up the Discord integration
+  </Card>
+  <Card title="Workflow Engine" icon="diagram-project" href="/workflow/overview">
+    Build the workflows that power your Slack agent
+  </Card>
+</CardGroup>
